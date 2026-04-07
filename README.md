@@ -78,8 +78,11 @@ The MISJustice Alliance Firm operates a modular multi-agent staff. Each agent is
 | **Social Media Manager** | External | Public brand, platform presence, and content distribution | Platform posting, campaign sequencing, audience monitoring, reputation management | X, Bluesky, Reddit, Nostr connectors; Open Notebook; OpenClaw scheduling |
 | **Sol — Public Content QA** | Bridge → External | Fact-check and source-verify all public-facing content | Public source fetch, citation verification, accuracy review | SearXNG (public-safe), OpenRAG (public-safe view), MCAS public exports |
 | **Quill — GitBook Curator** | Bridge → External | Structure and maintain the YWCA of Missoula GitBook case file library | Document organization, index maintenance, cross-linking, public-safe export | GitBook API, MCAS exports, SearXNG (public-safe), Open Notebook |
+| **Vane — Operator Search Interface** | Internal (Human-facing) | Conversational AI answering UI for human operator ad-hoc research over the private SearXNG instance | Cited web Q&A, multi-mode research (Speed / Balanced / Quality), document upload & Q&A, image/video search, domain-scoped queries, search history | Vane UI, SearXNG (T4-admin token via `SEARXNG_API_URL`), Ollama / local LLM, Open Notebook (output) |
 
 > **Note:** All Researcher-role agents (Rae, Lex, Iris, Chronology Agent, Citation/Authority Agent) use **AutoResearchClaw** as their core autonomous research engine for multi-stage research loops, literature review, evidence gathering, and structured output generation.
+
+> **Note on Vane:** Vane is a **human operator interface**, not an autonomous agent. It provides operators with a Perplexity-style conversational research workspace that queries the same private SearXNG instance used by the agent stack — using the T4-admin search token via the `slim` image deployment. Vane does **not** replace SearXNG; it sits atop it. Do not use Vane's file upload feature with Tier-0 or Tier-1 material until authentication and role-based access control are implemented upstream. See [Section 6](#6-search-and-retrieval-architecture) for the search tier model.
 
 ---
 
@@ -113,24 +116,25 @@ The platform supports multiple human interaction surfaces, all brokered through 
 | **OpenShell** | Secure CLI for admin operations, agent inspection, key rotation, log review | Admin only |
 | **Open Web UI** | Primary browser-based workspace for all agent interaction, research review, and document work | Operator / Analyst |
 | **Open Notebook** | Document-centric layer within Open Web UI for research outputs, memos, chronologies, and case file work | Operator / Analyst |
+| **Vane** | Conversational AI answering UI for ad-hoc operator research; queries the private SearXNG instance with cited sources, document uploads, and multi-mode research depth | Operator (T4-admin token; Tier-2/3 material only — see security note in Section 3) |
 
 ---
 
 ## 6. Search and Retrieval Architecture
 
-All agent search traffic is routed through a **single privately hosted SearXNG instance**, fronted by a **LiteLLM proxy** that normalizes search results to a consistent JSON schema before agent consumption.
+All agent search traffic is routed through a **single privately hosted SearXNG instance**, fronted by a **LiteLLM proxy** that normalizes search results to a consistent JSON schema before agent consumption. Human operators additionally have access to **Vane**, a self-hosted AI answering interface that queries the same SearXNG instance directly using the T4-admin token, providing a conversational research surface for ad-hoc queries, document uploads, and cited Q&A without going through the LiteLLM agent pipeline.
 
 ### Search tiers (Private Token model)
 
-| Token tier | Agents | Engine groups accessible |
+| Token tier | Agents / Users | Engine groups accessible |
 |---|---|---|
 | `T0-publicsafe` | Sol, Quill, Mira, Webmaster, Social Media Manager | Public legal, curated public web, public-safe internal summaries |
 | `T1-internal` | Avery, Rae, Ollie | T0 + internal-safe MCAS/OpenRAG search |
 | `T2-restricted` | Lex, Casey | T1 + restricted internal indexes, selected registries |
 | `T3-pi` | Iris | T2 + OSINT/public-record specialty engines |
-| `T4-admin` | Humans only | All engines, diagnostic/admin views |
+| `T4-admin` | Humans only (incl. via Vane) | All engines, diagnostic/admin views |
 
-LiteLLM exposes named search tools (`search_publicsafe`, `search_internal`, `search_restricted`, `search_pi`) that carry the correct private token and engine group per agent role. Agents never touch SearXNG directly or access commercial search engines.
+LiteLLM exposes named search tools (`search_publicsafe`, `search_internal`, `search_restricted`, `search_pi`) that carry the correct private token and engine group per agent role. Agents never touch SearXNG directly or access commercial search engines. Vane connects to SearXNG via the `SEARXNG_API_URL` environment variable using the T4-admin token and is deployed using the Vane `slim` image (no bundled SearXNG) pointed at the existing private instance.
 
 ### RAG Backend
 
@@ -159,11 +163,14 @@ MCAS exposes a REST/JSON API with OAuth2/PAT tokens, scoped per agent role. Webh
 
 ## 8. Example Workflow Diagram
 
-The following Mermaid diagram illustrates a representative MISJustice workflow from human-initiated intake through to public publication.
+The following Mermaid diagram illustrates a representative MISJustice workflow from human-initiated intake through to public publication. Vane is shown as an optional human operator research surface that feeds findings into Open Notebook alongside the automated agent pipeline.
 
 ```mermaid
 flowchart TD
     H([Human Operator]) -->|Initiates intake via Telegram/\nOpen Web UI| OC[OpenClaw / NemoClaw\nOrchestration]
+    H -->|Ad-hoc operator research\nvia Vane UI| VANE[Vane\nAI Search Interface]
+    VANE -->|Queries via T4-admin token| SRXNG[SearXNG\nPrivate Instance]
+    VANE -->|Cited findings exported\nto Open Notebook| NB[Open Notebook]
 
     OC -->|Routes intake task| AV[Avery\nIntake & Evidence]
     AV -->|Creates Person/Matter/Events\nOCR & classifies docs| MCAS[(MCAS\nCase Server)]
@@ -179,10 +186,10 @@ flowchart TD
     LX -->|AutoResearchClaw\nAnalysis & verification| ARC
     IR -->|AutoResearchClaw\nOSINT & public records| ARC
 
-    ARC -->|Queries via LiteLLM| SRXNG[SearXNG\nPrivate Instance]
+    ARC -->|Queries via LiteLLM\n(role-scoped token)| SRXNG
     SRXNG -->|Returns normalized results| ARC
     ARC -->|Fetches full pages\nEmbeds into OpenRAG| ORAG[(OpenRAG\nVector Store)]
-    ARC -->|Outputs: memos, issue maps,\nPI reports, timelines| NB[Open Notebook]
+    ARC -->|Outputs: memos, issue maps,\nPI reports, timelines| NB
 
     NB -->|Human reviews drafts| H
     H -->|Approves analysis\nDefines referral path| OC
@@ -215,6 +222,7 @@ graph TB
         OS[OpenShell\nSecure CLI]
         OWU[Open Web UI]
         ONB[Open Notebook]
+        VN[Vane\nAI Search UI]
     end
 
     subgraph ORCH["Orchestration Layer — OpenClaw / NemoClaw"]
@@ -268,6 +276,7 @@ graph TB
     end
 
     INTERFACES --> ORCH
+    VN -->|T4-admin token\ndirect SearXNG query| SRXNG
     ORCH --> AGENTS
     AGENTS --> RESEARCH
     RESEARCH --> LLLM
@@ -354,6 +363,9 @@ misjustice-alliance-firm/
 │   ├── openrag/                     # OpenRAG ingestion and query clients
 │   ├── litellm/                     # LiteLLM proxy config and tool definitions
 │   ├── searxng/                     # SearXNG settings.yml, token configs, engine groups
+│   ├── vane/                        # Vane AI search UI — slim deployment config
+│   │   ├── README.md                # Deployment notes and integration guidance
+│   │   └── vane.env.example         # SEARXNG_API_URL and LLM provider vars for slim image
 │   ├── agenticmail/                 # AgenticMail approval queue integration
 │   └── proton/                      # Proton Bridge / E2EE comms adapter (stub)
 │
@@ -384,7 +396,11 @@ misjustice-alliance-firm/
 │   │   ├── mcas/
 │   │   ├── searxng/
 │   │   ├── litellm/
-│   │   └── openrag/
+│   │   ├── openrag/
+│   │   └── vane/                    # Vane slim-image K8s manifests
+│   │       ├── deployment.yaml      # Slim image; SEARXNG_API_URL → internal SearXNG svc
+│   │       ├── service.yaml
+│   │       └── secret.yaml          # LLM provider API keys
 │   ├── terraform/                   # Cloud/VPC provisioning (proposed)
 │   └── scripts/                     # Operational utility scripts
 │
@@ -447,10 +463,18 @@ docker compose -f infra/docker/docker-compose.yml up -d
 # 4. Configure SearXNG engine groups and private tokens
 # See: services/searxng/settings.yml and policies/SEARCH_TOKEN_POLICY.md
 
-# 5. Load agent definitions into OpenClaw
+# 5. Start Vane (operator search interface — slim image, pointed at private SearXNG)
+docker run -d -p 3001:3000 \
+  -e SEARXNG_API_URL=http://<your-searxng-host>:8080 \
+  -v vane-data:/home/vane/data \
+  --name vane itzcrazykns1337/vane:slim-latest
+# Configure LLM provider and Ollama URL in the Vane setup screen at http://localhost:3001
+# See: services/vane/vane.env.example
+
+# 6. Load agent definitions into OpenClaw
 # See: agents/ directory and workflows/ directory
 
-# 6. Access Open Web UI
+# 7. Access Open Web UI
 # Default: http://localhost:3000
 ```
 
@@ -471,6 +495,7 @@ The MISJustice Alliance Firm is designed under a **zero-trust, layered privacy**
 | **E2EE comms** | Tier-0 communications routed exclusively through Proton; never enters agent pipelines |
 | **No case data in Git** | `cases/` directory is gitignored; no PII or evidence ever committed to this repository |
 | **Human gates** | All external communications, publications, and high-risk research actions require explicit human approval |
+| **Vane access scope** | Vane is restricted to Tier-2/3 material until upstream authentication and RBAC are implemented; file upload must not be used with Tier-0/Tier-1 documents |
 
 Encryption at rest and in transit are baseline requirements for all services. Key management should use a cloud HSM or equivalent. See `policies/DATA_CLASSIFICATION.md` for the full classification model.
 
@@ -490,6 +515,8 @@ Encryption at rest and in transit are baseline requirements for all services. Ke
 | **LiteLLM + SearXNG search docs** | https://docs.litellm.ai/docs/search/searxng |
 | **SearXNG** | https://github.com/searxng/searxng |
 | **SearXNG engine settings docs** | https://docs.searxng.org/admin/settings/settings_engines.html |
+| **Vane — AI Search Interface** | https://github.com/ItzCrazyKns/Vane |
+| **Vane Docker Hub (slim image)** | https://hub.docker.com/r/itzcrazykns1337/vane |
 | **Free Law Project / CourtListener** | https://free.law / https://www.courtlistener.com |
 | **Caselaw Access Project (CAP)** | https://case.law |
 | **DOJ Open Data** | https://www.justice.gov/open/open-data |
