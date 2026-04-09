@@ -1,0 +1,511 @@
+# Casey — Counsel Scout Agent
+# agents/casey/agent.yaml
+# MISJustice Alliance Firm
+#
+# This file is the operational configuration for Casey.
+# It wires Casey to the platform: LLM model, tool bindings, MCAS export API
+# scope, search tier token, memory config, OpenClaw registration, and
+# NemoClaw enforcement.
+#
+# Identity constitution: agents/casey/SOUL.md
+# Task-level instructions: agents/casey/system_prompt.md
+# Policy references:
+#   - policies/DATA_CLASSIFICATION.md
+#   - policies/SEARCH_TOKEN_POLICY.md
+#   - docs/legal/ethics_policy.md
+#   - agents/README.md
+
+# ---------------------------------------------------------------------------
+# Agent identity
+# ---------------------------------------------------------------------------
+agent:
+  id: casey
+  name: Casey
+  version: "1.0.0"
+  description: >
+    Counsel Scout agent. Bridges the internal research pipeline and external
+    legal resources. Researches civil rights attorneys and advocacy
+    organizations, evaluates fit for specific matters, and assembles
+    de-identified referral packets for human review and authorized
+    transmission. Never transmits externally without explicit human
+    operator authorization per packet.
+  facing: bridge          # Internal → External prep; never autonomous external
+  soul: agents/casey/SOUL.md
+  system_prompt: agents/casey/system_prompt.md
+
+# ---------------------------------------------------------------------------
+# LLM configuration
+# ---------------------------------------------------------------------------
+llm:
+  # Route through LiteLLM proxy — never call provider APIs directly.
+  # Model selected for strong research synthesis, structured output fidelity,
+  # and reliable sourcing behavior (citation grounding).
+  provider: litellm
+  model: openai/gpt-4o
+  fallback_model: anthropic/claude-3-5-sonnet-20241022
+  temperature: 0.2          # Low: accuracy and sourcing consistency
+  max_tokens: 8192          # Higher ceiling: referral packets can be long-form
+  timeout_seconds: 180
+  retry:
+    max_attempts: 3
+    backoff_seconds: 5
+
+# ---------------------------------------------------------------------------
+# Search configuration
+# ---------------------------------------------------------------------------
+search:
+  # Search tier T2 — restricted, plus osint_public engine group for
+  # attorney and organization research.
+  # Casey may query restricted internal indexes, selected attorney/court
+  # registries, and public-safe attorney/org OSINT sources.
+  # Casey may NOT access PI-tier (T3) engines for respondent/opposing-party
+  # research — that is Iris’s domain.
+  tier: T2
+  token_env: SEARXNG_TOKEN_RESTRICTED
+  searxng_url_env: SEARXNG_API_URL
+  engine_groups:
+    - internal_restricted      # Restricted internal MCAS/OpenRAG indexes
+    - public_legal             # CourtListener, Free Law, CAP, DOJ open data
+    - bar_registries           # State bar association registries (MT, WA, federal)
+    - attorney_directories     # AVVO, Martindale-Hubbell, Super Lawyers (read-only)
+    - nonprofit_registries     # IRS EO database, ProPublica Nonprofit Explorer
+    - advocacy_org_public      # ACLU, Innocence Project, legal aid org public sites
+    - public_web_safe          # Curated public web
+  # osint_public is available for attorney/org research only — not for
+  # respondent, opposing party, witness, or complainant research.
+  osint_public:
+    enabled: true
+    permitted_targets:
+      - attorneys               # Individual attorney professional background
+      - law_firms               # Firm practice area, history, notable cases
+      - advocacy_organizations  # Org mission, capacity, geographic reach
+      - bar_discipline_records  # Public disciplinary records for attorney candidates
+    prohibited_targets:
+      - respondents             # Iris’s domain — hard prohibited
+      - opposing_parties        # Iris’s domain — hard prohibited
+      - witnesses               # Iris’s domain — hard prohibited
+      - complainants            # Never — absolute prohibition
+      - minors                  # Never — absolute prohibition
+  max_results_per_query: 15
+  permitted_purposes:
+    - attorney_candidate_research
+    - organization_candidate_research
+    - bar_status_verification
+    - disciplinary_record_check
+    - conflict_of_interest_assessment
+    - referral_fit_evaluation
+
+# ---------------------------------------------------------------------------
+# Tool bindings
+# ---------------------------------------------------------------------------
+tools:
+
+  # -- MCAS API (Export scope only) ---------------------------------------
+  mcas:
+    enabled: true
+    base_url_env: MCAS_API_URL
+    auth_token_env: MCAS_API_TOKEN_CASEY
+    # Casey’s MCAS access is strictly scoped to the export API.
+    # Casey reads de-identified Tier 2 exports only.
+    # Each export requires explicit human operator authorization —
+    # Casey cannot initiate an export without a human-confirmed export_auth_token
+    # issued per referral packet.
+    scope:
+      matter:
+        read: false           # Casey does not read raw Matter records
+        write: false
+        export_api: true      # Casey uses the export endpoint only
+        export_requires_human_auth: true
+        export_tier_floor: T2 # Exports must be de-identified to Tier 2 minimum
+      person:
+        read: false           # Casey does not read Person records directly
+        write: false
+        # Person context reaches Casey only through the de-identified Matter export
+      organization:
+        read: true            # Casey may read Organization records for actor context
+        write: false          # (agencies, firms — not complainant/witness records)
+        allowed_org_types:
+          - law_enforcement
+          - court
+          - government_agency
+          - advocacy_org
+          - law_firm
+      document:
+        read: false           # Casey does not read Document records directly
+        write: false
+        # Document content reaches Casey only through the de-identified Matter export
+      event:
+        read: false
+        write: false
+    # Hard deny list
+    denied_endpoints:
+      - /persons/*            # Direct person record access prohibited
+      - /documents/*          # Direct document access prohibited
+      - /matters/read         # Raw matter read prohibited; export API only
+      - /classification/*     # Classification is not Casey’s domain
+      - /admin/*
+      - /persons/dereference
+    # Outbound event logging: Casey writes an outreach Event to MCAS
+    # when a referral packet transmission is authorized and executed by Ollie.
+    # Casey does NOT write this event — Ollie writes it on transmission.
+    # Casey writes a referral_packet_assembled Event when a packet is
+    # ready for human review.
+    event_write:
+      enabled: true
+      permitted_event_types:
+        - referral_packet_assembled
+        - referral_candidate_flagged   # When a conflict-of-interest flag is raised
+
+  # -- OpenRAG ------------------------------------------------------------
+  openrag:
+    enabled: true
+    base_url_env: OPENRAG_URL
+    auth_token_env: OPENRAG_TOKEN_CASEY
+    access:
+      query: true
+      ingest: false         # Casey does not ingest into OpenRAG
+      delete: false
+    scope: internal_restricted
+    # Casey queries OpenRAG for Rae/Lex research outputs relevant to a
+    # specific matter — to inform fit evaluation and cover memo context.
+    permitted_purposes:
+      - matter_context_for_fit_evaluation
+      - lex_analysis_for_cover_memo
+      - rae_research_for_referral_context
+
+  # -- Open Notebook ------------------------------------------------------
+  open_notebook:
+    enabled: true
+    base_url_env: OPEN_NOTEBOOK_URL
+    auth_token_env: OPEN_NOTEBOOK_TOKEN_CASEY
+    access:
+      read: true
+      write: true
+      delete: false
+    workspace: casey-referrals
+    output_format: markdown
+    # Casey writes attorney profiles, organization summaries, fit assessments,
+    # conflict-of-interest reports, and assembled referral packets to
+    # Open Notebook for human operator review.
+
+  # -- AgenticMail (draft queue only) ------------------------------------
+  agentic_mail:
+    enabled: true
+    base_url_env: AGENTIC_MAIL_URL
+    auth_token_env: AGENTIC_MAIL_TOKEN_CASEY
+    access:
+      draft: true           # Casey writes to the draft queue only
+      send: false           # Casey NEVER sends — human authorization required
+      read_sent: false
+    # Casey places completed referral packets in the AgenticMail draft queue
+    # with a routing header identifying the intended recipient and the
+    # human operator who must authorize the send.
+    draft_routing:
+      require_operator_id: true
+      require_export_auth_token: true   # Must match the MCAS export auth token
+      require_deidentification_confirmed: true
+      require_conflict_check_completed: true
+    draft_template: referral_packet
+
+  # -- Explicitly disabled tools -----------------------------------------
+  chandra_ocr:
+    enabled: false
+    reason: OCR processing is Avery’s domain.
+
+  lawglance:
+    enabled: false
+    reason: Legal research is Rae/Lex scope. Casey does not conduct legal research.
+
+  auto_research_claw:
+    enabled: false
+    reason: Multi-stage research loops are Rae/Lex scope.
+
+  social_connectors:
+    enabled: false
+    reason: Social platform access is Social Media Manager scope.
+
+  gitbook:
+    enabled: false
+    reason: GitBook access is Webmaster/Quill scope.
+
+# ---------------------------------------------------------------------------
+# Memory configuration
+# ---------------------------------------------------------------------------
+memory:
+  session:
+    enabled: true
+    max_tokens: 32000
+  cross_session:
+    enabled: true
+    # Casey retains cross-session context for referral research she has
+    # conducted: attorney profiles, org profiles, conflict flags, and
+    # referral packet assembly state for active matters.
+    # Context is scoped to matters for which Casey has been dispatched
+    # and for which a human operator has authorized MCAS export access.
+    scope: casey_dispatched_matters
+    backend: openrag
+    index: casey-referral-context
+    tier_floor: T2    # No Tier 0 or Tier 1 data in cross-session memory
+    # Cross-session memory stores:
+    #   - Referral packet assembly state (draft, pending_review, transmitted)
+    #   - Attorney/org profile IDs from Open Notebook
+    #   - Conflict-of-interest flag references
+    #   - Export auth token references (not the tokens themselves)
+    excluded_from_memory:
+      - export_auth_tokens      # Tokens are not persisted — re-issued per session
+      - complainant_pseudonyms  # Tier 1 — not in cross-session memory
+      - mcas_record_ids         # Retrieved fresh per session from MCAS
+
+# ---------------------------------------------------------------------------
+# OpenClaw orchestration registration
+# ---------------------------------------------------------------------------
+orchestration:
+  framework: openclaw
+  registration:
+    agent_id: casey
+    role: counsel_scout
+    dispatch_priority: normal
+    queue: referral
+  # Triggers: conditions under which OpenClaw dispatches Casey
+  triggers:
+    - event: referral_research_requested
+      description: Human operator or Lex explicitly requests referral candidate research for a matter
+      requires: [matter_id, human_operator_id, research_scope]
+    - event: matter_ready_for_referral
+      description: Lex signals that a matter has reached referral-readiness threshold and a human operator confirms dispatch
+      requires: [matter_id, lex_analysis_ref, human_operator_id]
+  # Handoffs: agents Casey coordinates with
+  handoffs:
+    - agent: ollie
+      condition: referral_packet_authorized_for_transmission
+      payload: [packet_id, agentic_mail_draft_id, authorized_recipient, operator_id]
+      description: Casey hands off to Ollie for outbound communication after human authorizes transmission
+  # Human approval gates enforced by OpenClaw
+  hitl_gates:
+    - gate: referral_research_scope
+      description: Human operator defines and authorizes the research scope before Casey begins candidate research
+      blocks: [search_initiation, mcas_export_request]
+    - gate: mcas_export_authorization
+      description: Human operator explicitly authorizes the MCAS de-identified export for a specific referral packet
+      blocks: [mcas_export_api_call]
+      issues: export_auth_token    # One-time token issued per authorized export
+    - gate: referral_packet_transmission
+      description: Human operator reviews the completed packet, resolves all flags, and explicitly authorizes transmission
+      blocks: [agentic_mail_draft_routing, ollie_handoff]
+
+# ---------------------------------------------------------------------------
+# NemoClaw enforcement
+# ---------------------------------------------------------------------------
+nemo:
+  rails:
+
+    # Transmission boundary — the hardest rail Casey has
+    - rail: no_autonomous_transmission
+      description: >-
+        Block any action that would route a referral packet, draft, or any
+        external communication toward a recipient without a human-authorized
+        transmission gate cleared.
+      enforcement: hard_block
+      triggers:
+        - agentic_mail_send: true           # Any direct send attempt
+        - agentic_mail_draft_without_gate:  # Draft routing without cleared gate
+            gate_required: referral_packet_transmission
+        - ollie_handoff_without_gate:
+            gate_required: referral_packet_transmission
+
+    # De-identification enforcement
+    - rail: deidentification_required
+      description: >-
+        Block inclusion of any Tier 0 or Tier 1 identifier in any referral
+        packet, cover memo, attorney profile, or AgenticMail draft.
+      enforcement: hard_block_with_flag
+      triggers:
+        - output_contains_tier0_identifier: true
+        - output_contains_tier1_case_id_linked_pii: true
+        - mcas_export_tier_below: T2
+
+    # MCAS export authorization
+    - rail: export_requires_human_auth
+      description: >-
+        Block any MCAS export API call that does not carry a valid
+        human-issued export_auth_token for the specific matter and packet.
+      enforcement: hard_block
+      triggers:
+        - mcas_export_api_call_without_token: true
+        - mcas_export_auth_token_mismatch: true
+
+    # Prohibited search targets
+    - rail: prohibited_osint_targets
+      description: >-
+        Block any search query targeting respondents, opposing parties,
+        witnesses, complainants, or minors via osint_public or any engine group.
+        These are Iris’s domain (respondents/parties) or absolutely prohibited
+        (complainants/minors).
+      enforcement: hard_block
+      triggers:
+        - search_target_type: [respondent, opposing_party, witness, complainant, minor]
+        - search_engine_group: [pi_osint, restricted_osint]
+          target_type: [respondent, opposing_party, witness]
+
+    # No legal analysis in outputs
+    - rail: no_legal_analysis
+      description: >-
+        Flag and block any output that characterizes legal merit, legal
+        strategy, case strength, or legal theory. Casey describes;
+        she does not prescribe.
+      enforcement: hard_block_with_flag
+      keywords:
+        - "likely to succeed"
+        - "strong § 1983 claim"
+        - "weak case"
+        - "recommend legal strategy"
+        - "cause of action is"
+        - "statute of limitations has"
+        - "qualified immunity will"
+
+    # No fabricated attorney credentials
+    - rail: no_fabricated_credentials
+      description: >-
+        Flag any attorney or organization profile field that cannot be
+        traced to a cited, verifiable source. Unverified claims are
+        flagged for human review, not included silently.
+      enforcement: flag_and_hold
+      triggers:
+        - attorney_profile_field_unsourced: true
+        - bar_status_unverified: true
+
+    # Conflict-of-interest mandatory disclosure
+    - rail: conflict_flag_required
+      description: >-
+        Block finalization of any referral packet that includes a candidate
+        with a potential conflict of interest unless the conflict flag
+        appears in the primary assessment section of the packet.
+      enforcement: hard_block_with_flag
+      triggers:
+        - candidate_conflict_flag_exists: true
+          flag_location: [footnote, appendix, secondary_section]
+          # Flag must be in primary_assessment; footnote/appendix placement blocked
+
+    # Scope boundary: no PI-tier search
+    - rail: no_pi_tier_search
+      description: >-
+        Block any search using T3 (pi) tier token or PI-tier engine groups.
+        Casey’s ceiling is T2 + osint_public for permitted targets only.
+      enforcement: hard_block
+      triggers:
+        - search_tier: T3
+        - search_engine_group: [pi_specialty, osint_deep, public_records_pi]
+
+  audit:
+    enabled: true
+    log_level: full
+    log_destination_env: AUDIT_LOG_ENDPOINT
+    include:
+      - tool_calls
+      - mcas_export_events          # All export API calls with auth token reference
+      - agentic_mail_draft_events   # All draft queue writes
+      - search_queries              # All search queries with engine group and target
+      - hitl_gate_events
+      - nemo_rail_triggers
+      - ollie_handoff_events
+      - session_start_end
+
+# ---------------------------------------------------------------------------
+# Output configuration
+# ---------------------------------------------------------------------------
+output:
+  formats:
+
+    attorney_profile:
+      template: markdown
+      sections:
+        - name_and_bar_number          # Full name, state bar ID, jurisdiction(s)
+        - bar_status                   # Active / inactive / suspended — verified source
+        - firm_affiliation             # Current firm, solo practice, or public defender
+        - practice_areas               # Specific civil rights areas — cited
+        - geographic_coverage          # States/federal circuits where licensed and active
+        - notable_cases                # Public record only — cited; no speculation
+        - capacity_signals             # Signals of current capacity (public info only)
+        - conflict_of_interest         # Assessment with rationale — primary section
+        - fit_assessment               # Fit score and narrative against matter requirements
+        - sources                      # All sources cited inline and listed
+      require_bar_status_verification: true
+      require_conflict_assessment: true
+      destination: open_notebook
+
+    organization_profile:
+      template: markdown
+      sections:
+        - org_name_and_type
+        - mission_and_scope
+        - geographic_coverage
+        - case_type_specialization     # Civil rights focus areas — cited
+        - intake_criteria              # Public intake requirements if available
+        - capacity_signals
+        - conflict_of_interest
+        - fit_assessment
+        - sources
+      destination: open_notebook
+
+    referral_packet:
+      template: markdown
+      sections:
+        - cover_memo                   # Platform identity, matter type/jurisdiction,
+                                       # referral inquiry statement, contact instructions
+        - matter_summary               # De-identified Tier 2 matter overview
+        - legal_context                # Lex/Rae analysis excerpts (if authorized)
+        - candidate_profiles           # Attorney and/or org profiles
+        - fit_rationale                # Why this candidate for this matter
+        - conflict_of_interest_summary # All conflicts prominent in this section
+        - de-identification_confirmation # Explicit statement that packet has been
+                                         # reviewed for Tier 0/1 identifiers
+        - transmission_authorization_block  # Filled by human operator before send
+      require_deidentification_confirmed: true
+      require_conflict_check_completed: true
+      require_human_review: true
+      destination: open_notebook
+      agentic_mail_draft: true         # Also placed in AgenticMail draft queue
+                                       # after human review authorization
+
+    packet_summary_for_operator:
+      template: markdown
+      sections:
+        - candidates_identified        # Count and names of candidates researched
+        - candidates_recommended       # Count and names recommended for packet inclusion
+        - candidates_excluded          # Excluded candidates with reason
+        - conflict_flags               # All conflict-of-interest flags, prominent
+        - deidentification_status      # Confirmed / issues found (list issues)
+        - verification_gaps            # Claims that could not be fully verified
+        - operator_actions_required    # Explicit list of what operator must do
+        - transmission_readiness       # Ready / Not ready — with reason if not ready
+      destination: open_notebook
+      require_human_review: true
+
+# ---------------------------------------------------------------------------
+# Environment variable reference
+# ---------------------------------------------------------------------------
+# All secrets and endpoints are resolved at runtime from the secrets manager.
+# No values are stored in this file.
+#
+# Required environment variables:
+#   MCAS_API_URL                  — MCAS API base URL
+#   MCAS_API_TOKEN_CASEY          — Casey-scoped MCAS token (export API + org read + event write)
+#   OPENRAG_URL                   — OpenRAG API base URL
+#   OPENRAG_TOKEN_CASEY           — Casey-scoped OpenRAG token (query only, restricted scope)
+#   OPEN_NOTEBOOK_URL             — Open Notebook / Open Web UI URL
+#   OPEN_NOTEBOOK_TOKEN_CASEY     — Casey-scoped Open Notebook token
+#   AGENTIC_MAIL_URL              — AgenticMail API base URL
+#   AGENTIC_MAIL_TOKEN_CASEY      — Casey-scoped AgenticMail token (draft queue only)
+#   SEARXNG_API_URL               — Private SearXNG instance URL
+#   SEARXNG_TOKEN_RESTRICTED      — T2 restricted search tier token
+#   AUDIT_LOG_ENDPOINT            — Platform audit log ingestion endpoint
+#   LITELLM_PROXY_URL             — LiteLLM proxy base URL
+#   LITELLM_API_KEY               — LiteLLM proxy API key
+#
+# Runtime-issued (not stored as env vars):
+#   export_auth_token             — One-time token issued by human operator per
+#                                   authorized MCAS export; passed as a session
+#                                   parameter, never persisted to memory or storage.
+#
+# See policies/SEARCH_TOKEN_POLICY.md for search tier token definitions.
+# See policies/DATA_CLASSIFICATION.md for Tier definitions and access rules.
