@@ -734,4 +734,52 @@ The following table summarizes the human-in-the-loop approval gates that apply t
 
 ---
 
+## 📊 Case Lifecycle Diagram
+
+```mermaid
+graph TD
+    A[Case Intake<br>Anonymous Portal / Webhook] --> B{Case Classification<br>Severity: Critical/High/Medium/Low}
+    B -->|Critical/High| C[Trigger Sol QA Gate<br>→ Human Review]
+    B -->|Medium/Low| D[Orchestrate Agent Stack<br>→ Rae → Lex → Casey → Ollie → Quill]
+    D --> E[Human Review Gate<br>→ Approve/Revise]
+    E --> F[Generate Referral Packet<br>→ Casey]
+    F --> G[Human Approval<br>→ AgenticMail Queue]
+    G --> H{Send?}
+    H -->|Yes| I[Send via AgenticMail<br>→ External]
+    H -->|No| J[Archive in MCAS<br>→ Arweave Permaweb]
+    
+    C --> K[Human Review<br>→ Sol QA Report]
+    K --> L{Approve?}
+    L -->|Yes| M[Generate Public Content<br>→ Webmaster → Sol → Human Review]
+    L -->|No| N[Revise & Re-Submit]
+    
+    M --> O[Human Approval<br>→ Open Notebook]
+    O --> P[Publish to <br>misjusticealliance.org<br>and GitBook]
+    P --> Q[Social Media<br>→ Ollie → Sol → Human Review]
+    Q --> R[Post via AgenticMail<br>→ X, Bluesky, Reddit, Nostr]
+    
+    S[Veritas Monitor<br>Internal Integrity] --> T[Agent Logs<br>Data Flow<br>Policy Compliance]
+    T --> U{Violation Detected?}
+    U -->|Yes| V[Escalate to<br>Human Oversight Board]
+    U -->|No| W[Continue Monitoring]
+    
+    X[Atlas Coordinator<br>Case Lifecycle] --> Y[Case Status<br>Deadlines<br>Actions]
+    Y --> Z[Trigger Human Review Gates<br>at Key Milestones]
+    Z --> AA[Update Case Status<br>→ MCAS & Open Notebook]
+    
+    classDef critical fill:#f87171,stroke:#dc2626,stroke-width:2px;
+    classDef high fill:#fbbf24,stroke:#ca8a04,stroke-width:2px;
+    classDef medium fill:#facc15,stroke:#b45309,stroke-width:2px;
+    classDef low fill:#a7f3d0,stroke:#16a34a,stroke-width:2px;
+    classDef human fill:#c084fc,stroke:#6d28d9,stroke-width:2px;
+    classDef system fill:#93c5fd,stroke:#1d4ed8,stroke-width:2px;
+    classDef audit fill:#fbb6ce,stroke:#d946ef,stroke-width:2px;
+    
+    class A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z,AA system
+    class C,K,M,Q,L,O human
+    class S,U,V audit
+```
+
+---
+
 *MISJustice Alliance — Legal Research. Civil Rights. Public Record.*

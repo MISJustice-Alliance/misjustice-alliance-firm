@@ -1,0 +1,119 @@
+{
+  "name": "ZHC-Firm Weekly Summary Report",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weekday",
+              "operator": {
+                "type": "eq",
+                "operation": "equals"
+              },
+              "value": "monday"
+            }
+          ]
+        }
+      },
+      "id": "trigger",
+      "name": "Monday Morning Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://zhc-firm-api:8000/api/v1/reports/weekly-summary",
+        "options": {}
+      },
+      "id": "fetch-report",
+      "name": "Fetch Weekly Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format weekly report\nconst data = $input.first().json;\n\nconst report = {\n  period: `${data.start_date} to ${data.end_date}`,\n  new_cases: data.new_cases.length,\n  cases_by_severity: {\n    critical: data.cases.filter(c => c.severity === 'critical').length,\n    high: data.cases.filter(c => c.severity === 'high').length,\n    medium: data.cases.filter(c => c.severity === 'medium').length\n  },\n  violations_detected: data.violations.length,\n  documents_generated: data.documents.length,\n  attorney_assignments: data.assignments.length,\n  arweave_uploads: data.arweave_uploads.length,\n  pending_reviews: data.pending_reviews.length,\n  avg_processing_time: data.avg_processing_time_hours\n};\n\nreturn { json: report };"
+      },
+      "id": "format-report",
+      "name": "Format Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "subject": "ZHC-Firm Weekly Summary - {{ $json.period }}",
+        "message": "=**ZHC-Firm Weekly Operations Summary**\n\n**Reporting Period:** {{ $json.period }}\n\n## Case Intake\n- **New Cases:** {{ $json.new_cases }}\n- **By Severity:**\n  - Critical: {{ $json.cases_by_severity.critical }}\n  - High: {{ $json.cases_by_severity.high }}\n  - Medium: {{ $json.cases_by_severity.medium }}\n\n## AI Processing\n- **Violations Detected:** {{ $json.violations_detected }}\n- **Documents Generated:** {{ $json.documents_generated }}\n- **Average Processing Time:** {{ $json.avg_processing_time }} hours\n\n## Case Management\n- **Attorney Assignments:** {{ $json.attorney_assignments }}\n- **Arweave Archives:** {{ $json.arweave_uploads }}\n- **Pending Human Reviews:** {{ $json.pending_reviews }}\n\n## Action Items\n{{ $json.pending_reviews > 0 ? '⚠️ ' + $json.pending_reviews + ' cases require human review' : '✅ No pending reviews' }}\n\n---\n*This is an automated report from the ZHC-Firm system.*\n*View full dashboard: https://zhc-firm.internal/dashboard*",
+        "toList": [
+          "staff@zhc-firm.internal",
+          "management@zhc-firm.internal"
+        ],
+        "options": {}
+      },
+      "id": "send-report",
+      "name": "Send Weekly Report",
+      "type": "n8n-nodes-base.email",
+      "typeVersion": 2.1,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "channel": "zhc-firm-weekly",
+        "text": "=📊 *Weekly Summary: {{ $json.period }}*\n\n*New Cases:* {{ $json.new_cases }}\n*Violations Found:* {{ $json.violations_detected }}\n*Docs Generated:* {{ $json.documents_generated }}\n*Pending Reviews:* {{ $json.pending_reviews > 0 ? '⚠️ ' + $json.pending_reviews : '✅ 0' }}\n\n<https://zhc-firm.internal/dashboard|Full Dashboard>",
+        "options": {}
+      },
+      "id": "slack-summary",
+      "name": "Post to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [850, 500]
+    }
+  ],
+  "connections": {
+    "Monday Morning Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Weekly Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Weekly Data": {
+      "main": [
+        [
+          {
+            "node": "Format Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Report": {
+      "main": [
+        [
+          {
+            "node": "Send Weekly Report",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Post to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": ["zhc-firm", "reporting", "weekly"]
+}

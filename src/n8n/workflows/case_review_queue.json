@@ -1,0 +1,124 @@
+{
+  "name": "ZHC-Firm Case Review Queue",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "review-queue-check"
+    },
+    {
+      "parameters": {
+        "url": "http://zhc-firm-api:8000/api/v1/cases/pending-review",
+        "options": {}
+      },
+      "id": "fetch-cases",
+      "name": "Fetch Pending Cases",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-pending",
+              "leftValue": "={{ $json.count }}",
+              "rightValue": "0",
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ]
+        }
+      },
+      "id": "check-pending",
+      "name": "Has Pending Reviews?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "subject": "={{ $json.cases.length }} Cases Pending Review in ZHC-Firm",
+        "message": "=Hi Team,\n\nThere are {{ $json.cases.length }} cases requiring human review in the ZHC-Firm system.\n\nPriority Cases:\n{{ $json.cases.filter(c => c.severity === 'critical').map(c => `- ${c.case_id}: ${c.violation_types.join(', ')}`).join('\\n') }}\n\nPlease review at: https://zhc-firm.internal/review-queue\n\nThis is an automated message from ZHC-Firm.",
+        "toList": [
+          "staff@zhc-firm.internal"
+        ],
+        "options": {}
+      },
+      "id": "notify-staff",
+      "name": "Notify Staff",
+      "type": "n8n-nodes-base.email",
+      "typeVersion": 2.1,
+      "position": [850, 200]
+    },
+    {
+      "parameters": {
+        "channel": "zhc-firm-alerts",
+        "text": "=🚨 *{{ $json.cases.length }} Cases Pending Review*\n\n*Critical Priority:*\n{{ $json.cases.filter(c => c.severity === 'critical').map(c => `• Case ${c.case_id.slice(0,8)}... - ${c.violation_types[0]}`).join('\\n') }}\n\n<https://zhc-firm.internal/review-queue|Review Queue>",
+        "options": {}
+      },
+      "id": "slack-alert",
+      "name": "Slack Alert",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [850, 400]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Pending Cases",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Pending Cases": {
+      "main": [
+        [
+          {
+            "node": "Has Pending Reviews?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Pending Reviews?": {
+      "main": [
+        [
+          {
+            "node": "Notify Staff",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Slack Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": ["zhc-firm", "review", "alerts"]
+}

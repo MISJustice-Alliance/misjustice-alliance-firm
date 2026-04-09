@@ -1,0 +1,203 @@
+{
+  "name": "ZHC-Firm Attorney Assignment Approval",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "attorney-assignment-request",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "Assignment Request Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "attorney-assignment"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format the assignment request for human review\nconst request = $input.first().json.body;\n\nreturn {\n  json: {\n    case_id: request.case_id,\n    case_summary: request.case_summary,\n    legal_issues: request.legal_issues,\n    matched_attorneys: request.matches,\n    top_match: request.matches[0],\n    review_url: `https://zhc-firm.internal/assignments/${request.case_id}`,\n    timestamp: new Date().toISOString()\n  }\n};"
+      },
+      "id": "format-request",
+      "name": "Format Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "operation": "sendAndWait",
+        "message": "=**New Attorney Assignment Request**\n\n**Case:** {{ $json.case_id }}\n**Issues:** {{ $json.legal_issues.join(', ') }}\n\n**Top Match:**\n- Attorney ID: {{ $json.top_match.attorney_id.slice(0,8) }}...\n- Match Score: {{ ($json.top_match.match_score * 100).toFixed(1) }}%\n- Success Rate: {{ ($json.top_match.estimated_success_probability * 100).toFixed(1) }}%\n- Relevant Experience: {{ $json.top_match.relevant_experience }} cases\n\n**Match Reasons:**\n{{ $json.top_match.match_reasons.map(r => `- ${r}`).join('\\n') }}\n\nPlease approve or reject this assignment:",
+        "subject": "Attorney Assignment Review: {{ $json.case_id }}",
+        "toList": [
+          "legal-director@zhc-firm.internal"
+        ],
+        "approvalOptions": {
+          "values": [
+            {
+              "label": "✅ Approve Assignment",
+              "value": "approved",
+              "style": "primary"
+            },
+            {
+              "label": "❌ Reject - Find Alternative",
+              "value": "rejected",
+              "style": "danger"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "request-approval",
+      "name": "Request Approval",
+      "type": "n8n-nodes-base.email",
+      "typeVersion": 2.1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "is-approved",
+              "leftValue": "={{ $json.approved }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      },
+      "id": "check-approval",
+      "name": "Approved?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://zhc-firm-api:8000/api/v1/assignments/confirm",
+        "body": "={\n  \"case_id\": \"{{ $json.case_id }}\",\n  \"attorney_id\": \"{{ $json.top_match.attorney_id }}\",\n  \"approved_by\": \"{{ $json.approval_email }}\",\n  \"approved_at\": \"{{ $json.approval_timestamp }}\"\n}",
+        "options": {}
+      },
+      "id": "confirm-assignment",
+      "name": "Confirm Assignment",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1050, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://zhc-firm-api:8000/api/v1/assignments/reject",
+        "body": "={\n  \"case_id\": \"{{ $json.case_id }}\",\n  \"reason\": \"Staff rejected\",\n  \"rejected_by\": \"{{ $json.approval_email }}\"\n}",
+        "options": {}
+      },
+      "id": "reject-assignment",
+      "name": "Reject Assignment",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1050, 400]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": \"processed\",\n  \"case_id\": \"{{ $json.case_id }}\",\n  \"decision\": \"{{ $json.approved ? 'approved' : 'rejected' }}\",\n  \"timestamp\": \"{{ new Date().toISOString() }}\"\n}",
+        "options": {}
+      },
+      "id": "respond",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1250, 300]
+    }
+  ],
+  "connections": {
+    "Assignment Request Webhook": {
+      "main": [
+        [
+          {
+            "node": "Format Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Request": {
+      "main": [
+        [
+          {
+            "node": "Request Approval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Request Approval": {
+      "main": [
+        [
+          {
+            "node": "Approved?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Approved?": {
+      "main": [
+        [
+          {
+            "node": "Confirm Assignment",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reject Assignment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confirm Assignment": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reject Assignment": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": ["zhc-firm", "attorney", "approval"]
+}

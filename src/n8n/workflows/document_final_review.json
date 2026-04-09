@@ -1,0 +1,265 @@
+{
+  "name": "ZHC-Firm Document Final Review",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "document-for-review",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "Document Ready Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "document-review"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ 'brief-' + $json.body.document_id + '.txt' }}",
+        "fileContent": "={{ $json.body.document_text }}",
+        "options": {}
+      },
+      "id": "save-document",
+      "name": "Save Document Temp",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "operation": "sendAndWait",
+        "message": "=**Document Ready for Final Review**\n\n**Document ID:** {{ $json.body.document_id }}\n**Type:** {{ $json.body.document_type }}\n**Case:** {{ $json.body.case_id }}\n**Generated:** {{ $json.body.generated_at }}\n\n**AI Analysis:**\n- Word Count: {{ $json.body.word_count }}\n- Citations Found: {{ $json.body.citations.length }}\n- Confidence Score: {{ ($json.body.generation_confidence * 100).toFixed(1) }}%\n\n**Please review the attached document and approve for filing:**\n\n⚠️ **IMPORTANT:** This document was AI-generated and requires human attorney review before filing. Verify all citations, facts, and legal arguments.\n\nReview Checklist:\n- [ ] Facts are accurate and complete\n- [ ] Legal citations are correct and current\n- [ ] Arguments are legally sound\n- [ ] No confidential information exposed\n- [ ] Ready for filing",
+        "subject": "Document Review Required: {{ $json.body.document_type }} - {{ $json.body.case_id }}",
+        "toList": [
+          "={{ $json.body.assigned_attorney_email || 'legal-team@zhc-firm.internal' }}"
+        ],
+        "attachments": [
+          "={{ 'brief-' + $json.body.document_id + '.txt' }}"
+        ],
+        "approvalOptions": {
+          "values": [
+            {
+              "label": "✅ Approve for Filing",
+              "value": "approved",
+              "style": "primary"
+            },
+            {
+              "label": "📝 Request Revisions",
+              "value": "revision",
+              "style": "warning"
+            },
+            {
+              "label": "❌ Reject - Do Not File",
+              "value": "rejected",
+              "style": "danger"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-for-review",
+      "name": "Send for Review",
+      "type": "n8n-nodes-base.email",
+      "typeVersion": 2.1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Route based on approval decision\nconst decision = $input.first().json.approval_decision;\n\nif (decision === 'approved') {\n  return [{ json: { ...$input.first().json, route: 'approve' } }];\n} else if (decision === 'revision') {\n  return [{ json: { ...$input.first().json, route: 'revise' } }];\n} else {\n  return [{ json: { ...$input.first().json, route: 'reject' } }];\n}"
+      },
+      "id": "route-decision",
+      "name": "Route Decision",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "route-check",
+              "leftValue": "={{ $json.route }}",
+              "rightValue": "approve",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      },
+      "id": "switch-route",
+      "name": "Switch Route",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 2,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://zhc-firm-api:8000/api/v1/documents/approve",
+        "body": "={\n  \"document_id\": \"{{ $json.body.document_id }}\",\n  \"case_id\": \"{{ $json.body.case_id }}\",\n  \"approved_by\": \"{{ $json.approval_email }}\",\n  \"approved_at\": \"{{ $json.approval_timestamp }}\",\n  \"action\": \"file\"\n}",
+        "options": {}
+      },
+      "id": "approve-doc",
+      "name": "Approve Document",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1250, 100]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://zhc-firm-api:8000/api/v1/documents/revise",
+        "body": "={\n  \"document_id\": \"{{ $json.body.document_id }}\",\n  \"case_id\": \"{{ $json.body.case_id }}\",\n  \"revision_notes\": \"{{ $json.approval_notes }}\",\n  \"requested_by\": \"{{ $json.approval_email }}\"\n}",
+        "options": {}
+      },
+      "id": "request-revision",
+      "name": "Request Revision",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://zhc-firm-api:8000/api/v1/documents/reject",
+        "body": "={\n  \"document_id\": \"{{ $json.body.document_id }}\",\n  \"case_id\": \"{{ $json.body.case_id }}\",\n  \"reason\": \"{{ $json.approval_notes || 'Staff rejected' }}\",\n  \"rejected_by\": \"{{ $json.approval_email }}\"\n}",
+        "options": {}
+      },
+      "id": "reject-doc",
+      "name": "Reject Document",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1250, 500]
+    },
+    {
+      "parameters": {
+        "channel": "zhc-firm-documents",
+        "text": "=📄 *Document {{ $json.route === 'approve' ? 'Approved' : ($json.route === 'revise' ? 'Revision Requested' : 'Rejected') }}*\n\n*Document:* {{ $json.body.document_id }}\n*Case:* {{ $json.body.case_id }}\n*Type:* {{ $json.body.document_type }}\n*By:* {{ $json.approval_email }}\n\n{{ $json.approval_notes ? '*Notes:* ' + $json.approval_notes : '' }}",
+        "options": {}
+      },
+      "id": "notify-channel",
+      "name": "Notify Team Channel",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [1450, 300]
+    }
+  ],
+  "connections": {
+    "Document Ready Webhook": {
+      "main": [
+        [
+          {
+            "node": "Save Document Temp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Document Temp": {
+      "main": [
+        [
+          {
+            "node": "Send for Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send for Review": {
+      "main": [
+        [
+          {
+            "node": "Route Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Decision": {
+      "main": [
+        [
+          {
+            "node": "Switch Route",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch Route": {
+      "main": [
+        [
+          {
+            "node": "Approve Document",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Request Revision",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reject Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Approve Document": {
+      "main": [
+        [
+          {
+            "node": "Notify Team Channel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Request Revision": {
+      "main": [
+        [
+          {
+            "node": "Notify Team Channel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reject Document": {
+      "main": [
+        [
+          {
+            "node": "Notify Team Channel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": ["zhc-firm", "document", "review"]
+}

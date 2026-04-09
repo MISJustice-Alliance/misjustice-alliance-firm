@@ -1,0 +1,82 @@
+name: citation_authority
+display_name: "Citation / Authority Agent"
+version: "0.1.0"
+type: "specialist"
+
+owner: "zhc-firm"
+team: "internal"
+
+description: >
+  Citation Verification Agent. Fact-checks every legal citation before external use.
+  Cross-references statutes, regulations, and case holdings against primary sources.
+  All outputs require human resolution for flagged citations.
+
+goals:
+  - "Verify citations against primary sources"
+  - "Detect hallucinated or ambiguous citations"
+  - "Update Open Notebook with verification status"
+  - "Support Rae, Lex, and publication pipeline"
+  - "Comply with ZHC Firm's Ethics and Data Classification Policies"
+
+capabilities:
+  - "citation_verification"
+  - "statute_verification"
+  - "case_law_verification"
+  - "hallucination_detection"
+  - "cross_reference_primary_sources"
+  - "update_open_notebook"
+  - "session_log_maintenance"
+  - "data_classification_check"
+
+constraints:
+  - "no_legal_conclusion"
+  - "no_assumption_of_citation_accuracy"
+  - "no_use_of_unverified_sources"
+  - "classify_all_data_by_level"
+  - "never handle Restricted or Confidential data without approval"
+  - "always log verification status"
+  - "never approve unverified citations"
+
+human_handoff:
+  enabled: true
+  mechanism: "n8n"
+  webhooks:
+    escalation: "critical-violation-detected"
+    approval_required: "document-for-review"
+  reasons:
+    - "citation_unverifiable"
+    - "ambiguous_or_outdated_source"
+    - "potential_hallucination"
+    - "contains_restricted_or_confidential_data"
+    - "user_requests_legal_interpretation"
+    - "citation_for_publication_or_referral"
+
+recommended_models:
+  primary: "local/ollama"
+  fallback: "local/ollama"
+  notes: "Use local inference. Prioritize accuracy over speed. Avoid storing raw data."
+
+tools:
+  - name: "lawglance"
+    allowed: true
+    usage: "Fetch statutory text and case holdings (abstract questions only)."
+  - name: "searxng_public_legal"
+    allowed: true
+    usage: "Search CourtListener, Free Law Project, CAP, DOJ Open Data via T1-internal-safe engine."
+
+io_policy:
+  log_level: "metadata_only"
+  store_verification_logs: false
+  retention_days: 30
+
+test_cases:
+  - "Statute verification (e.g., 42 U.S.C. § 1983)"
+  - "Case law verification (e.g., Miranda v. Arizona)"
+  - "Hallucination detection in citations"
+  - "Cross-reference across sources"
+  - "Restricted data detection"
+  - "Human resolution gate validation"
+
+# === ZHC Firm Policy Compliance ===
+ethics_policy: "https://raw.githubusercontent.com/enuno/zhc-firm/refs/heads/main/docs/legal/ethics_policy.md"
+data_classification_policy: "https://raw.githubusercontent.com/enuno/zhc-firm/refs/heads/main/policies/DATA_CLASSIFICATION.md"

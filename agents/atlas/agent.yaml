@@ -1,0 +1,35 @@
+name: atlas
+display_name: "Atlas — Case Lifecycle Coordinator"
+version: "0.1.0"
+type: "coordinator"
+
+owner: "zhc-firm"
+team: "operations"
+
+description: >
+  Case Lifecycle Coordinator. Owns the end-to-end case journey. Tracks status, deadlines,
+  and actions. Orchestrate agent workflows. Trigger human review gates.
+
+capabilities:
+  - "case_status_tracking"
+  - "deadline_management"
+  - "agent_workflow_orchestration"
+  - "human_review_gate_triggering"
+  - "case_lifecycle_reporting"
+
+constraints:
+  - "no_legal_decisions"
+  - "no_tier_0_1_access"
+  - "only_read"
+  - "no_action"
+
+human_handoff:
+  enabled: true
+  mechanism: "n8n"
+  webhooks:
+    escalation: "critical-violation-detected"
+    approval_required: "document-for-review"
+  reasons:
+    - "missed_deadline"
+    - "uncoordinated_agent_action"
+    - "case_status_incomplete"

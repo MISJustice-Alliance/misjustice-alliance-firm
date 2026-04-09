@@ -1,0 +1,123 @@
+{
+  "name": "ZHC-Firm Critical Violation Alert",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "critical-violation-detected",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "Critical Violation Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "critical-violation"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Enrich violation data\nconst violation = $input.first().json.body;\n\n// Calculate urgency score\nlet urgencyScore = 0;\nif (violation.severity === 'critical') urgencyScore += 50;\nif (violation.severity === 'high') urgencyScore += 30;\nif (violation.time_sensitive) urgencyScore += 20;\nif (violation.deadline && new Date(violation.deadline) - new Date() < 7 * 24 * 60 * 60 * 1000) {\n  urgencyScore += 30; // Deadline within 7 days\n}\n\nreturn {\n  json: {\n    ...violation,
+    "id": "enrich-data",
+      "name": "Enrich Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "channel": "zhc-firm-critical",
+        "text": "=🚨 *CRITICAL CONSTITUTIONAL VIOLATION DETECTED* 🚨\n\n*Case:* {{ $json.case_id }}\n*Violation:* {{ $json.violation_type }}\n*Confidence:* {{ ($json.confidence * 100).toFixed(1) }}%\n*Severity:* {{ $json.severity.toUpperCase() }}\n\n*Legal Basis:*\n{{ $json.legal_basis }}\n\n*Key Facts:*\n{{ $json.relevant_facts.slice(0, 500) }}...\n\n*Recommended Action:* {{ $json.recommended_action }}\n\n{{ $json.deadline ? '*DEADLINE:* ' + $json.deadline : '' }}\n\n<https://zhc-firm.internal/cases/{{ $json.case_id }}|View Case>",
+        "options": {}
+      },
+      "id": "slack-critical",
+      "name": "Critical Slack Alert",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [650, 200]
+    },
+    {
+      "parameters": {
+        "subject": "🚨 CRITICAL: {{ $json.violation_type }} Detected - Case {{ $json.case_id }}",
+        "message": "=A critical constitutional violation has been detected by the ZHC-Firm system and requires immediate human review.\n\n**CASE DETAILS:**\n- Case ID: {{ $json.case_id }}\n- Violation Type: {{ $json.violation_type }}\n- Confidence: {{ ($json.confidence * 100).toFixed(1) }}%\n- Severity: {{ $json.severity.toUpperCase() }}\n\n**LEGAL ANALYSIS:**\n{{ $json.legal_basis }}\n\n**KEY FACTS:**\n{{ $json.relevant_facts }}\n\n**SUGGESTED PRECEDENTS:**\n{{ $json.suggested_precedents.map(p => '- ' + p).join('\\n') }}\n\n**RECOMMENDED ACTION:**\n{{ $json.recommended_action }}\n\n{{ $json.deadline ? '**DEADLINE:** ' + $json.deadline : '' }}\n\n**URGENCY SCORE:** {{ $json.urgency_score }}/100\n\nThis alert was generated automatically by the ZHC-Firm Constitutional Violation Detector.\n\nReview case: https://zhc-firm.internal/cases/{{ $json.case_id }}",
+        "toList": [
+          "legal-director@zhc-firm.internal",
+          "emergency-response@zhc-firm.internal"
+        ],
+        "options": {}
+      },
+      "id": "email-critical",
+      "name": "Critical Email Alert",
+      "type": "n8n-nodes-base.email",
+      "typeVersion": 2.1,
+      "position": [650, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://zhc-firm-api:8000/api/v1/alerts/log",
+        "body": "={\n  \"alert_type\": \"critical_violation\",\n  \"case_id\": \"{{ $json.case_id }}\",\n  \"violation_type\": \"{{ $json.violation_type }}\",\n  \"severity\": \"{{ $json.severity }}\",\n  \"urgency_score\": {{ $json.urgency_score }},\n  \"alerted_at\": \"{{ new Date().toISOString() }}\",\n  \"channels\": [\"slack\", \"email\"]\n}",
+        "options": {}
+      },
+      "id": "log-alert",
+      "name": "Log Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [850, 300]
+    }
+  ],
+  "connections": {
+    "Critical Violation Webhook": {
+      "main": [
+        [
+          {
+            "node": "Enrich Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enrich Data": {
+      "main": [
+        [
+          {
+            "node": "Critical Slack Alert",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Critical Email Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Critical Slack Alert": {
+      "main": [
+        [
+          {
+            "node": "Log Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Critical Email Alert": {
+      "main": [
+        [
+          {
+            "node": "Log Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": ["zhc-firm", "violation", "critical", "alert"]
+}
