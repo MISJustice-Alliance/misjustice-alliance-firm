@@ -1,0 +1,392 @@
+# Avery — Intake & Evidence Agent
+# agents/avery/agent.yaml
+# MISJustice Alliance Firm
+#
+# This file is the operational configuration for Avery.
+# It wires Avery to the platform: LLM model, tool bindings, MCAS API scope,
+# search tier token, memory config, OpenClaw registration, and NemoClaw enforcement.
+#
+# Identity constitution: agents/avery/SOUL.md
+# Task-level instructions: agents/avery/system_prompt.md
+# Policy references:
+#   - policies/DATA_CLASSIFICATION.md
+#   - policies/SEARCH_TOKEN_POLICY.md
+#   - docs/legal/ethics_policy.md
+#   - agents/README.md
+
+# ---------------------------------------------------------------------------
+# Agent identity
+# ---------------------------------------------------------------------------
+agent:
+  id: avery
+  name: Avery
+  version: "1.0.0"
+  description: >
+    Intake & Evidence agent. First point of contact for all new matters,
+    complainant intake, and evidence ingestion. Creates foundational MCAS
+    records (Person, Organization, Matter, Event, Document) that all
+    downstream agents and human operators work from.
+  facing: internal
+  soul: agents/avery/SOUL.md
+  system_prompt: agents/avery/system_prompt.md
+
+# ---------------------------------------------------------------------------
+# LLM configuration
+# ---------------------------------------------------------------------------
+llm:
+  # Route through LiteLLM proxy — never call provider APIs directly.
+  # Model selected for strong instruction-following and structured output
+  # fidelity; required for reliable MCAS record schema compliance.
+  provider: litellm
+  model: openai/gpt-4o
+  fallback_model: anthropic/claude-3-5-sonnet-20241022
+  temperature: 0.1          # Low temperature: accuracy and consistency over creativity
+  max_tokens: 4096
+  timeout_seconds: 120
+  retry:
+    max_attempts: 3
+    backoff_seconds: 5
+
+# ---------------------------------------------------------------------------
+# Search configuration
+# ---------------------------------------------------------------------------
+search:
+  # Search tier T1 — internal.
+  # Avery may query internal-safe MCAS/OpenRAG indexes and public-safe
+  # legal/web sources. No OSINT, no PI-tier, no restricted indexes.
+  tier: T1
+  token_env: SEARXNG_TOKEN_INTERNAL   # Resolved at runtime from secrets manager
+  searxng_url_env: SEARXNG_API_URL
+  engine_groups:
+    - internal_mcas        # MCAS internal-safe document and record search
+    - internal_openrag     # OpenRAG internal-safe prior-research search
+    - public_legal         # CourtListener, Free Law, CAP, DOJ open data
+    - public_web_safe      # Curated public web (no OSINT, no social)
+  max_results_per_query: 10
+  # Avery search is used exclusively for duplicate/related-matter detection.
+  # Avery does NOT use search for legal research — that belongs to Rae/Lex.
+  permitted_purposes:
+    - duplicate_matter_detection
+    - related_record_lookup
+    - document_provenance_verification
+
+# ---------------------------------------------------------------------------
+# Tool bindings
+# ---------------------------------------------------------------------------
+tools:
+
+  # -- MCAS API -----------------------------------------------------------
+  mcas:
+    enabled: true
+    base_url_env: MCAS_API_URL
+    auth_token_env: MCAS_API_TOKEN_AVERY
+    # Avery has write access to intake-stage models only.
+    # Read access is scoped to the minimum required for duplicate detection.
+    scope:
+      person:
+        read: true
+        write: true
+        # Write permitted for new records; update permitted for intake-stage
+        # records where Avery is the creating agent. No delete.
+        delete: false
+        fields_excluded_from_read:
+          - legal_name          # Tier 0 — human-only
+          - date_of_birth       # Tier 0 — human-only
+          - ssn                 # Tier 0 — human-only
+          - address_residential # Tier 0 — human-only
+          - phone_direct        # Tier 0 — human-only
+          - email_direct        # Tier 0 — human-only
+          - government_id       # Tier 0 — human-only
+      organization:
+        read: true
+        write: true
+        delete: false
+      matter:
+        read: true
+        write: true
+        delete: false
+        # Avery may create and update Matter records at intake stage.
+        # Tier classification on Matter records requires human confirmation
+        # before the record is marked finalized.
+        create_status: draft    # All new Matter records created with status=draft
+      event:
+        read: true
+        write: true
+        delete: false
+      document:
+        read: true
+        write: true
+        delete: false
+        # Avery creates Document records and initiates OCR submission.
+        # Document Tier classification proposals require human confirmation.
+        create_status: pending_classification
+    # Hard deny list — Avery must never call these MCAS endpoints.
+    denied_endpoints:
+      - /matters/export          # Export is Casey's domain with human auth
+      - /persons/dereference     # Pseudonym mapping is Tier 0 / human-only
+      - /admin/*                 # Admin endpoints are human-only
+      - /classification/finalize # Classification finalization is human-only
+
+  # -- Chandra OCR --------------------------------------------------------
+  chandra_ocr:
+    enabled: true
+    base_url_env: CHANDRA_OCR_URL
+    auth_token_env: CHANDRA_OCR_TOKEN
+    # Avery submits documents for OCR processing.
+    # OCR output is returned to Avery for document record creation.
+    # Avery must submit OCR before creating a Document record from any
+    # uploaded file — no records from unprocessed files.
+    allowed_formats:
+      - pdf
+      - png
+      - jpg
+      - jpeg
+      - tiff
+      - docx
+    max_file_size_mb: 50
+    timeout_seconds: 180
+
+  # -- OpenRAG ------------------------------------------------------------
+  openrag:
+    enabled: true
+    base_url_env: OPENRAG_URL
+    auth_token_env: OPENRAG_TOKEN_AVERY
+    # Avery queries OpenRAG for duplicate and related-matter detection only.
+    # Avery does NOT ingest research outputs into OpenRAG — that is Rae/Lex.
+    access:
+      query: true
+      ingest: false
+      delete: false
+    scope: internal_safe   # Avery may only query the internal-safe index
+    permitted_purposes:
+      - duplicate_matter_detection
+      - related_record_lookup
+
+  # -- Open Web UI / Open Notebook ----------------------------------------
+  open_notebook:
+    enabled: true
+    base_url_env: OPEN_NOTEBOOK_URL
+    auth_token_env: OPEN_NOTEBOOK_TOKEN_AVERY
+    access:
+      read: true
+      write: true   # Avery writes intake summaries to Open Notebook
+      delete: false
+    workspace: avery-intake
+    output_format: markdown
+
+  # -- Explicitly disabled tools ------------------------------------------
+  # These tools are available on the platform but Avery must never use them.
+  # NemoClaw enforces these denials at the tool-call level.
+  lawglance:
+    enabled: false
+    reason: Legal research is Rae/Lex scope. Avery does not conduct legal research.
+
+  auto_research_claw:
+    enabled: false
+    reason: Research loop invocation is Rae/Lex scope.
+
+  agentic_mail:
+    enabled: false
+    reason: Avery has no outbound communication channel. All external comms route through Ollie/Casey with human approval.
+
+  social_connectors:
+    enabled: false
+    reason: Social platform access is Social Media Manager scope.
+
+  gitbook:
+    enabled: false
+    reason: GitBook access is Webmaster/Quill scope.
+
+# ---------------------------------------------------------------------------
+# Memory configuration
+# ---------------------------------------------------------------------------
+memory:
+  # Session memory: full context retention within a single intake session.
+  # Cross-session memory: matter-scoped only — Avery retains context for
+  # matters it created, but not for matters created by other agents.
+  session:
+    enabled: true
+    max_tokens: 32000
+  cross_session:
+    enabled: true
+    scope: matter_created_by_avery
+    backend: openrag
+    index: avery-matter-context
+    # Cross-session memory stores matter context references (case IDs, document
+    # record IDs, intake summary references) — never Tier 0 PII.
+    tier_floor: T1   # Nothing below Tier 1 stored in cross-session memory
+
+# ---------------------------------------------------------------------------
+# OpenClaw orchestration registration
+# ---------------------------------------------------------------------------
+orchestration:
+  framework: openclaw
+  registration:
+    agent_id: avery
+    role: intake_evidence
+    dispatch_priority: high   # Avery is dispatched first for all new-matter events
+    queue: intake
+  # Triggers: conditions under which OpenClaw dispatches Avery
+  triggers:
+    - event: new_matter_intake
+      description: A human operator initiates a new matter intake session
+    - event: document_upload
+      description: A human operator uploads a document for ingestion
+    - event: telephony_intake_summary
+      description: Mira produces a telephony intake summary requiring MCAS record creation
+  # Handoffs: agents Avery hands off to after completing intake tasks
+  handoffs:
+    - agent: rae
+      condition: matter_record_finalized_by_human
+      payload: [matter_id, document_record_ids, intake_summary_ref]
+    - agent: chronology
+      condition: event_records_created
+      payload: [matter_id, event_record_ids]
+    - agent: iris
+      condition: actor_records_created
+      payload: [matter_id, person_record_ids, organization_record_ids]
+  # Human approval gates enforced by OpenClaw before Avery proceeds
+  hitl_gates:
+    - gate: intake_acceptance
+      description: Human operator must accept, defer, or reject the new matter before Avery finalizes the Matter record
+      blocks: [matter_record_finalize, downstream_handoff]
+    - gate: tier_classification
+      description: Human operator must confirm the proposed Tier for each Document and Matter record
+      blocks: [document_record_finalize, matter_record_finalize]
+
+# ---------------------------------------------------------------------------
+# NemoClaw enforcement
+# ---------------------------------------------------------------------------
+nemo:
+  # NemoClaw enforces Avery's behavioral boundaries at the tool-call and
+  # output level. These rules are enforced independently of the LLM's
+  # instruction-following — NemoClaw does not trust the LLM to self-enforce.
+  rails:
+
+    # Tier 0 data boundary
+    - rail: tier0_data_isolation
+      description: Block any tool call or output that would expose Tier 0 data to any agent, API, or external system
+      enforcement: hard_block
+      triggers:
+        - mcas_field_read: [legal_name, date_of_birth, ssn, address_residential, phone_direct, email_direct, government_id]
+        - output_contains_pii: true
+        - tool_call_to: [agentic_mail, social_connectors, gitbook, lawglance, auto_research_claw]
+
+    # Classification autonomy block
+    - rail: no_autonomous_classification
+      description: Block any attempt to finalize a Tier classification without human operator confirmation
+      enforcement: hard_block
+      triggers:
+        - mcas_endpoint: /classification/finalize
+        - mcas_field_write: [tier, classification_status]
+          value_is: [finalized, confirmed]
+          without_human_gate: tier_classification
+
+    # No fabrication in records
+    - rail: no_record_fabrication
+      description: Block creation of MCAS records containing fields not sourced from the current intake session
+      enforcement: hard_block_with_flag
+      # NemoClaw flags the output for human review if it detects field values
+      # that were not present in the session input.
+
+    # No downstream handoff without human gate
+    - rail: no_premature_handoff
+      description: Block OpenClaw handoff triggers until all required HITL gates are cleared
+      enforcement: hard_block
+      triggers:
+        - handoff_before_gate: [intake_acceptance, tier_classification]
+
+    # No legal analysis in outputs
+    - rail: no_legal_analysis
+      description: Flag and block any output that characterizes legal merit, case strength, or legal theory
+      enforcement: hard_block_with_flag
+      keywords:
+        - "likely to succeed"
+        - "strong claim"
+        - "weak case"
+        - "cause of action"
+        - "statute of limitations analysis"
+        - "qualified immunity"
+        - "§ 1983"
+
+    # Safety escalation
+    - rail: safety_escalation
+      description: Immediately pause intake and route to human operator queue if safety risk indicators are detected
+      enforcement: pause_and_escalate
+      indicators:
+        - immediate_physical_danger
+        - credible_threat_of_harm
+        - minor_at_risk
+        - active_stalking_or_surveillance
+      escalation_channel: human_operator_queue
+      escalation_priority: urgent
+
+  # Audit logging — all Avery tool calls, MCAS writes, and HITL gate
+  # interactions are logged to the platform audit trail.
+  audit:
+    enabled: true
+    log_level: full
+    log_destination_env: AUDIT_LOG_ENDPOINT
+    include:
+      - tool_calls
+      - mcas_writes
+      - hitl_gate_events
+      - nemo_rail_triggers
+      - session_start_end
+
+# ---------------------------------------------------------------------------
+# Output configuration
+# ---------------------------------------------------------------------------
+output:
+  # Avery produces structured intake summaries and MCAS record creation
+  # confirmations. All outputs are written to Open Notebook and presented
+  # to the human operator queue for review.
+  formats:
+    intake_summary:
+      template: markdown
+      sections:
+        - matter_overview        # Case ID (draft), matter type, intake date
+        - parties                # Complainant (pseudonym), respondent(s), witnesses
+        - narrative_summary      # Verbatim or minimally structured complainant account
+        - documents_received     # Document list with OCR status and proposed Tier
+        - events_recorded        # MCAS Event records created, with timestamps
+        - flags_and_ambiguities  # All flagged issues requiring human attention
+        - classification_proposals # Proposed Tier for each record, with rationale
+        - recommended_next_steps # Which agents should be dispatched after human approval
+      destination: open_notebook
+      require_human_review: true
+
+    mcas_record_confirmation:
+      template: json
+      include_fields:
+        - record_type
+        - record_id
+        - proposed_tier
+        - creating_agent
+        - creation_timestamp
+        - status           # draft | pending_classification | pending_human_approval
+      destination: mcas_audit_log
+
+# ---------------------------------------------------------------------------
+# Environment variable reference
+# ---------------------------------------------------------------------------
+# All secrets and endpoints are resolved at runtime from the secrets manager.
+# No values are stored in this file. This section documents required env vars.
+#
+# Required environment variables:
+#   MCAS_API_URL                  — MCAS API base URL
+#   MCAS_API_TOKEN_AVERY          — Avery-scoped MCAS API token (Tier 1, scoped)
+#   CHANDRA_OCR_URL               — Chandra OCR service URL
+#   CHANDRA_OCR_TOKEN             — Chandra OCR auth token
+#   OPENRAG_URL                   — OpenRAG API base URL
+#   OPENRAG_TOKEN_AVERY           — Avery-scoped OpenRAG token (query only)
+#   OPEN_NOTEBOOK_URL             — Open Notebook / Open Web UI URL
+#   OPEN_NOTEBOOK_TOKEN_AVERY     — Avery-scoped Open Notebook token
+#   SEARXNG_API_URL               — Private SearXNG instance URL
+#   SEARXNG_TOKEN_INTERNAL        — T1 internal search tier token
+#   AUDIT_LOG_ENDPOINT            — Platform audit log ingestion endpoint
+#   LITELLM_PROXY_URL             — LiteLLM proxy base URL
+#   LITELLM_API_KEY               — LiteLLM proxy API key
+#
+# See policies/SEARCH_TOKEN_POLICY.md for search tier token definitions.
+# See policies/DATA_CLASSIFICATION.md for Tier definitions and access rules.
