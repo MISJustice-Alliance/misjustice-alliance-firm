@@ -170,48 +170,48 @@ The following Mermaid diagram illustrates a representative MISJustice workflow f
 
 ```mermaid
 flowchart TD
-    H([Human Operator]) -->|Initiates intake via Telegram/\nOpen Web UI| OC[OpenClaw / NemoClaw\nOrchestration]
-    H -->|Ad-hoc operator research\nvia Vane UI| VANE[Vane\nAI Search Interface]
-    VANE -->|Queries via T4-admin token| SRXNG[SearXNG\nPrivate Instance]
-    VANE -->|Cited findings exported\nto Open Notebook| NB[Open Notebook]
+    H([Human Operator]) -->|Initiates intake via Telegram/ Open Web UI| OC[OpenClaw / NemoClaw Orchestration]
+    H -->|Ad-hoc operator research via Vane UI| VANE[Vane AI Search Interface]
+    VANE -->|Queries via T4-admin token| SRXNG[SearXNG Private Instance]
+    VANE -->|Cited findings exported to Open Notebook| NB[Open Notebook]
 
-    OC -->|Routes intake task| AV[Avery\nIntake & Evidence]
-    AV -->|Creates Person/Matter/Events\nOCR & classifies docs| MCAS[(MCAS\nCase Server)]
+    OC -->|Routes intake task| AV[Avery Intake & Evidence]
+    AV -->|Creates Person/Matter/Events OCR & classifies docs| MCAS[(MCAS Case Server)]
     AV -->|Proposes Tier classification| H
 
-    H -->|Approves intake\nConfirms Tier| MCAS
+    H -->|Approves intake Confirms Tier| MCAS
 
-    OC -->|Assigns research scope| RA[Rae\nParalegal Researcher]
-    OC -->|Assigns analysis + QA| LX[Lex\nSenior Analyst]
-    OC -->|Assigns public-record PI| IR[Iris\nPI Researcher]
+    OC -->|Assigns research scope| RA[Rae Paralegal Researcher]
+    OC -->|Assigns analysis + QA| LX[Lex Senior Analyst]
+    OC -->|Assigns public-record PI| IR[Iris PI Researcher]
 
-    RA -->|AutoResearchClaw\nLegal research loop| ARC[AutoResearchClaw\nResearch Engine]
-    LX -->|AutoResearchClaw\nAnalysis & verification| ARC
-    IR -->|AutoResearchClaw\nOSINT & public records| ARC
+    RA -->|AutoResearchClaw Legal research loop| ARC[AutoResearchClaw Research Engine]
+    LX -->|AutoResearchClaw Analysis & verification| ARC
+    IR -->|AutoResearchClaw OSINT & public records| ARC
 
-    ARC -->|Queries via LiteLLM\n(role-scoped token)| SRXNG
-    SRXNG -->|Returns normalized results| ARC
+    ARC -->|Queries via LiteLLM - role-scoped token| SRXNG
+SRXNG -->|Returns normalized results| ARC
 
-    ARC -->|Public legal info query\n(statutes, comparative law)| LG[LawGlance\nLegal Info RAG]
-    LG -->|Jurisdiction-scoped\npublic legal retrieval| ARC
+    ARC -->|Public legal info query - statutes and comparative law| LG[LawGlance Legal Info RAG]
+LG -->|Jurisdiction-scoped public legal retrieval| ARC
 
-    ARC -->|Fetches full pages\nEmbeds into OpenRAG| ORAG[(OpenRAG\nVector Store)]
-    ARC -->|Outputs: memos, issue maps,\nPI reports, timelines| NB
+    ARC -->|Fetches full pages Embeds into OpenRAG| ORAG[(OpenRAG Vector Store)]
+    ARC -->|Outputs: memos, issue maps, PI reports, timelines| NB
 
     NB -->|Human reviews drafts| H
-    H -->|Approves analysis\nDefines referral path| OC
+    H -->|Approves analysis Defines referral path| OC
 
-    OC -->|Assembles referral packet| CA[Casey\nCounsel Scout]
-    CA -->|Drafts packet\nfrom MCAS exports| H
-    H -->|Approves & transmits| EXT([External Counsel /\nCivil Rights Org])
+    OC -->|Assembles referral packet| CA[Casey Counsel Scout]
+    CA -->|Drafts packet from MCAS exports| H
+    H -->|Approves & transmits| EXT([External Counsel / Civil Rights Org])
 
-    H -->|Selects content\nfor public release| WM[Webmaster]
-    WM -->|Stages pages:\nmisjusticealliance.org\nYWCA GitBook| H
+    H -->|Selects content for public release| WM[Webmaster]
+    WM -->|Stages pages: misjusticealliance.org YWCA GitBook| H
     H -->|Approves publication| WM
     WM -->|Publishes & indexes| WEB([Public Web Properties])
 
     WM -->|Notifies publication ready| SM[Social Media Manager]
-    SM -->|Drafts campaign\nfor X, Bluesky, Reddit, Nostr| H
+    SM -->|Drafts campaign for X, Bluesky, Reddit, Nostr| H
     H -->|Approves posts| SM
     SM -->|Publishes & monitors| SOC([Social Platforms])
 ```
@@ -226,32 +226,32 @@ graph TB
         TG[Telegram]
         DS[Discord]
         IM[iMessage]
-        OS[OpenShell\nSecure CLI]
+        OS[OpenShell Secure CLI]
         OWU[Open Web UI]
         ONB[Open Notebook]
-        VN[Vane\nAI Search UI]
+        VN[Vane AI Search UI]
     end
 
     subgraph ORCH["Orchestration Layer — OpenClaw / NemoClaw"]
-        OC[OpenClaw Core\nAgent Router & Dispatcher]
-        NC[NemoClaw\nSandbox & Protection Layer]
-        AM[AgenticMail\nApproval Queue]
+        OC[OpenClaw Core Agent Router & Dispatcher]
+        NC[NemoClaw Sandbox & Protection Layer]
+        AM[AgenticMail Approval Queue]
     end
 
     subgraph AGENTS["Agent Staff"]
-        AV[Avery\nIntake & Evidence]
-        MI[Mira\nTelephony]
-        RA[Rae\nParalegal Researcher]
-        LX[Lex\nSenior Analyst]
-        IR[Iris\nPI Researcher]
+        AV[Avery Intake & Evidence]
+        MI[Mira Telephony]
+        RA[Rae Paralegal Researcher]
+        LX[Lex Senior Analyst]
+        IR[Iris PI Researcher]
         CH[Chronology Agent]
         CT[Citation Agent]
-        CA[Casey\nCounsel Scout]
-        OL[Ollie\nOutreach]
+        CA[Casey Counsel Scout]
+        OL[Ollie Outreach]
         WM[Webmaster]
         SM[Social Media Manager]
-        SL[Sol\nContent QA]
-        QL[Quill\nGitBook Curator]
+        SL[Sol Content QA]
+        QL[Quill GitBook Curator]
     end
 
     subgraph RESEARCH["Research Engine"]
@@ -259,28 +259,28 @@ graph TB
     end
 
     subgraph INTERNAL["Internal Services"]
-        MCAS[(MCAS\nCase Server)]
-        ORAG[(OpenRAG\nVector Store)]
-        LLLM[LiteLLM Proxy\nSearch Gateway]
-        SRXNG[SearXNG\nPrivate Search Instance]
-        PROT[Proton\nE2EE Comms — Tier 0]
+        MCAS[(MCAS Case Server)]
+        ORAG[(OpenRAG Vector Store)]
+        LLLM[LiteLLM Proxy Search Gateway]
+        SRXNG[SearXNG Private Search Instance]
+        PROT[Proton E2EE Comms — Tier 0]
     end
 
     subgraph LEGALRAG["Legal Information RAG Layer"]
-        LG[LawGlance\nLegal Info RAG Service]
-        LGDB[(LawGlance\nChromaDB + Redis Cache)]
+        LG[LawGlance Legal Info RAG Service]
+        LGDB[(LawGlance ChromaDB + Redis Cache)]
     end
 
     subgraph EXTERNAL["External Services & APIs"]
-        FLP[Free Law Project\nCourtListener APIs]
-        CAP[Caselaw Access\nProject — CAP]
+        FLP[Free Law Project CourtListener APIs]
+        CAP[Caselaw Access Project — CAP]
         DOJ[DOJ Open Data]
-        LLM[LLM Providers\nvia LiteLLM]
+        LLM[LLM Providers via LiteLLM]
     end
 
     subgraph PUBLIC["Public Properties"]
-        MJW[misjusticealliance.org\n/cases]
-        YWGB[YWCA GitBook\nywcaofmissoula.com]
+        MJW[misjusticealliance.org /cases]
+        YWGB[YWCA GitBook ywcaofmissoula.com]
         XTW[X / Twitter]
         BSK[Bluesky]
         RDT[Reddit]
@@ -288,7 +288,7 @@ graph TB
     end
 
     INTERFACES --> ORCH
-    VN -->|T4-admin token\ndirect SearXNG query| SRXNG
+    VN -->|T4-admin token direct SearXNG query| SRXNG
     ORCH --> AGENTS
     AGENTS --> RESEARCH
     RESEARCH --> LLLM
@@ -301,8 +301,8 @@ graph TB
     AGENTS --> AM
     AM --> PROT
     RESEARCH --> ORAG
-    RESEARCH -->|Public legal info\nstatutes & comparative law| LG
-    LG <-->|LangChain RAG\nChromaDB retrieval| LGDB
+    RESEARCH -->|Public legal info statutes & comparative law| LG
+    LG <-->|LangChain RAG ChromaDB retrieval| LGDB
     WM --> MJW
     WM --> YWGB
     SM --> XTW
