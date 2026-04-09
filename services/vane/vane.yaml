@@ -1,0 +1,90 @@
+# vane.yaml
+# Configuration for Vane — Operator Search Interface
+
+# === General Settings ===
+name: vane
+display_name: "Vane — Operator Search Interface"
+version: "0.1.0"
+type: "human_interface"
+
+owner: "zhc-firm"
+team: "ops"
+
+description: >
+  Human-facing research workspace for ZHC Firm operators. Provides conversational
+  web Q&A, document Q&A, image/video search, and session management over private
+  SearXNG instance.
+
+# === Access & Security ===
+facing: "internal"
+search_tier: "T4-admin"
+hitl_gates: "N/A — operated directly by humans"
+
+permissions:
+  read:
+    - "searxng_api"        # Full access to all engine groups
+    - "ollama_local"       # Local LLM inference
+  write:
+    - "open_notebook"      # Export research outputs
+  no_access:
+    - "mcas_tier_0_1_2"    # No access to sensitive data
+    - "openrag_private"    # No access to private indexes
+    - "lawglance"          # No access to external legal databases
+    - "agenticmail_outbound" # No outbound messaging
+    - "social_platforms"   # No social platform access
+
+# === Systems Accessed ===
+systems:
+  searxng_api:
+    url: "${SEARXNG_API_URL}"
+    token: "${SEARXNG_T4_ADMIN_TOKEN}"
+    access_level: "admin"
+    engine_groups: "all"
+    note: "Full access to all SearXNG engine groups"
+
+  ollama_local:
+    url: "http://localhost:11434"
+    model: "llama3:8b-instruct"
+    inference_type: "local"
+    note: "Local LLM for Q&A and synthesis"
+
+  open_notebook:
+    url: "http://open-notebook:8080"
+    write_only: true
+    note: "Export research outputs to Open Notebook"
+
+# === Features ===
+features:
+  conversational_research: true
+  document_qa: true
+  image_search: true
+  video_search: true
+  domain_scoped_search: true
+  topic_scoped_search: true
+  search_history: true
+  session_management: true
+  multi_mode_depth: ["speed", "balanced", "quality"]
+  output_to_open_notebook: true
+  cited_responses: true
+
+# === Security & Compliance ===
+security_note: |
+  Vane’s file upload feature must NOT be used with Tier-0 or Tier-1 material.
+  Only Tier-2 and Tier-3 de-identified or public-approved content should be uploaded.
+  Upstream authentication and role-based access control are required before Tier-0/1 use.
+
+  Vane uses the T4-admin search token and has access to all SearXNG engine groups.
+
+# === Usage Instructions ===
+usage:
+  - "Access via: https://vane.zhc-firm.internal"
+  - "Log in via SSO or API key"
+  - "Use 'Speed' mode for quick answers, 'Quality' for deep research"
+  - "Upload documents only if they are Tier-2 or Tier-3"
+  - "Export to Open Notebook using 'Save Session' button"
+
+# === Support ===
+support:
+  docs: "https://docs.zhc-firm.internal/vane"
+  contact: "ops-support@zhc-firm.internal"
+  status: "https://status.zhc-firm.internal/vane"
