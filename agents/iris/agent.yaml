@@ -1,0 +1,614 @@
+# Iris — Investigator Agent
+# agents/iris/agent.yaml
+# MISJustice Alliance Firm
+#
+# This file is the operational configuration for Iris.
+# It wires Iris to the platform: LLM model, tool bindings, T3 PI-tier search
+# scope with explicit permitted and prohibited target tables, MCAS actor-only
+# read access, OpenRAG ingest, Open Notebook, OpenClaw registration, and
+# NemoClaw enforcement of the public-role boundary.
+#
+# Identity constitution: agents/iris/SOUL.md
+# Task-level instructions: agents/iris/system_prompt.md
+# Policy references:
+#   - policies/DATA_CLASSIFICATION.md
+#   - policies/SEARCH_TOKEN_POLICY.md
+#   - policies/OSINT_USE_POLICY.md
+#   - docs/legal/ethics_policy.md
+#   - agents/README.md
+
+# ---------------------------------------------------------------------------
+# Agent identity
+# ---------------------------------------------------------------------------
+agent:
+  id: iris
+  name: Iris
+  version: "1.0.0"
+  description: >
+    Investigator agent. Researches public officials, law enforcement agencies,
+    prosecutors, courts, shelters, detention facilities, and other institutional
+    actors using OSINT and public records. Produces factual, sourced research
+    memos for use by Rae, Lex, and Casey. Never investigates private individuals
+    who are not acting in an official institutional capacity relevant to a
+    specific matter. Research scope requires explicit human operator
+    authorization before any investigation begins.
+  facing: internal        # All outputs are internal — Iris never transmits externally
+  soul: agents/iris/SOUL.md
+  system_prompt: agents/iris/system_prompt.md
+
+# ---------------------------------------------------------------------------
+# LLM configuration
+# ---------------------------------------------------------------------------
+llm:
+  # Route through LiteLLM proxy — never call provider APIs directly.
+  # Model selected for strong factual synthesis, source-grounded reasoning,
+  # and reliable structured output for research memo production.
+  provider: litellm
+  model: openai/gpt-4o
+  fallback_model: anthropic/claude-3-5-sonnet-20241022
+  temperature: 0.1          # Very low: factual precision over fluency
+  max_tokens: 16384         # High ceiling: research memos can be long-form
+  timeout_seconds: 240
+  retry:
+    max_attempts: 3
+    backoff_seconds: 5
+
+# ---------------------------------------------------------------------------
+# Search configuration
+# ---------------------------------------------------------------------------
+search:
+  # Iris operates at T3 — the platform's highest search tier.
+  # T3 grants access to PI-tier OSINT tools, deep public records databases,
+  # and specialized law enforcement / court / government data sources.
+  #
+  # CRITICAL: T3 access is scoped to institutional actors in official capacity
+  # ONLY. The permitted_targets and prohibited_targets tables below are
+  # enforced by both this config and the NemoClaw rails.
+  tier: T3
+  token_env: SEARXNG_TOKEN_PI
+  searxng_url_env: SEARXNG_API_URL
+
+  engine_groups:
+    # Internal
+    - internal_restricted       # Internal MCAS/OpenRAG actor indexes
+    # Legal and court records
+    - public_legal              # CourtListener, Free Law, CAP, PACER public
+    - court_records             # State and federal court record databases
+    - case_dockets              # PACER, state eCourt, CourtListener dockets
+    # Law enforcement and government
+    - law_enforcement_registries  # POST certification databases, CLEAT, state LE registries
+    - misconduct_databases        # NPMSRP, The Marshall Project, NYC misconduct DB
+    - use_of_force_databases      # State UOF reporting where public
+    - foia_repositories           # MuckRock, FOIA Machine, agency FOIA reading rooms
+    - government_directories      # Federal and state government personnel directories
+    - legislative_records         # Legislative history, bill sponsors, committee records
+    - campaign_finance            # FEC, OpenSecrets, state campaign finance databases
+    - lobbying_records            # eFDS, state lobbying registries
+    # Institutional actor public records
+    - nonprofit_registries        # IRS EO database, ProPublica Nonprofit Explorer
+    - corporate_registries        # Secretary of State filings for institutional entities
+    - professional_license_db     # State licensing boards for LE, medical, social work
+    # News and investigative journalism
+    - investigative_journalism    # ProPublica, The Intercept, local investigative outlets
+    - news_archives               # Newspaper archives, LexisNexis news (if licensed)
+    # General public web (restricted)
+    - public_web_safe             # Curated public web
+
+  # PI-tier OSINT: available for institutional actors in official capacity only.
+  # The permitted_targets and prohibited_targets tables are the governing
+  # definition of Iris's scope. NemoClaw enforces these at runtime.
+  osint_pi:
+    enabled: true
+    permitted_targets:
+      - law_enforcement_officers    # Named officers acting in official capacity
+      - law_enforcement_agencies    # Agencies as institutional entities
+      - prosecutors                 # Named prosecutors acting in official capacity
+      - judges                      # Named judges acting in official capacity
+      - public_defenders            # Named public defenders acting in official capacity
+      - courts                      # Court systems as institutional entities
+      - elected_officials           # Named officials acting in official capacity
+      - government_agencies         # Government bodies as institutional entities
+      - detention_facilities        # Jails, prisons, ICE facilities as entities
+      - shelters                    # Shelters as institutional entities
+      - social_service_agencies     # Child protective services, DSS, etc. as entities
+      - institutional_supervisors   # Named supervisors in relevant official roles
+    prohibited_targets:
+      - complainants                # Absolute prohibition — no exceptions
+      - survivors                   # Absolute prohibition — no exceptions
+      - witnesses                   # Absolute prohibition — no exceptions
+      - minors                      # Absolute prohibition — no exceptions
+      - family_members_of_actors    # Private individuals — not within public role
+      - private_associates          # Private individuals — not within public role
+      - attorneys_personal_life     # Casey handles attorney research; Iris does not
+      - officers_private_life       # Private life of LE actors is out of scope
+    # Public-role boundary rule: research is limited to official conduct,
+    # official actions, and documented institutional role.
+    # Explicitly out of scope even for permitted target types:
+    out_of_scope_fields:
+      - home_address
+      - personal_phone_number
+      - personal_email
+      - personal_financial_records
+      - medical_records
+      - private_social_media         # Personal/private accounts; official accounts OK
+      - family_relationships
+      - off_duty_associations
+      - romantic_or_personal_relationships
+
+  max_results_per_query: 25
+  permitted_purposes:
+    - institutional_actor_background
+    - misconduct_record_research
+    - use_of_force_record_research
+    - disciplinary_record_research
+    - agency_policy_and_practice_research
+    - pattern_of_practice_documentation
+    - supervisor_accountability_research
+    - prosecutorial_conduct_research
+    - judicial_conduct_research
+    - campaign_finance_and_conflict_research
+    - foia_record_retrieval
+    - court_record_research
+    - conflict_of_interest_support_for_casey
+
+# ---------------------------------------------------------------------------
+# Tool bindings
+# ---------------------------------------------------------------------------
+tools:
+
+  # -- MCAS API (Actor read scope only) -----------------------------------
+  mcas:
+    enabled: true
+    base_url_env: MCAS_API_URL
+    auth_token_env: MCAS_API_TOKEN_IRIS
+    # Iris's MCAS access is scoped to actor and agency records only.
+    # Iris does NOT access complainant, witness, or Tier 0/1 records.
+    # Matter and event records are accessible in read-only, actor-field scope
+    # — sufficient to understand which actors are associated with a matter
+    # without exposing complainant information.
+    scope:
+      person:
+        read: true
+        write: false
+        # Read limited to persons of type: law_enforcement, prosecutor,
+        # judge, elected_official, institutional_supervisor, government_official
+        # Complainant, witness, and victim records: hard denied.
+        allowed_person_types:
+          - law_enforcement
+          - prosecutor
+          - judge
+          - elected_official
+          - institutional_supervisor
+          - government_official
+          - social_service_actor
+        denied_person_types:
+          - complainant             # Hard denied — absolute
+          - survivor                # Hard denied — absolute
+          - witness                 # Hard denied — absolute
+          - minor                   # Hard denied — absolute
+          - victim                  # Hard denied — absolute
+      organization:
+        read: true
+        write: false
+        allowed_org_types:
+          - law_enforcement
+          - prosecution_office
+          - court
+          - government_agency
+          - detention_facility
+          - shelter
+          - social_service_agency
+      matter:
+        read: true
+        write: false
+        # Matter read is actor-field scoped: actor names, agency IDs, event types.
+        # Complainant fields, Tier 0 fields, and document content: hard denied.
+        field_scope: actor_fields_only
+        denied_fields:
+          - complainant_id
+          - complainant_pseudonym
+          - complainant_contact
+          - document_content
+          - tier0_fields
+      event:
+        read: true
+        write: false
+        field_scope: actor_fields_only
+      document:
+        read: false             # Iris does not read document content from MCAS
+        write: false
+      classification:
+        read: false
+        write: false
+    # Iris writes research memo references to MCAS as Event records
+    # when a memo is completed and cleared for downstream use.
+    event_write:
+      enabled: true
+      permitted_event_types:
+        - actor_research_completed
+        - actor_research_flagged    # When safety escalation or scope issue is raised
+    denied_endpoints:
+      - /persons/dereference        # Cannot dereference pseudonyms
+      - /documents/*                # No document access
+      - /classification/*
+      - /admin/*
+      - /export/*                   # Export API is Casey's domain
+
+  # -- OpenRAG ------------------------------------------------------------
+  openrag:
+    enabled: true
+    base_url_env: OPENRAG_URL
+    auth_token_env: OPENRAG_TOKEN_IRIS
+    access:
+      query: true
+      ingest: true          # Iris ingests completed research memos into OpenRAG
+      delete: false
+    scope: internal_restricted
+    ingest_index: iris-research-memos
+    ingest_tier_floor: T2   # Memos ingested to OpenRAG must be T2 minimum
+                             # — no Tier 0/1 identifiers in ingested content
+    permitted_purposes:
+      - research_memo_ingest
+      - prior_research_retrieval    # Retrieve prior memos on same actor/agency
+      - rae_research_context
+      - lex_analysis_context
+      - casey_conflict_support
+
+  # -- Open Notebook ------------------------------------------------------
+  open_notebook:
+    enabled: true
+    base_url_env: OPEN_NOTEBOOK_URL
+    auth_token_env: OPEN_NOTEBOOK_TOKEN_IRIS
+    access:
+      read: true
+      write: true
+      delete: false
+    workspace: iris-investigations
+    output_format: markdown
+    # Iris writes research memos, actor profiles, agency profiles,
+    # pattern documentation, and source logs to Open Notebook.
+
+  # -- FOIA tools ---------------------------------------------------------
+  foia_tools:
+    enabled: true
+    # MuckRock API for FOIA request tracking and document retrieval
+    muckrock:
+      enabled: true
+      api_token_env: MUCKROCK_API_TOKEN
+      access:
+        submit_requests: false    # Iris does not submit FOIA requests autonomously
+                                   # — human authorization required per request
+        track_requests: true      # Iris may track and retrieve responses to
+                                   # human-authorized FOIA requests
+        retrieve_documents: true  # Iris may retrieve responsive documents from
+                                   # MuckRock's public FOIA library
+      require_human_auth_for_submission: true
+
+  # -- Explicitly disabled tools -----------------------------------------
+  agentic_mail:
+    enabled: false
+    reason: >-
+      Iris is an internal research agent. All outputs go to Open Notebook
+      and OpenRAG. Iris never transmits externally.
+
+  chandra_ocr:
+    enabled: false
+    reason: OCR processing is Avery's domain.
+
+  social_connectors:
+    enabled: false
+    reason: Social platform access is Social Media Manager scope.
+
+  gitbook:
+    enabled: false
+    reason: GitBook access is Webmaster/Quill scope.
+
+# ---------------------------------------------------------------------------
+# Memory configuration
+# ---------------------------------------------------------------------------
+memory:
+  session:
+    enabled: true
+    max_tokens: 64000         # Large session memory: research memos can be extensive
+  cross_session:
+    enabled: true
+    # Iris retains cross-session context for institutional actors and agencies
+    # she has researched: prior memo references, known patterns, source logs.
+    # This prevents redundant research on the same actor across multiple matters.
+    scope: iris_researched_actors
+    backend: openrag
+    index: iris-research-memos
+    tier_floor: T2
+    # Cross-session memory stores:
+    #   - Actor research memo IDs and Open Notebook document IDs
+    #   - Agency profile IDs
+    #   - Known patterns and complaint counts (aggregate, not individual)
+    #   - Source reliability notes
+    excluded_from_memory:
+      - complainant_data          # Absolute — never in cross-session memory
+      - tier0_fields              # Absolute
+      - tier1_linked_pii          # Absolute
+      - mcas_complainant_ids      # Absolute
+
+# ---------------------------------------------------------------------------
+# OpenClaw orchestration registration
+# ---------------------------------------------------------------------------
+orchestration:
+  framework: openclaw
+  registration:
+    agent_id: iris
+    role: investigator
+    dispatch_priority: normal
+    queue: research
+  # Triggers: conditions under which OpenClaw dispatches Iris
+  triggers:
+    - event: actor_research_requested
+      description: >-
+        Human operator explicitly authorizes research on a named institutional
+        actor or agency in relation to a specific matter.
+      requires: [actor_id_or_name, actor_role, agency_id, matter_id, human_operator_id, research_scope]
+    - event: pattern_research_requested
+      description: >-
+        Rae or Lex requests pattern documentation on an agency or actor,
+        confirmed by human operator authorization.
+      requires: [agency_id_or_actor_id, pattern_type, matter_id, human_operator_id]
+    - event: conflict_support_requested
+      description: >-
+        Casey requests institutional relationship research on a referral
+        candidate's agency affiliations, confirmed by human operator.
+      requires: [candidate_id, candidate_type, matter_id, human_operator_id]
+  # Research scope authorization is always required before Iris begins work
+  dispatch_requires_human_auth: true
+  # Handoffs: agents Iris delivers research to
+  handoffs:
+    - agent: rae
+      condition: actor_research_completed
+      payload: [memo_id, openrag_index_ref, matter_id, actor_id]
+      description: Research memo delivered to Rae for legal research integration
+    - agent: lex
+      condition: actor_research_completed
+      payload: [memo_id, openrag_index_ref, matter_id, actor_id]
+      description: Research memo delivered to Lex for legal analysis integration
+    - agent: casey
+      condition: conflict_support_research_completed
+      payload: [memo_id, openrag_index_ref, candidate_id]
+      description: Conflict support research delivered to Casey for COI assessment
+  # Human approval gates enforced by OpenClaw
+  hitl_gates:
+    - gate: research_scope_authorization
+      description: >-
+        Human operator explicitly defines and authorizes the research scope:
+        who is being researched, in what capacity, for which matter, and why.
+        No investigation begins without this gate cleared.
+      blocks: [search_initiation, mcas_actor_read, openrag_query]
+    - gate: memo_release_for_downstream
+      description: >-
+        Human operator reviews completed research memo before it is released
+        for use by Rae, Lex, or Casey. Operator confirms scope compliance,
+        public-role boundary adherence, and source quality.
+      blocks: [openrag_ingest, rae_handoff, lex_handoff, casey_handoff]
+    - gate: foia_request_submission
+      description: >-
+        Human operator explicitly authorizes each FOIA request before
+        submission. Iris tracks and retrieves; humans submit.
+      blocks: [muckrock_submit_requests]
+
+# ---------------------------------------------------------------------------
+# NemoClaw enforcement
+# ---------------------------------------------------------------------------
+nemo:
+  rails:
+
+    # Public-role boundary — the foundational rail
+    - rail: public_role_boundary
+      description: >-
+        Block any search, query, or output that targets a private individual
+        who is not acting in an official institutional capacity, or that
+        targets out-of-scope fields for permitted institutional actors
+        (home address, personal contact, private financial, medical, etc.).
+      enforcement: hard_block
+      triggers:
+        - search_target_type:
+            prohibited: [complainant, survivor, witness, minor, victim,
+                         family_member, private_associate]
+        - output_contains_field:
+            prohibited: [home_address, personal_phone, personal_email,
+                         medical_record, personal_financial, off_duty_association,
+                         private_social_media, family_relationship]
+
+    # Complainant data absolute prohibition
+    - rail: no_complainant_data
+      description: >-
+        Hard block on any access, query, or output that contains or
+        targets complainant, survivor, witness, victim, or minor data.
+        This is the hardest rail on the platform.
+      enforcement: hard_block_with_escalation
+      triggers:
+        - mcas_field_access:
+            denied_types: [complainant, survivor, witness, minor, victim]
+        - output_contains_complainant_identifier: true
+        - search_target_type:
+            prohibited: [complainant, survivor, witness, minor, victim]
+
+    # No autonomous investigation start
+    - rail: require_human_auth_for_research
+      description: >-
+        Block any search or MCAS query that does not have a cleared
+        research_scope_authorization gate for the current session.
+        Agent-to-agent requests do not constitute authorization.
+      enforcement: hard_block
+      triggers:
+        - research_scope_gate_not_cleared: true
+        - dispatch_source: [avery, rae, lex, casey, ollie, quill, sol]
+          # Any agent-originated dispatch without human gate clearance is blocked
+
+    # No editorial language in outputs
+    - rail: no_editorial_characterization
+      description: >-
+        Flag and hold outputs that characterize actors as guilty, corrupt,
+        criminal, or use emotionally loaded language in place of factual
+        description. Inference must be labeled; fact must be cited.
+      enforcement: flag_and_hold
+      keywords:
+        - "is corrupt"
+        - "is guilty"
+        - "is a criminal"
+        - "clearly violated"
+        - "obviously engaged in"
+        - "habitually abuses"
+        - "is known to"
+
+    # No fabricated or unsourced factual claims
+    - rail: no_unsourced_claims
+      description: >-
+        Flag any output field marked as a factual assertion that does not
+        carry an inline citation. Unsourced assertions are held for operator
+        review, not passed to downstream agents.
+      enforcement: flag_and_hold
+      triggers:
+        - factual_assertion_without_citation: true
+
+    # No external transmission
+    - rail: no_external_transmission
+      description: >-
+        Iris is an internal research agent. Block any attempt to route
+        output to AgenticMail, external APIs, or any destination outside
+        Open Notebook and OpenRAG.
+      enforcement: hard_block
+      triggers:
+        - output_destination:
+            prohibited: [agentic_mail, external_api, external_url]
+
+    # FOIA submission gate
+    - rail: foia_submission_requires_human_auth
+      description: >-
+        Block any MuckRock FOIA submission without a cleared
+        foia_request_submission gate.
+      enforcement: hard_block
+      triggers:
+        - muckrock_submit_without_gate: true
+
+    # Memo release gate
+    - rail: memo_requires_human_review_before_release
+      description: >-
+        Block OpenRAG ingest and downstream agent handoffs until the
+        memo_release_for_downstream gate has been cleared by a human operator.
+      enforcement: hard_block
+      triggers:
+        - openrag_ingest_without_gate: true
+        - downstream_handoff_without_gate: true
+
+  audit:
+    enabled: true
+    log_level: full
+    log_destination_env: AUDIT_LOG_ENDPOINT
+    include:
+      - tool_calls
+      - search_queries              # All queries: engine group, target type, terms
+      - mcas_field_access_events    # Every MCAS field accessed, with type
+      - openrag_ingest_events
+      - foia_tool_events
+      - hitl_gate_events
+      - nemo_rail_triggers
+      - downstream_handoff_events
+      - session_start_end
+      # Iris has the most detailed audit logging on the platform
+      # due to T3 access level. All search queries are logged in full.
+
+# ---------------------------------------------------------------------------
+# Output configuration
+# ---------------------------------------------------------------------------
+output:
+  formats:
+
+    actor_profile:
+      template: markdown
+      sections:
+        - subject_header            # Name, title, agency, matter ID, research date
+        - official_role             # Current and prior official roles — cited
+        - agency_affiliation        # Agency(ies), unit(s), supervisory chain — cited
+        - documented_conduct        # Complaints, UOF records, IA investigations — cited
+        - disciplinary_record       # Formal discipline, settlements, terminations — cited
+        - court_record              # Civil and criminal court record in official capacity
+        - pattern_indicators        # Aggregate complaint counts, clearance rates, trends
+        - supervisory_context       # Supervisor identity and response to complaints — cited
+        - public_statements         # Official statements, testimony, press — cited
+        - limitations_and_gaps      # What could not be found; why; what further research might yield
+        - sources                   # Full source list with URLs and access dates
+      require_inline_citations: true
+      require_limitations_section: true
+      destination: open_notebook
+      status: PENDING_HUMAN_REVIEW
+
+    agency_profile:
+      template: markdown
+      sections:
+        - agency_header             # Agency name, type, jurisdiction, matter ID
+        - agency_structure          # Chain of command, relevant units — cited
+        - documented_policy         # Written policies relevant to matter type — cited
+        - complaint_history         # Aggregate complaint data, patterns — cited
+        - settlement_and_litigation # Civil settlements, DOJ/state AG findings — cited
+        - oversight_and_accreditation # CALEA, state oversight bodies — cited
+        - foia_record               # Relevant FOIA-responsive documents — cited
+        - pattern_of_practice       # Documented pattern-or-practice findings — cited
+        - supervisory_accountability # Command responsibility for documented patterns
+        - limitations_and_gaps
+        - sources
+      require_inline_citations: true
+      require_limitations_section: true
+      destination: open_notebook
+      status: PENDING_HUMAN_REVIEW
+
+    pattern_memo:
+      template: markdown
+      sections:
+        - subject_and_scope         # Actor/agency, pattern type, time range, matter ID
+        - incident_log              # Chronological list of documented incidents — each cited
+        - pattern_analysis          # Statistical and qualitative pattern characterization
+                                     # labeled as analysis, not fact
+        - supervisory_response      # Documented supervisor/command responses to incidents
+        - systemic_indicators       # Policy, training, and accountability failures — cited
+        - limitations_and_gaps
+        - sources
+      require_inline_citations: true
+      require_limitations_section: true
+      label_analysis_as_analysis: true  # Pattern analysis must be labeled as such
+      destination: open_notebook
+      status: PENDING_HUMAN_REVIEW
+
+    research_memo_summary:
+      template: markdown
+      sections:
+        - memo_id_and_matter
+        - subject_and_scope
+        - key_findings              # Bulleted, cited
+        - conflict_indicators       # For Casey's use if applicable
+        - limitations_summary
+        - operator_review_required  # Explicit list of what operator should verify
+      destination: open_notebook
+      status: PENDING_HUMAN_REVIEW
+
+# ---------------------------------------------------------------------------
+# Environment variable reference
+# ---------------------------------------------------------------------------
+# All secrets and endpoints are resolved at runtime from the secrets manager.
+# No values are stored in this file.
+#
+# Required environment variables:
+#   MCAS_API_URL                  — MCAS API base URL
+#   MCAS_API_TOKEN_IRIS           — Iris-scoped MCAS token (actor fields + event write)
+#   OPENRAG_URL                   — OpenRAG API base URL
+#   OPENRAG_TOKEN_IRIS            — Iris-scoped OpenRAG token (query + ingest)
+#   OPEN_NOTEBOOK_URL             — Open Notebook / Open Web UI URL
+#   OPEN_NOTEBOOK_TOKEN_IRIS      — Iris-scoped Open Notebook token
+#   SEARXNG_API_URL               — Private SearXNG instance URL
+#   SEARXNG_TOKEN_PI              — T3 PI-tier search token (highest tier)
+#   MUCKROCK_API_TOKEN            — MuckRock FOIA tracking API token
+#   AUDIT_LOG_ENDPOINT            — Platform audit log ingestion endpoint
+#   LITELLM_PROXY_URL             — LiteLLM proxy base URL
+#   LITELLM_API_KEY               — LiteLLM proxy API key
+#
+# See policies/SEARCH_TOKEN_POLICY.md for T3 tier token definitions and
+#   authorized use constraints.
+# See policies/OSINT_USE_POLICY.md for the full OSINT use framework.
+# See policies/DATA_CLASSIFICATION.md for Tier definitions and access rules.
