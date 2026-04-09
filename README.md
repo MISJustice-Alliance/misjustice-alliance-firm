@@ -329,7 +329,9 @@ misjustice-alliance-firm/
 ├── .gitignore
 │
 ├── agents/                          # Agent role definitions
+│   ├── README.md
 │   ├── avery/
+│   │   ├── SOUL.md                  # Agent identity constitution definition
 │   │   ├── agent.yaml               # Role config, tool bindings, search tier
 │   │   └── system_prompt.md
 │   ├── rae/
