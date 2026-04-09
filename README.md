@@ -3,8 +3,8 @@
 > **The MISJustice Alliance AI-agent legal advocacy, research, publishing, and public-engagement platform.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Status: Early Architecture](https://img.shields.io/badge/status-early--architecture-yellow)]()
-[![Orchestration: OpenClaw / NemoClaw](https://img.shields.io/badge/orchestration-OpenClaw%20%2F%20NemoClaw-blueviolet)]()
+[![Status: Early Architecture](https://img.shields.io/badge/status-early--architecture-yellow)](https://github.com/MISJustice-Alliance/misjustice-alliance-firm)
+[![Orchestration: OpenClaw / NemoClaw](https://img.shields.io/badge/orchestration-OpenClaw%20%2F%20NemoClaw-blueviolet)](https://github.com/NemoGuard/openclaw)
 
 ---
 
@@ -67,11 +67,11 @@ The MISJustice Alliance Firm operates a modular multi-agent staff. Each agent is
 | **Orchestrator** | Internal | Central task routing, delegation, and control | Multi-agent dispatch, task queuing, human escalation, interface bridging | OpenClaw / NemoClaw, Telegram, Discord, iMessage, OpenShell |
 | **Avery — Intake & Evidence** | Internal | Structured intake creation, evidence ingestion, and document triage | Intake forms, OCR/classification, document hashing, MCAS record creation | MCAS API, Chandra OCR, OpenRAG, SearXNG (internal-safe) |
 | **Mira — Telephony & Messaging** | Internal | Call and message handling, Tier-2 summarization | Call transcription, message parsing, triage notes, MCAS event creation | Telephony bridge, AgenticMail, MCAS API |
-| **Rae — Paralegal Researcher** | Internal | Legal research, chronology drafting, element matrices | Statute/case retrieval, chronology assembly, referral support, citation building | AutoResearchClaw, OpenRAG, SearXNG (internal + public_legal), MCAS |
-| **Lex — Senior Analyst** | Internal | Legal theory, QA, risk analysis, pattern-of-practice review | Issue mapping, § 1983 / malpractice analysis, draft verification, pattern flagging | AutoResearchClaw, OpenRAG, SearXNG (restricted), MCAS, Open Notebook |
+| **Rae — Paralegal Researcher** | Internal | Legal research, chronology drafting, element matrices | Statute/case retrieval, chronology assembly, referral support, citation building | AutoResearchClaw, OpenRAG, LawGlance (public legal info), SearXNG (internal + public_legal), MCAS |
+| **Lex — Senior Analyst** | Internal | Legal theory, QA, risk analysis, pattern-of-practice review | Issue mapping, § 1983 / malpractice analysis, draft verification, pattern flagging | AutoResearchClaw, OpenRAG, LawGlance (comparative legal info), SearXNG (restricted), MCAS, Open Notebook |
 | **Iris — PI / Public Records Researcher** | Internal | Public-official and institutional investigation | OSINT, cross-jurisdiction research, public-record retrieval, actor/agency linking | AutoResearchClaw, SearXNG (pi-tier), MCAS, OpenRAG |
 | **Chronology Agent** | Internal | Event-to-timeline assembly | MCAS event reading, narrative ordering, reliability tagging, litigation-ready output | MCAS API, OpenRAG, Open Notebook |
-| **Citation / Authority Agent** | Internal | Source verification for all analytical outputs | Fetch-and-verify, citation checking, primary authority cross-reference | SearXNG (public_legal), OpenRAG, CourtListener / Free Law APIs |
+| **Citation / Authority Agent** | Internal | Source verification for all analytical outputs | Fetch-and-verify, citation checking, primary authority cross-reference | SearXNG (public_legal), OpenRAG, LawGlance, CourtListener / Free Law APIs |
 | **Casey — Counsel Scout** | Bridge | External counsel and org research, referral packet assembly | Firm/attorney research, bar lookups, MCAS export, referral memo drafting | SearXNG (restricted + osint_public), MCAS export API, Open Notebook |
 | **Ollie — Outreach Coordinator** | Bridge | Drafting and routing external outreach messages | Template-based outreach drafts, AgenticMail approval queues, MCAS logging | AgenticMail, MCAS API, SearXNG (internal-safe) |
 | **Webmaster** | Bridge → External | All public web properties: misjusticealliance.org, YWCA GitBook, future sites | Publication pipeline, redaction checks, SEO/GEO, sitemap management, GitBook curation | Open WebUI, GitBook API, SearXNG (public-safe), CMS/static site tools |
@@ -83,6 +83,8 @@ The MISJustice Alliance Firm operates a modular multi-agent staff. Each agent is
 > **Note:** All Researcher-role agents (Rae, Lex, Iris, Chronology Agent, Citation/Authority Agent) use **AutoResearchClaw** as their core autonomous research engine for multi-stage research loops, literature review, evidence gathering, and structured output generation.
 
 > **Note on Vane:** Vane is a **human operator interface**, not an autonomous agent. It provides operators with a Perplexity-style conversational research workspace that queries the same private SearXNG instance used by the agent stack — using the T4-admin search token via the `slim` image deployment. Vane does **not** replace SearXNG; it sits atop it. Do not use Vane's file upload feature with Tier-0 or Tier-1 material until authentication and role-based access control are implemented upstream. See [Section 6](#6-search-and-retrieval-architecture) for the search tier model.
+
+> **Note on LawGlance:** LawGlance is a **jurisdiction-specific legal information RAG microservice** — not a private case-file repository. It provides LangChain + ChromaDB retrieval over indexed public legal materials (currently optimized for Indian statutory law; expandable to US federal and Montana/Washington State law via corpus extension). Agents query LawGlance for **public legal information only** — never for privileged case analysis or Tier-0/Tier-1 content. See [Section 6](#6-search-and-retrieval-architecture) for the full RAG backend model.
 
 ---
 
@@ -140,6 +142,7 @@ LiteLLM exposes named search tools (`search_publicsafe`, `search_internal`, `sea
 
 - **OpenRAG / OpenSearch**: Private vector and full-text search over case files, legal research, and de-identified working documents.
 - **MCAS Document Search**: Full-text search over tagged MCAS document records (via MCAS REST API).
+- **LawGlance**: Domain-specific legal information RAG microservice providing LangChain + ChromaDB + Redis-cached retrieval over indexed public legal materials. Queried by research agents (Rae, Lex, Citation Agent) for jurisdiction-specific public legal information and comparative statutory analysis. LawGlance is a **public legal information service only** — it never receives or stores privileged case materials. Current corpus covers Indian statutory law; extendable to US federal and Montana/Washington State law via corpus fork.
 - **Free Law / CourtListener APIs**: Supplementary public case law and federal docket retrieval for Tier-2 research.
 
 ---
@@ -163,7 +166,7 @@ MCAS exposes a REST/JSON API with OAuth2/PAT tokens, scoped per agent role. Webh
 
 ## 8. Example Workflow Diagram
 
-The following Mermaid diagram illustrates a representative MISJustice workflow from human-initiated intake through to public publication. Vane is shown as an optional human operator research surface that feeds findings into Open Notebook alongside the automated agent pipeline.
+The following Mermaid diagram illustrates a representative MISJustice workflow from human-initiated intake through to public publication. Vane is shown as an optional human operator research surface that feeds findings into Open Notebook alongside the automated agent pipeline. LawGlance is shown as a public legal information RAG queried by research agents alongside the private OpenRAG backend.
 
 ```mermaid
 flowchart TD
@@ -188,6 +191,10 @@ flowchart TD
 
     ARC -->|Queries via LiteLLM\n(role-scoped token)| SRXNG
     SRXNG -->|Returns normalized results| ARC
+
+    ARC -->|Public legal info query\n(statutes, comparative law)| LG[LawGlance\nLegal Info RAG]
+    LG -->|Jurisdiction-scoped\npublic legal retrieval| ARC
+
     ARC -->|Fetches full pages\nEmbeds into OpenRAG| ORAG[(OpenRAG\nVector Store)]
     ARC -->|Outputs: memos, issue maps,\nPI reports, timelines| NB
 
@@ -259,6 +266,11 @@ graph TB
         PROT[Proton\nE2EE Comms — Tier 0]
     end
 
+    subgraph LEGALRAG["Legal Information RAG Layer"]
+        LG[LawGlance\nLegal Info RAG Service]
+        LGDB[(LawGlance\nChromaDB + Redis Cache)]
+    end
+
     subgraph EXTERNAL["External Services & APIs"]
         FLP[Free Law Project\nCourtListener APIs]
         CAP[Caselaw Access\nProject — CAP]
@@ -289,6 +301,8 @@ graph TB
     AGENTS --> AM
     AM --> PROT
     RESEARCH --> ORAG
+    RESEARCH -->|Public legal info\nstatutes & comparative law| LG
+    LG <-->|LangChain RAG\nChromaDB retrieval| LGDB
     WM --> MJW
     WM --> YWGB
     SM --> XTW
@@ -297,6 +311,8 @@ graph TB
     SM --> NOS
     ORCH --> LLM
 ```
+
+> **LawGlance boundary note:** LawGlance sits in its own `LEGAL INFORMATION RAG LAYER` subgraph, isolated from the private `INTERNAL SERVICES` subgraph. It is queried exclusively for **public legal information** — statutes, comparative law, and jurisdiction-scoped legal guidance. No privileged case data, PII, or Tier-0/Tier-1 material ever flows into LawGlance. See [Section 6](#6-search-and-retrieval-architecture) and [Section 12](#12-security-and-privacy-model) for classification boundaries.
 
 ---
 
@@ -366,6 +382,11 @@ misjustice-alliance-firm/
 │   ├── vane/                        # Vane AI search UI — slim deployment config
 │   │   ├── README.md                # Deployment notes and integration guidance
 │   │   └── vane.env.example         # SEARXNG_API_URL and LLM provider vars for slim image
+│   ├── lawglance/                   # LawGlance legal information RAG microservice
+│   │   ├── README.md                # Integration notes, corpus scope, and boundary policy
+│   │   ├── lawglance.env.example    # OPENAI_API_KEY (or Ollama endpoint), CHROMA_PATH, REDIS_URL
+│   │   └── corpus/                  # Corpus extension stubs for US federal / MT / WA law
+│   │       └── .gitkeep
 │   ├── agenticmail/                 # AgenticMail approval queue integration
 │   └── proton/                      # Proton Bridge / E2EE comms adapter (stub)
 │
@@ -397,6 +418,10 @@ misjustice-alliance-firm/
 │   │   ├── searxng/
 │   │   ├── litellm/
 │   │   ├── openrag/
+│   │   ├── lawglance/               # LawGlance K8s manifests
+│   │   │   ├── deployment.yaml      # LangChain + ChromaDB + Redis; public-legal corpus only
+│   │   │   ├── service.yaml
+│   │   │   └── configmap.yaml       # Corpus path, Redis URL, LLM provider endpoint
 │   │   └── vane/                    # Vane slim-image K8s manifests
 │   │       ├── deployment.yaml      # Slim image; SEARXNG_API_URL → internal SearXNG svc
 │   │       ├── service.yaml
@@ -444,6 +469,7 @@ misjustice-alliance-firm/
 - LiteLLM proxy running and pointed at your SearXNG instance
 - MCAS instance (self-hosted; see `services/mcas/`)
 - OpenRAG / OpenSearch cluster (see `services/openrag/`)
+- LawGlance instance (self-hosted; see `services/lawglance/`)
 - Proton Mail Bridge or equivalent E2EE communication layer for Tier-0 material
 
 ### Setup steps
@@ -471,10 +497,15 @@ docker run -d -p 3001:3000 \
 # Configure LLM provider and Ollama URL in the Vane setup screen at http://localhost:3001
 # See: services/vane/vane.env.example
 
-# 6. Load agent definitions into OpenClaw
+# 6. Start LawGlance (legal information RAG — public legal corpus only)
+# See: services/lawglance/README.md and services/lawglance/lawglance.env.example
+# Deploy corpus extension stubs in services/lawglance/corpus/ for US/MT/WA law
+# Reference: https://github.com/lawglance/lawglance
+
+# 7. Load agent definitions into OpenClaw
 # See: agents/ directory and workflows/ directory
 
-# 7. Access Open Web UI
+# 8. Access Open Web UI
 # Default: http://localhost:3000
 ```
 
@@ -496,6 +527,7 @@ The MISJustice Alliance Firm is designed under a **zero-trust, layered privacy**
 | **No case data in Git** | `cases/` directory is gitignored; no PII or evidence ever committed to this repository |
 | **Human gates** | All external communications, publications, and high-risk research actions require explicit human approval |
 | **Vane access scope** | Vane is restricted to Tier-2/3 material until upstream authentication and RBAC are implemented; file upload must not be used with Tier-0/Tier-1 documents |
+| **LawGlance access scope** | LawGlance is a **public legal information service only**; it receives queries about statutes, legal standards, and jurisdiction-specific public law exclusively — never case-identifying information, PII, evidence, or privileged work product. It is isolated in its own subgraph and network policy from the MCAS and OpenRAG private services. |
 
 Encryption at rest and in transit are baseline requirements for all services. Key management should use a cloud HSM or equivalent. See `policies/DATA_CLASSIFICATION.md` for the full classification model.
 
@@ -517,6 +549,8 @@ Encryption at rest and in transit are baseline requirements for all services. Ke
 | **SearXNG engine settings docs** | https://docs.searxng.org/admin/settings/settings_engines.html |
 | **Vane — AI Search Interface** | https://github.com/ItzCrazyKns/Vane |
 | **Vane Docker Hub (slim image)** | https://hub.docker.com/r/itzcrazykns1337/vane |
+| **LawGlance — Legal Information RAG** | https://github.com/lawglance/lawglance |
+| **LawGlance public site** | https://lawglance.com |
 | **Free Law Project / CourtListener** | https://free.law / https://www.courtlistener.com |
 | **Caselaw Access Project (CAP)** | https://case.law |
 | **DOJ Open Data** | https://www.justice.gov/open/open-data |
