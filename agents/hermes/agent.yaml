@@ -1,0 +1,625 @@
+# =============================================================================
+# agents/hermes/agent.yaml
+# Hermes — Human Interface & Control Agent
+# MISJustice Alliance Firm
+# =============================================================================
+# This file is the authoritative runtime configuration for the Hermes agent.
+# It is loaded by OpenClaw at platform startup and registered with Paperclip.
+# All values must be consistent with agents/hermes/SOUL.md.
+# Do NOT modify this file without a corresponding SOUL.md review if behavioral
+# constraints, tool access, or HITL rules are changed.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Identity
+# -----------------------------------------------------------------------------
+name: hermes
+display_name: "Hermes — Human Interface & Control Agent"
+version: "1.0.0"
+description: >
+  Primary human-facing control agent for the MISJustice Alliance Firm platform.
+  Hermes is the sole entry point for operator interaction with the full agent
+  stack. It translates natural-language operator instructions into structured
+  OpenClaw task dispatches, surfaces agent outputs back to operators with full
+  context and caveats, manages HITL approval flows, and governs the Skill
+  Factory for platform self-evolution. Hermes never acts autonomously on any
+  matter touching legal conclusions, external communications, or publication.
+
+identity:
+  soul_md: agents/hermes/SOUL.md
+  soul_md_version: "1.0.0"
+  soul_md_sha: "e27607ee1d68c34e418afea105fb801ceb3f14b8"
+  role_type: interface          # interface | research | compliance | publication
+  facing: human                 # human | internal | bridge | external
+  layer: 1                      # Platform layer (1 = Human Interface)
+
+# -----------------------------------------------------------------------------
+# Framework
+# -----------------------------------------------------------------------------
+framework:
+  primary: langchain
+  agent_builder: langsmith
+  langsmith:
+    project: misjustice-alliance-firm
+    tracing: true
+    endpoint: https://api.smith.langchain.com
+    api_key_env: LANGCHAIN_API_KEY
+  agent_type: tool_calling      # tool_calling | react | structured_chat
+  base_class: MISJusticeBaseAgent
+  base_class_path: agents/base/agent.py
+  system_prompt: agents/hermes/system_prompt.md
+
+# -----------------------------------------------------------------------------
+# crewAI Registration
+# -----------------------------------------------------------------------------
+crewai:
+  registered: false             # Hermes is not a crew member — it is the interface
+                                # layer above crew execution. OpenClaw dispatches
+                                # to crewAI crews on Hermes's behalf.
+  manager_for_crews: false      # Hermes does not act as crewAI manager agent.
+                                # The Orchestrator agent fills that role per crew.
+  spawns_subagents: true        # Hermes may spawn transient subagents via
+                                # OpenClaw/NemoClaw for parallelized one-shot tasks.
+
+# -----------------------------------------------------------------------------
+# Paperclip Control Plane
+# -----------------------------------------------------------------------------
+paperclip:
+  registered: true
+  api_url_env: PAPERCLIP_API_URL
+  api_key_env: PAPERCLIP_API_KEY
+  policy_file: agents/hermes/hermes_policy.paperclip.yaml
+  allowed_environments:
+    - staging
+    - production
+  max_concurrent_tasks: 5       # Hermes may handle up to 5 concurrent operator
+                                # sessions / task threads simultaneously.
+  task_timeout_seconds: 300     # 5-minute timeout per delegated task dispatch.
+                                # Long-running research tasks are tracked via
+                                # OpenClaw task IDs, not held open in Hermes.
+  rollback_on_policy_violation: true
+  alert_on_failure: true
+  alert_channel: n8n_webhook
+  alert_webhook_path: /webhook/violation-escalation
+  review_cycle_days: 90
+
+# -----------------------------------------------------------------------------
+# LLM Configuration
+# -----------------------------------------------------------------------------
+llm:
+  provider: litellm
+  litellm_base_url_env: LITELLM_BASE_URL
+  litellm_api_key_env: LITELLM_MASTER_KEY
+  primary_model: gpt-4o
+  fallback_model: claude-3-5-sonnet-20241022
+  local_fallback:
+    provider: ollama
+    model: llama3
+    base_url_env: OLLAMA_BASE_URL
+    use_when: external_unavailable   # Automatically fall back to local if
+                                      # external LLM providers are unreachable.
+  temperature: 0.2                  # Low temperature — Hermes prioritises
+                                    # precision and consistency over creativity.
+  max_tokens: 4096
+  streaming: true                   # Stream responses to operator CLI/TUI.
+
+# -----------------------------------------------------------------------------
+# Tool Bindings
+# All tools are LangChain BaseTool subclasses bound at agent initialization.
+# Tool names correspond to implementations in agents/base/tools/.
+# Paperclip policy (hermes_policy.paperclip.yaml) enforces allow/deny at
+# runtime — this list defines what is available, not what is always permitted.
+# -----------------------------------------------------------------------------
+tools:
+
+  # -- OpenClaw Dispatch --------------------------------------------------
+  - name: openclaw_dispatch
+    description: Submit a structured task payload to the OpenClaw task queue.
+    path: agents/base/tools/openclaw_dispatch.py
+    requires_confirmation: true       # Always confirm intent before dispatch.
+    confirmation_prompt: >
+      Before dispatching, confirm: crew={crew}, workflow={workflow},
+      matter_id={matter_id}, scope summary={scope_summary}. Proceed?
+
+  - name: openclaw_task_status
+    description: Query the status of a submitted OpenClaw task by task_id.
+    path: agents/base/tools/openclaw_task_status.py
+    requires_confirmation: false
+
+  - name: openclaw_task_cancel
+    description: Cancel a pending or running OpenClaw task.
+    path: agents/base/tools/openclaw_task_cancel.py
+    requires_confirmation: true
+
+  # -- Paperclip Control Plane --------------------------------------------
+  - name: paperclip_agent_status
+    description: Query Paperclip for the health and deployment status of any registered agent.
+    path: agents/base/tools/paperclip_agent_status.py
+    requires_confirmation: false
+
+  - name: paperclip_agent_list
+    description: List all agents registered in Paperclip with their current status.
+    path: agents/base/tools/paperclip_agent_list.py
+    requires_confirmation: false
+
+  # -- n8n HITL Workflow Triggers -----------------------------------------
+  - name: n8n_trigger_hitl
+    description: >
+      Trigger an n8n HITL approval workflow webhook. Used to route approval
+      requests to human operators for intake, research scope, referral,
+      publication, social, subagent spawn, and violation escalation gates.
+    path: agents/base/tools/n8n_trigger_hitl.py
+    requires_confirmation: false      # n8n routing is non-destructive; Hermes
+                                      # triggers webhooks but does not resolve them.
+
+  - name: n8n_workflow_status
+    description: Query the status of an active n8n workflow execution by execution_id.
+    path: agents/base/tools/n8n_workflow_status.py
+    requires_confirmation: false
+
+  # -- MemoryPalace MCP ---------------------------------------------------
+  - name: memorypalace_write
+    description: Write a memory entry to MemoryPalace for cross-session persistence.
+    path: agents/base/tools/memorypalace_write.py
+    classification_ceiling: tier2     # Hermes may not write Tier-0 or Tier-1 memory.
+    requires_confirmation: false
+
+  - name: memorypalace_read
+    description: Retrieve memory entries from MemoryPalace by key, scope, or relevance.
+    path: agents/base/tools/memorypalace_read.py
+    classification_ceiling: tier2
+    requires_confirmation: false
+
+  - name: memorypalace_list_scope
+    description: List all memory entries for a given agent + matter scope.
+    path: agents/base/tools/memorypalace_list_scope.py
+    classification_ceiling: tier2
+    requires_confirmation: false
+
+  # -- MCAS Read (operator-context reads only) ----------------------------
+  - name: mcas_read_matter_summary
+    description: >
+      Read a non-sensitive matter summary from MCAS for operator context.
+      Returns matter title, phase, category, jurisdiction, and key dates.
+      Does NOT return Tier-0/1 document content or personal identifiers.
+    path: agents/base/tools/mcas_read_matter_summary.py
+    classification_ceiling: tier2
+    requires_confirmation: false
+
+  - name: mcas_read_task_status
+    description: Read task and workflow item status for a given matter from MCAS.
+    path: agents/base/tools/mcas_read_task_status.py
+    classification_ceiling: tier2
+    requires_confirmation: false
+
+  # -- Open Notebook Write ------------------------------------------------
+  - name: open_notebook_write
+    description: >
+      Write operator-facing summaries, session logs, and task delegation
+      records to Open Notebook for human review.
+    path: agents/base/tools/open_notebook_write.py
+    requires_confirmation: false
+
+  # -- Skill Factory ------------------------------------------------------
+  - name: skill_factory_generate
+    description: >
+      Generate a candidate LangChain BaseTool skill implementation based on
+      operator description. Output is written to skills/hermes_skills/ for
+      human review. DOES NOT activate the skill. Human approval required
+      before any skill is loaded into the active tool registry.
+    path: agents/base/tools/skill_factory_generate.py
+    requires_confirmation: true
+    confirmation_prompt: >
+      Skill Factory: Generate candidate skill "{skill_name}"?
+      Tools it will use: {tool_list}. Scope: {scope_summary}.
+      Output will be written to skills/hermes_skills/{skill_name}.py
+      for your review — it will NOT be activated until you approve.
+
+  - name: skill_factory_list
+    description: List all candidate skills in skills/hermes_skills/ and their review status.
+    path: agents/base/tools/skill_factory_list.py
+    requires_confirmation: false
+
+  # -- Subagent Spawning --------------------------------------------------
+  - name: spawn_transient_subagent
+    description: >
+      Request NemoClaw to provision a transient subagent via OpenShell for a
+      one-shot parallelized task. High-privilege and external-facing spawns
+      require explicit operator confirmation before dispatch.
+    path: agents/base/tools/spawn_transient_subagent.py
+    requires_confirmation: true       # Always confirm before spawning.
+    high_privilege_requires_hitl: true
+    external_facing_requires_hitl: true
+
+  # -- Intent Classification (internal) ----------------------------------
+  - name: classify_operator_intent
+    description: >
+      Internal tool: classify a natural-language operator instruction into
+      a structured intent object (crew, workflow, scope, matter_id, hitl_gates).
+      Used by Hermes before building an OpenClaw task payload.
+    path: agents/base/tools/classify_operator_intent.py
+    requires_confirmation: false
+    internal: true                    # Not exposed to operator; used internally.
+
+# -----------------------------------------------------------------------------
+# Tools Explicitly Denied to Hermes
+# (Enforced by Paperclip policy; listed here for documentation clarity)
+# -----------------------------------------------------------------------------
+denied_tools:
+  - autoresearchclaw              # Research is delegated to Rae/Lex/Iris via OpenClaw
+  - researchclaw_skill            # Research delegation only
+  - openrag_retriever             # No direct RAG access; routed through research agents
+  - lawglance_retriever           # No direct legal RAG access
+  - mcas_write_matter             # Matter creation requires Avery + HITL gate
+  - mcas_write_person             # Person creation requires Avery + HITL gate
+  - mcas_delete_any               # Deletion requires human authorization
+  - mcas_read_tier0               # Tier-0 never enters agent pipeline
+  - mcas_read_tier1               # Tier-1 access requires explicit human gate
+  - searxng_any                   # Hermes does not perform direct search
+  - agenticmail_send              # External comms require dedicated agents + HITL
+  - gitbook_publish               # Publication requires Webmaster + Sol + HITL
+  - social_post_any               # Social posting requires Social Manager + HITL
+  - proton_send                   # Tier-0 comms are human-only
+
+# -----------------------------------------------------------------------------
+# Agent Memory
+# -----------------------------------------------------------------------------
+memory:
+  provider: memorypalace
+  mcp_url_env: MEMORYPALACE_MCP_URL
+  mcp_api_key_env: MEMORYPALACE_API_KEY
+  scope: session+cross-session
+  classification_ceiling: tier2
+  persisted_categories:
+    - operator_preferences          # Preferred communication style, verbosity level
+    - delegation_history            # Prior task dispatches: crew, workflow, outcome
+    - approved_workflow_patterns    # Operator-approved recurring task patterns
+    - skill_factory_registry        # Skills generated, reviewed, approved, or rejected
+    - hitl_gate_outcomes            # Record of human approvals/rejections per gate type
+    - operator_session_context      # Active matter IDs and session context
+  retention:
+    session: discard_on_session_end_unless_promoted
+    cross_session: retain_indefinitely_subject_to_review
+  classification_note: >
+    Hermes memory entries must never contain Tier-0 or Tier-1 material.
+    Case-specific facts, personal identifiers, and unredacted matter details
+    are never written to MemoryPalace. Session context stores matter IDs and
+    task IDs only — not underlying case content.
+
+# -----------------------------------------------------------------------------
+# Sandbox Runtime
+# -----------------------------------------------------------------------------
+sandbox:
+  provider: openshell
+  gateway_url_env: OPENSHELL_GATEWAY_URL
+  api_key_env: OPENSHELL_API_KEY
+  base_image: openclaw            # OpenShell community catalog: openclaw sandbox
+  policy_file: services/openshell/policies/hermes_policy.yaml
+  sandbox_per_task: true          # Each task dispatch gets a fresh sandbox.
+  ttl_seconds: 300                # Sandbox auto-destroys after 5 minutes idle.
+
+# -----------------------------------------------------------------------------
+# Search Access
+# -----------------------------------------------------------------------------
+search:
+  token_tier: none                # Hermes does not perform direct SearXNG searches.
+                                  # All search is delegated to the appropriate
+                                  # research agent via OpenClaw crew dispatch.
+  searxng_direct_access: false
+  rationale: >
+    Hermes is an interface agent, not a research agent. Allowing Hermes to
+    perform direct searches would blur the role boundary between operator
+    interface and research execution, and would bypass the tiered token
+    enforcement model. All search is routed through Rae, Lex, or Iris
+    depending on required tier and research type.
+
+# -----------------------------------------------------------------------------
+# HITL Gate Configuration
+# All HITL gates route through n8n. Hermes triggers webhooks; n8n routes
+# approval requests to the operator. Hermes waits for resolution before
+# continuing dependent workflow stages.
+# -----------------------------------------------------------------------------
+hitl:
+  provider: n8n
+  n8n_base_url_env: N8N_BASE_URL
+  n8n_webhook_secret_env: N8N_WEBHOOK_SECRET
+
+  gates:
+    # Gates Hermes triggers directly
+    - id: task_dispatch_confirmation
+      trigger: before_openclaw_dispatch
+      required_for: [all_external_facing_tasks, pi_tier_research, publication_pipeline]
+      approval_channels: [hermes_cli, telegram]
+      timeout_hours: 24
+      on_timeout: escalate_to_operator
+
+    - id: subagent_spawn_authorization
+      trigger: before_transient_subagent_spawn
+      required_for: [high_privilege_tasks, external_facing_tasks]
+      approval_channels: [hermes_cli, telegram]
+      timeout_hours: 4
+      on_timeout: cancel_spawn
+
+    - id: skill_factory_activation
+      trigger: before_skill_load_into_registry
+      required_for: [all_skill_factory_outputs]
+      approval_channels: [hermes_cli]
+      timeout_hours: 72
+      on_timeout: leave_candidate_pending
+
+    # Gates Hermes surfaces from downstream agents (via n8n webhook relay)
+    - id: intake_approval
+      source_agent: avery
+      webhook_path: /webhook/intake-approval
+      approval_channels: [hermes_cli, telegram]
+      timeout_hours: 48
+      on_timeout: defer_matter
+
+    - id: research_scope_authorization
+      source_agent: [rae, iris]
+      webhook_path: /webhook/research-scope
+      approval_channels: [hermes_cli, telegram]
+      timeout_hours: 24
+      on_timeout: pause_research_task
+
+    - id: referral_approval
+      source_agent: casey
+      webhook_path: /webhook/referral-approval
+      approval_channels: [hermes_cli, open_web_ui]
+      timeout_hours: 72
+      on_timeout: hold_referral_packet
+
+    - id: publication_approval
+      source_agent: [sol, webmaster]
+      webhook_path: /webhook/publication-approval
+      approval_channels: [hermes_cli, open_web_ui]
+      timeout_hours: 48
+      on_timeout: hold_publication
+
+    - id: social_campaign_approval
+      source_agent: social_media_manager
+      webhook_path: /webhook/social-approval
+      approval_channels: [hermes_cli, telegram]
+      timeout_hours: 24
+      on_timeout: hold_social_posts
+
+    - id: violation_escalation
+      source_agent: veritas
+      webhook_path: /webhook/violation-escalation
+      approval_channels: [hermes_cli, discord_hob_channel]
+      timeout_hours: 4
+      on_timeout: lock_affected_agent_pending_review
+      priority: critical
+
+    - id: deadline_escalation
+      source_agent: atlas
+      webhook_path: /webhook/deadline-escalation
+      approval_channels: [hermes_cli, telegram]
+      timeout_hours: 8
+      on_timeout: escalate_to_operator_again
+
+# -----------------------------------------------------------------------------
+# Messaging / Notification Channels
+# -----------------------------------------------------------------------------
+messaging:
+  telegram:
+    bot_token_env: TELEGRAM_BOT_TOKEN
+    operator_chat_id_env: TELEGRAM_OPERATOR_CHAT_ID
+    use_for: [task_status_updates, hitl_approval_requests, violation_alerts]
+
+  discord:
+    webhook_url_env: DISCORD_WEBHOOK_URL
+    use_for: [violation_escalation_hob, team_coordination]
+    hob_channel: human-oversight-board
+
+  imessage:
+    use_for: [urgent_operator_alerts]
+    delivery: via_telegram_bridge   # iMessage delivered via Telegram bridge
+
+# -----------------------------------------------------------------------------
+# Skill Factory
+# -----------------------------------------------------------------------------
+skill_factory:
+  enabled: true
+  output_dir: skills/hermes_skills/
+  activation_requires_human_approval: true   # Hard requirement — never self-activate.
+  activation_requires_git_merge: true        # Skill file must be merged to main.
+  skill_template: agents/base/tools/_skill_template.py
+  langchain_tool_base: BaseTool              # All skills must extend langchain BaseTool.
+  metadata_required:
+    - skill_name
+    - description
+    - tools_used
+    - scope_summary
+    - risk_notes
+    - generated_by_hermes_version
+    - generated_at
+    - review_status                          # pending | approved | rejected
+  registry_file: skills/hermes_skills/registry.yaml
+
+# -----------------------------------------------------------------------------
+# Subagent Spawn Policy
+# -----------------------------------------------------------------------------
+subagent_spawn:
+  enabled: true
+  provisioner: nemoclaw
+  sandbox_base_image: openclaw
+  sandbox_policy: services/openshell/policies/openclaw_base.yaml
+  paperclip_register: false           # Transient subagents are not registered.
+  max_concurrent_subagents: 3
+  ttl_seconds_default: 120
+  ttl_seconds_max: 600
+  high_privilege_definition:
+    - any_task_with_external_network_access
+    - any_task_writing_to_mcas
+    - any_task_involving_pi_tier_search
+  external_facing_definition:
+    - any_task_using_agenticmail
+    - any_task_writing_to_public_web_properties
+    - any_task_posting_to_social_platforms
+  high_privilege_requires_hitl: true
+  external_facing_requires_hitl: true
+
+# -----------------------------------------------------------------------------
+# Hard Limit Enforcement
+# These mirror the SOUL.md hard limits as machine-enforceable flags.
+# Paperclip policy is the runtime enforcer; these are the source declarations.
+# -----------------------------------------------------------------------------
+hard_limits:
+  no_legal_advice: true
+    # Hermes system prompt and output parser enforce a "not legal advice"
+    # disclaimer on all outputs touching legal analysis.
+
+  no_tier0_handling: true
+    # Enforced by: Paperclip deny rules, OpenShell network policy,
+    # MemoryPalace classification ceiling, MCAS OAuth2 scope absence.
+
+  no_autonomous_publication: true
+    # Enforced by: denied_tools (gitbook_publish, social_post_any),
+    # publication HITL gate (required, no bypass), Paperclip deny rules.
+
+  no_autonomous_external_transmission: true
+    # Enforced by: denied_tools (agenticmail_send, proton_send),
+    # referral and outreach HITL gates (required, no bypass).
+
+  no_identity_fabrication: true
+    # Enforced by: SOUL.md, system prompt, LangSmith output evaluation.
+
+  no_scope_override: true
+    # Hermes cannot modify other agents' Paperclip policies, tool bindings,
+    # search token assignments, or classification ceilings.
+    # Enforced by: Paperclip RBAC (Hermes has no write access to other
+    # agent manifests), denied_tools list.
+
+  no_silent_compliance: true
+    # Enforced by: system prompt (explicit instruction to surface conflicts),
+    # LangSmith evaluation (flags outputs that comply without flagging policy
+    # conflicts), Veritas monitoring.
+
+  no_case_data_in_git: true
+    # Enforced by: pre-commit hooks (detect-secrets, keyword scan),
+    # .gitignore (cases/ directory), Paperclip policy (no git_write tool).
+
+# -----------------------------------------------------------------------------
+# Interface Surfaces
+# -----------------------------------------------------------------------------
+interfaces:
+  primary:
+    - type: cli
+      launch_command: "hermes --config agents/hermes/agent.yaml"
+      description: Interactive terminal session for task delegation and status.
+
+    - type: tui
+      launch_command: "hermes --config agents/hermes/agent.yaml --tui"
+      description: >
+        Full terminal UI with agent status dashboard, task queue view,
+        approval inbox, HITL pending items, and output viewer.
+
+  secondary:
+    - type: api
+      description: >
+        Headless Hermes instance receiving structured JSON commands from
+        n8n, Telegram bot relay, or Discord webhook. Used for automated
+        notification delivery and approval relay.
+      port: 7860
+      auth: api_key
+      api_key_env: HERMES_API_KEY
+
+    - type: open_web_ui
+      description: Browser-based workspace for agents interaction and review.
+      url_env: OPEN_WEBUI_URL
+
+# -----------------------------------------------------------------------------
+# Observability and Audit
+# -----------------------------------------------------------------------------
+observability:
+  langsmith:
+    tracing: true
+    project_env: LANGCHAIN_PROJECT
+    api_key_env: LANGCHAIN_API_KEY
+    trace_all_tool_calls: true
+    trace_all_llm_calls: true
+
+  audit_log:
+    destination: openclaw_audit_stream
+    events:
+      - task_dispatched
+      - task_status_queried
+      - task_cancelled
+      - hitl_gate_triggered
+      - hitl_gate_resolved
+      - skill_factory_skill_generated
+      - skill_factory_skill_activated
+      - subagent_spawned
+      - subagent_destroyed
+      - policy_conflict_surfaced
+      - hard_limit_invoked
+      - memory_write
+      - memory_read
+      - session_start
+      - session_end
+
+  veritas_feed: true              # All Hermes audit events are visible to Veritas.
+
+# -----------------------------------------------------------------------------
+# Health Checks
+# -----------------------------------------------------------------------------
+health_checks:
+  startup:
+    - check: soul_md_present
+      path: agents/hermes/SOUL.md
+      abort_on_failure: true
+      message: "SOUL.md missing or unreadable. Hermes will not start without its identity constitution."
+
+    - check: soul_md_version_match
+      expected_version: "1.0.0"
+      abort_on_failure: true
+      message: "SOUL.md version mismatch. Reinitialization required."
+
+    - check: paperclip_reachable
+      url_env: PAPERCLIP_API_URL
+      abort_on_failure: false     # Warn but continue — Paperclip may start after Hermes.
+
+    - check: openclaw_reachable
+      url_env: OPENCLAW_API_URL
+      abort_on_failure: true
+      message: "OpenClaw is unreachable. Hermes cannot dispatch tasks without the orchestration layer."
+
+    - check: n8n_reachable
+      url_env: N8N_BASE_URL
+      abort_on_failure: true
+      message: "n8n is unreachable. HITL gates cannot be routed. Hermes will not start."
+
+    - check: memorypalace_reachable
+      url_env: MEMORYPALACE_MCP_URL
+      abort_on_failure: false     # Warn but continue — Hermes can run without memory
+                                  # in a degraded stateless mode (session only).
+
+    - check: litellm_reachable
+      url_env: LITELLM_BASE_URL
+      abort_on_failure: false     # Fall back to Ollama if LiteLLM is unavailable.
+
+  periodic:
+    interval_seconds: 60
+    checks:
+      - paperclip_agent_health_all
+      - n8n_pending_hitl_queue_depth
+      - openclaw_task_queue_depth
+      - memorypalace_connectivity
+
+# -----------------------------------------------------------------------------
+# Version and Governance
+# -----------------------------------------------------------------------------
+governance:
+  soul_md_review_cycle_days: 90
+  agent_yaml_review_cycle_days: 90
+  change_process: >
+    Changes to this file that affect behavioral constraints, tool access,
+    HITL gate configuration, hard limits, or Skill Factory policy require:
+    1. A corresponding review and update of agents/hermes/SOUL.md.
+    2. Human operator approval before merge to main.
+    3. Hermes reinitialization after merge.
+    Changes to non-behavioral settings (observability, health checks, LLM
+    model selection) may be made without SOUL.md review.
+  supersedes: "N/A (initial version)"
+  effective_date: "2026-04-10"
