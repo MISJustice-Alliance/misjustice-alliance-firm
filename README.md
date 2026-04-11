@@ -12,6 +12,8 @@
 
 ---
 
+MISJustice Alliance Firm is an advanced, AI-native legal research and advocacy engine that combines large-scale, machine-driven analysis with human-in-the-loop safeguards at every critical stage of advice, drafting, and escalation. It is designed as a protective, anonymizing layer between the public and MISJustice Alliance’s network of professional volunteer attorneys and advocates, allowing people to seek help and explore their options without exposing unnecessary identity or case details. All workflows are governed by codified review policies and ethical guardrails so that any output touching real-world disputes, rights, or remedies is validated for accuracy, jurisdictional fit, and adherence to the highest professional and ethical legal standards before it ever reaches a human client or court-facing channel.
+
 ## Table of Contents
 
 1. [Project Overview](#1-project-overview)
