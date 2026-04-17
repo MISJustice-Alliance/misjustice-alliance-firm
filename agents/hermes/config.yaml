@@ -1,0 +1,660 @@
+# =============================================================================
+# agents/hermes/config.yaml
+# Hermes — Human Interface & Control Agent
+# Runtime Environment Configuration
+# MISJustice Alliance Firm
+# =============================================================================
+# This file contains all non-secret runtime configuration for Hermes.
+# Secret values (API keys, tokens, webhook secrets) are NEVER stored here.
+# All secrets are injected at runtime via environment variables.
+# Environment variable names are listed as *_env references throughout.
+#
+# Relationship to other files:
+#   agent.yaml           — authoritative identity, tool bindings, HITL config
+#   tools.yaml           — tool registry with full schemas
+#   SOUL.md              — behavioral constraints
+#   POLICY.md            — operational policy
+#   hermes_policy.paperclip.yaml — Paperclip runtime enforcement policy
+#
+# This file is safe to commit. Run `detect-secrets scan` before every commit
+# to confirm no secrets have been accidentally included.
+# =============================================================================
+
+meta:
+  agent: hermes
+  agent_version: "1.0.0"
+  config_schema_version: "1.0.0"
+  effective_date: "2026-04-16"
+  maintainer: MISJustice Alliance Platform Team
+
+# =============================================================================
+# RUNTIME ENVIRONMENT
+# =============================================================================
+runtime:
+  environment: production          # production | staging
+  log_level: INFO                  # DEBUG | INFO | WARNING | ERROR
+  log_format: json                 # json | text
+  log_output: stdout               # stdout | file
+  log_file_path: logs/hermes.log   # Used only when log_output: file
+  timezone: America/Denver         # Missoula, MT — MDT/MST
+  locale: en_US
+
+# =============================================================================
+# LLM PROVIDER
+# =============================================================================
+llm:
+  provider: litellm
+  litellm_base_url_env: LITELLM_BASE_URL          # http://litellm:4000
+  litellm_api_key_env: LITELLM_MASTER_KEY
+
+  primary:
+    model: gpt-4o
+    provider_tag: openai
+    temperature: 0.2
+    max_tokens: 4096
+    streaming: true
+    request_timeout_seconds: 60
+    retry_attempts: 2
+    retry_backoff_seconds: 3
+
+  fallback_1:
+    model: claude-3-5-sonnet-20241022
+    provider_tag: anthropic
+    temperature: 0.2
+    max_tokens: 4096
+    streaming: true
+    request_timeout_seconds: 60
+    retry_attempts: 2
+    retry_backoff_seconds: 3
+    activate_when:
+      - primary_unreachable
+      - primary_rate_limited
+      - primary_timeout
+
+  fallback_2:
+    model: llama3
+    provider_tag: ollama
+    base_url_env: OLLAMA_BASE_URL                  # http://ollama:11434
+    temperature: 0.2
+    max_tokens: 4096
+    streaming: true
+    request_timeout_seconds: 120
+    retry_attempts: 1
+    activate_when:
+      - all_external_providers_unreachable
+    operator_notice: >
+      Hermes is operating on local inference (Ollama/llama3). Response quality
+      and speed may be reduced. External providers are currently unavailable.
+
+  # Intent classification sub-calls use a faster, cheaper model
+  classification_model:
+    model: gpt-4o-mini
+    provider_tag: openai
+    temperature: 0.0
+    max_tokens: 512
+    streaming: false
+    request_timeout_seconds: 15
+    use_for: [classify_operator_intent]
+
+# =============================================================================
+# FRAMEWORK
+# =============================================================================
+framework:
+  primary: langchain
+  agent_type: tool_calling
+  base_class: MISJusticeBaseAgent
+  base_class_path: agents/base/agent.py
+  system_prompt: agents/hermes/system_prompt.md
+  tool_choice: auto                # auto | required | none
+  max_iterations: 10               # Max ReAct reasoning iterations per operator turn
+  handle_parsing_errors: true
+  verbose: false                   # Set true for DEBUG log level only
+
+  langsmith:
+    tracing: true
+    endpoint: https://api.smith.langchain.com
+    api_key_env: LANGCHAIN_API_KEY
+    project_env: LANGCHAIN_PROJECT  # e.g. misjustice-alliance-firm
+    trace_all_tool_calls: true
+    trace_all_llm_calls: true
+    metadata:
+      agent: hermes
+      version: "1.0.0"
+
+# =============================================================================
+# PAPERCLIP CONTROL PLANE
+# =============================================================================
+paperclip:
+  api_url_env: PAPERCLIP_API_URL                  # https://paperclip.misjusticealliance.internal
+  api_key_env: PAPERCLIP_API_KEY
+  policy_file: agents/hermes/hermes_policy.paperclip.yaml
+  registration_on_startup: true
+  heartbeat_interval_seconds: 30
+  heartbeat_timeout_seconds: 90    # Paperclip marks agent degraded if 3 beats missed
+  allowed_environments:
+    - staging
+    - production
+  max_concurrent_tasks: 5
+  task_timeout_seconds: 300
+  rollback_on_policy_violation: true
+  alert_on_failure: true
+  alert_channel: n8n_webhook
+  alert_webhook_path: /webhook/violation-escalation
+  review_cycle_days: 90
+
+# =============================================================================
+# OPENCLAW TASK QUEUE
+# =============================================================================
+openclaw:
+  api_url_env: OPENCLAW_API_URL                   # http://openclaw:8080
+  api_key_env: OPENCLAW_API_KEY
+  queue_name: hermes_dispatch
+  task_id_prefix: TASK-
+  connect_timeout_seconds: 10
+  request_timeout_seconds: 30
+  retry_attempts: 3
+  retry_backoff_seconds: 5
+  on_unavailable: halt_and_notify_operator         # never attempt alternate dispatch path
+
+  # Crew routing table — maps crew names to queue routing keys
+  crew_routing:
+    IntakeCrew:          intake
+    LegalResearchCrew:   legal_research
+    PIResearchCrew:      pi_research
+    ReferralCrew:        referral
+    PublicationCrew:     publication
+    ComplianceCrew:      compliance
+    SchedulingCrew:      scheduling
+    CommunicationsCrew:  communications
+
+# =============================================================================
+# N8N HITL WORKFLOW ENGINE
+# =============================================================================
+n8n:
+  base_url_env: N8N_BASE_URL                      # http://n8n:5678
+  webhook_secret_env: N8N_WEBHOOK_SECRET
+  connect_timeout_seconds: 10
+  request_timeout_seconds: 20
+  retry_attempts: 2
+  retry_backoff_seconds: 5
+  on_unavailable: queue_internally_and_notify      # fallback: internal HITL queue
+
+  # Internal queue used when n8n is unavailable
+  internal_queue:
+    enabled: true
+    storage: in_memory                             # in_memory | redis
+    redis_url_env: REDIS_URL                       # Used only if storage: redis
+    max_queue_depth: 50
+    flush_on_reconnect: true
+
+  # Webhook paths — must match n8n workflow trigger nodes
+  webhook_paths:
+    task_dispatch_confirmation:    /webhook/task-dispatch-confirmation
+    subagent_spawn_authorization:  /webhook/subagent-spawn-authorization
+    skill_factory_activation:      /webhook/skill-factory-activation
+    intake_approval:               /webhook/intake-approval
+    research_scope_authorization:  /webhook/research-scope
+    referral_approval:             /webhook/referral-approval
+    publication_approval:          /webhook/publication-approval
+    social_campaign_approval:      /webhook/social-approval
+    violation_escalation:          /webhook/violation-escalation
+    deadline_escalation:           /webhook/deadline-escalation
+
+  # Gate timeout configuration (mirrors agent.yaml hitl.gates)
+  gate_timeouts_hours:
+    task_dispatch_confirmation:    24
+    subagent_spawn_authorization:  4
+    skill_factory_activation:      72
+    intake_approval:               48
+    research_scope_authorization:  24
+    referral_approval:             72
+    publication_approval:          48
+    social_campaign_approval:      24
+    violation_escalation:          4
+    deadline_escalation:           8
+
+# =============================================================================
+# MEMORYPALACE MCP
+# =============================================================================
+memorypalace:
+  mcp_url_env: MEMORYPALACE_MCP_URL               # http://memorypalace:7700
+  api_key_env: MEMORYPALACE_API_KEY
+  agent_scope: hermes
+  classification_ceiling: tier2
+  connect_timeout_seconds: 5
+  request_timeout_seconds: 10
+  retry_attempts: 2
+  on_unavailable: stateless_mode_notify_operator
+
+  session:
+    auto_load_on_startup:
+      - operator_preferences
+      - hitl_gate_outcomes           # pending gates only
+      - skill_factory_registry       # active skills only
+    discard_on_end_unless_promoted: true
+    promotion_requires_operator_instruction: true
+
+  cross_session:
+    retention: indefinite_subject_to_review
+    review_cycle_days: 90
+
+  permitted_categories:
+    - operator_preferences
+    - delegation_history
+    - approved_workflow_patterns
+    - skill_factory_registry
+    - hitl_gate_outcomes
+    - operator_session_context
+
+# =============================================================================
+# MCAS (CASE MANAGEMENT)
+# =============================================================================
+mcas:
+  api_url_env: MCAS_API_URL                       # http://mcas:8000
+  oauth2_token_url_env: MCAS_OAUTH2_TOKEN_URL
+  oauth2_client_id_env: MCAS_CLIENT_ID
+  oauth2_client_secret_env: MCAS_CLIENT_SECRET
+  oauth2_scopes:
+    - mcas:matter:read:summary       # Non-sensitive matter metadata only
+    - mcas:task:read                 # Task and workflow item status
+  # Scopes explicitly NOT granted to Hermes:
+  #   mcas:matter:write
+  #   mcas:person:write
+  #   mcas:delete
+  #   mcas:read:tier1
+  #   mcas:read:tier0
+  classification_ceiling: tier2
+  connect_timeout_seconds: 10
+  request_timeout_seconds: 15
+  retry_attempts: 2
+
+# =============================================================================
+# OPEN NOTEBOOK
+# =============================================================================
+open_notebook:
+  api_url_env: OPEN_NOTEBOOK_API_URL              # http://open-notebook:8080
+  api_key_env: OPEN_NOTEBOOK_API_KEY
+  agent_namespace: hermes
+  default_format: markdown
+  connect_timeout_seconds: 5
+  request_timeout_seconds: 10
+  retry_attempts: 2
+
+# =============================================================================
+# OPENSHELL SANDBOX
+# =============================================================================
+openshell:
+  gateway_url_env: OPENSHELL_GATEWAY_URL          # http://openshell:9000
+  api_key_env: OPENSHELL_API_KEY
+  base_image: openclaw
+  policy_file: services/openshell/policies/hermes_policy.yaml
+  sandbox_per_task: true
+  default_ttl_seconds: 300
+  max_ttl_seconds: 300
+  connect_timeout_seconds: 10
+
+# =============================================================================
+# NEMOCLAW (SUBAGENT PROVISIONER)
+# =============================================================================
+nemoclaw:
+  api_url_env: NEMOCLAW_API_URL                   # http://nemoclaw:8090
+  api_key_env: NEMOCLAW_API_KEY
+  sandbox_base_image: openclaw
+  sandbox_policy: services/openshell/policies/openclaw_base.yaml
+  paperclip_register_subagents: false
+  max_concurrent_subagents: 3
+  default_ttl_seconds: 120
+  max_ttl_seconds: 600
+  connect_timeout_seconds: 10
+  request_timeout_seconds: 15
+
+# =============================================================================
+# MESSAGING AND NOTIFICATIONS
+# =============================================================================
+messaging:
+  telegram:
+    bot_token_env: TELEGRAM_BOT_TOKEN
+    operator_chat_id_env: TELEGRAM_OPERATOR_CHAT_ID
+    parse_mode: MarkdownV2
+    use_for:
+      - task_status_updates
+      - hitl_approval_requests
+      - violation_alerts
+      - degraded_mode_notifications
+    connect_timeout_seconds: 10
+    request_timeout_seconds: 15
+
+  discord:
+    webhook_url_env: DISCORD_WEBHOOK_URL
+    use_for:
+      - violation_escalation_hob
+      - team_coordination
+    hob_channel: human-oversight-board
+    connect_timeout_seconds: 10
+    request_timeout_seconds: 15
+
+  imessage:
+    use_for:
+      - urgent_operator_alerts
+    delivery: via_telegram_bridge
+    note: iMessage delivered via Telegram bridge; no direct iMessage API integration
+
+# =============================================================================
+# INTERFACE SURFACES
+# =============================================================================
+interfaces:
+  cli:
+    enabled: true
+    launch_command: "hermes --config agents/hermes/config.yaml"
+    history_file: .hermes_history
+    history_max_lines: 1000
+    prompt_prefix: "hermes> "
+    streaming: true
+    color_output: true
+
+  tui:
+    enabled: true
+    launch_command: "hermes --config agents/hermes/config.yaml --tui"
+    framework: textual
+    panels:
+      - agent_status_dashboard
+      - task_queue_view
+      - hitl_approval_inbox
+      - open_notebook_viewer
+      - output_viewer
+    refresh_interval_seconds: 5
+    streaming: true
+
+  api:
+    enabled: true
+    host: 0.0.0.0
+    port: 7860
+    auth_method: api_key
+    api_key_env: HERMES_API_KEY
+    allowed_origins:
+      - http://n8n:5678
+      - http://open-webui:3000
+    rate_limit_requests_per_minute: 60
+    request_timeout_seconds: 300
+    use_for:
+      - n8n_webhook_relay
+      - telegram_bot_relay
+      - discord_webhook_relay
+      - open_web_ui_headless_commands
+
+  open_web_ui:
+    enabled: true
+    url_env: OPEN_WEBUI_URL                       # http://open-webui:3000
+    use_for:
+      - browser_based_operator_workspace
+      - referral_approval_review
+      - publication_approval_review
+    auth: inherited_from_open_web_ui
+
+# =============================================================================
+# SKILL FACTORY
+# =============================================================================
+skill_factory:
+  enabled: true
+  output_dir: skills/hermes_skills/
+  registry_file: skills/hermes_skills/registry.yaml
+  skill_template: agents/base/tools/_skill_template.py
+  langchain_tool_base: BaseTool
+  activation_requires_hitl_gate: true
+  activation_requires_git_merge: true
+  verbal_approval_insufficient: true
+  review_status_values:
+    - pending
+    - approved
+    - rejected
+    - active
+  required_metadata_fields:
+    - skill_name
+    - description
+    - tools_used
+    - scope_summary
+    - risk_notes
+    - generated_by_hermes_version
+    - generated_at
+    - review_status
+
+# =============================================================================
+# OBSERVABILITY
+# =============================================================================
+observability:
+  prometheus:
+    enabled: true
+    metrics_path: /metrics
+    port: 7860                     # Served on same port as API under /metrics path
+    namespace: hermes
+    default_labels:
+      agent: hermes
+      environment: "${ENVIRONMENT:-production}"
+
+  grafana:
+    dashboards_dir: dashboards/hermes/
+    provisioning_dir: services/grafana/provisioning/dashboards/hermes/
+
+  loki:
+    enabled: true
+    push_url_env: LOKI_PUSH_URL                   # http://loki:3100/loki/api/v1/push
+    labels:
+      agent: hermes
+      environment: "${ENVIRONMENT:-production}"
+    structured_metadata_fields:
+      - session_id
+      - matter_id
+      - task_id
+      - event_type
+    batch_size: 100
+    flush_interval_seconds: 5
+
+  audit_log:
+    destination: openclaw_audit_stream
+    format: json
+    events:
+      - task_dispatched
+      - task_status_queried
+      - task_cancelled
+      - hitl_gate_triggered
+      - hitl_gate_resolved
+      - hitl_gate_timeout
+      - hitl_gate_bypass_attempted
+      - skill_factory_skill_generated
+      - skill_factory_skill_activation_attempted
+      - skill_factory_activation_bypass_attempted
+      - subagent_spawned
+      - subagent_destroyed
+      - subagent_timed_out
+      - policy_conflict_surfaced
+      - hard_limit_invoked
+      - denied_tool_attempt
+      - memory_write
+      - memory_write_rejected
+      - legal_advice_declined
+      - tier0_access_refused
+      - session_started
+      - session_ended
+      - llm_fallback_activated
+      - dependency_unavailable
+
+# =============================================================================
+# HEALTH CHECK
+# =============================================================================
+health:
+  endpoint: /health
+  port: 7860
+  liveness_check:
+    enabled: true
+    interval_seconds: 15
+    timeout_seconds: 5
+    failure_threshold: 3
+  readiness_check:
+    enabled: true
+    interval_seconds: 15
+    timeout_seconds: 10
+    dependencies_required:
+      - paperclip           # Must be reachable to enforce policy
+      - openclaw            # Must be reachable to dispatch tasks
+      - litellm             # At least one LLM provider must be reachable
+    dependencies_optional:
+      - memorypalace        # Stateless fallback if unavailable
+      - n8n                 # Internal queue fallback if unavailable
+      - openshell
+      - nemoclaw
+      - mcas
+      - open_notebook
+
+# =============================================================================
+# SECURITY
+# =============================================================================
+security:
+  tls:
+    enabled: true
+    cert_env: HERMES_TLS_CERT_PATH
+    key_env: HERMES_TLS_KEY_PATH
+    min_version: TLSv1.3
+
+  # Pre-commit hooks enforced in CI
+  pre_commit:
+    detect_secrets: true
+    keyword_scan_patterns:
+      - "complainant"
+      - "MCAS-"
+      - "privileged"
+      - "attorney-client"
+      - "tier0"
+      - "tier1"
+    fail_on_match: true
+    note: >
+      These patterns prevent accidental case data, PII, or privileged content
+      from being committed. Matches in documentation context require manual
+      override with a justification comment.
+
+  prompt_injection:
+    monitoring: true
+    flag_on_patterns:
+      - "ignore previous instructions"
+      - "disregard your system prompt"
+      - "you are now"
+      - "pretend you are"
+      - "your new instructions"
+      - "DAN"
+    on_flag: log_and_surface_to_operator
+    metric: hermes_safety_hard_limit_invoked_total
+    metric_label: "trigger_source=prompt_injection_suspected"
+
+# =============================================================================
+# FEATURE FLAGS
+# =============================================================================
+features:
+  skill_factory: true
+  subagent_spawning: true
+  tui_interface: true
+  api_interface: true
+  telegram_notifications: true
+  discord_notifications: true
+  prometheus_metrics: true
+  loki_logging: true
+  langsmith_tracing: true
+  prompt_injection_monitoring: true
+  internal_hitl_queue_fallback: true
+  llm_fallback_chain: true
+
+# =============================================================================
+# TUNING
+# =============================================================================
+tuning:
+  # Intent classification confidence threshold below which clarification
+  # is requested from the operator regardless of parsed intent
+  classification_confidence_threshold: 0.75
+
+  # Number of recent delegation history entries loaded into session context
+  delegation_history_context_window: 10
+
+  # Maximum lines in a single Open Notebook entry before splitting
+  open_notebook_max_entry_lines: 500
+
+  # Polling interval when Hermes is watching an OpenClaw task for completion
+  task_status_poll_interval_seconds: 10
+
+  # Polling interval when Hermes is watching an n8n gate for resolution
+  hitl_poll_interval_seconds: 30
+
+  # Maximum retries when surfacing a HITL gate to the operator before
+  # escalating to the violation_escalation pathway
+  hitl_max_surface_attempts: 3
+
+  # Minimum word count for a scope_summary field in an Intent Confirmation block.
+  # Summaries below this threshold trigger a clarification request.
+  scope_summary_min_words: 5
+
+# =============================================================================
+# ENVIRONMENT VARIABLE REFERENCE
+# =============================================================================
+# The following environment variables must be set before Hermes starts.
+# Marked (required) if startup will fail without them.
+# Marked (optional) if a graceful degraded mode is available.
+#
+# Core LLM
+#   LITELLM_BASE_URL          (required) LiteLLM proxy base URL
+#   LITELLM_MASTER_KEY        (required) LiteLLM master API key
+#   OLLAMA_BASE_URL           (optional) Ollama local inference URL for fallback_2
+#
+# Framework
+#   LANGCHAIN_API_KEY         (required) LangSmith tracing API key
+#   LANGCHAIN_PROJECT         (required) LangSmith project name
+#
+# Control Plane
+#   PAPERCLIP_API_URL         (required) Paperclip control plane URL
+#   PAPERCLIP_API_KEY         (required) Paperclip API key
+#
+# Orchestration
+#   OPENCLAW_API_URL          (required) OpenClaw task queue URL
+#   OPENCLAW_API_KEY          (required) OpenClaw API key
+#   NEMOCLAW_API_URL          (optional) NemoClaw subagent provisioner URL
+#   NEMOCLAW_API_KEY          (optional) NemoClaw API key
+#
+# HITL
+#   N8N_BASE_URL              (required) n8n workflow engine base URL
+#   N8N_WEBHOOK_SECRET        (required) n8n webhook HMAC secret
+#
+# Memory
+#   MEMORYPALACE_MCP_URL      (optional) MemoryPalace MCP server URL
+#   MEMORYPALACE_API_KEY      (optional) MemoryPalace API key
+#
+# Case Management
+#   MCAS_API_URL              (optional) MCAS REST API URL
+#   MCAS_OAUTH2_TOKEN_URL     (optional) MCAS OAuth2 token endpoint
+#   MCAS_CLIENT_ID            (optional) MCAS OAuth2 client ID
+#   MCAS_CLIENT_SECRET        (optional) MCAS OAuth2 client secret
+#
+# Open Notebook
+#   OPEN_NOTEBOOK_API_URL     (optional) Open Notebook API URL
+#   OPEN_NOTEBOOK_API_KEY     (optional) Open Notebook API key
+#
+# Sandbox
+#   OPENSHELL_GATEWAY_URL     (optional) OpenShell sandbox gateway URL
+#   OPENSHELL_API_KEY         (optional) OpenShell API key
+#
+# Interfaces
+#   HERMES_API_KEY            (required) Hermes headless API authentication key
+#   OPEN_WEBUI_URL            (optional) Open Web UI base URL
+#
+# Messaging
+#   TELEGRAM_BOT_TOKEN        (optional) Telegram bot token
+#   TELEGRAM_OPERATOR_CHAT_ID (optional) Operator Telegram chat ID
+#   DISCORD_WEBHOOK_URL       (optional) Discord HOB channel webhook URL
+#
+# Observability
+#   LOKI_PUSH_URL             (optional) Loki log push endpoint
+#
+# TLS
+#   HERMES_TLS_CERT_PATH      (optional) Path to TLS certificate
+#   HERMES_TLS_KEY_PATH       (optional) Path to TLS private key
+#
+# Platform
+#   ENVIRONMENT               (optional) Overrides runtime.environment if set
+#                                        Values: staging | production
+#                                        Default: production
+# =============================================================================
