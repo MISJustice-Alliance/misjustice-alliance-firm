@@ -76,9 +76,23 @@ Full engine group definitions and token issuance/rotation policy: [`policies/SEA
 
 ```
 agents/avery/
+├── README.md
+├── SPEC.md
 ├── SOUL.md
 ├── agent.yaml
-└── system_prompt.md
+├── MEMORY.md
+├── tools.yaml
+├── models.yaml
+├── config.yaml
+├── POLICY.md
+├── GUARDRAILS.yaml
+├── EVALS.yaml
+├── RUNBOOK.md
+├── METRICS.md               
+├── system_prompt.md         
+├── memory/                  
+├── evals/                   
+└── logs/
 ```
 
 | Field | Value |
@@ -119,9 +133,23 @@ agents/avery/
 
 ```
 agents/mira/
+├── README.md
+├── SPEC.md
 ├── SOUL.md
 ├── agent.yaml
-└── system_prompt.md
+├── MEMORY.md
+├── tools.yaml
+├── models.yaml
+├── config.yaml
+├── POLICY.md
+├── GUARDRAILS.yaml
+├── EVALS.yaml
+├── RUNBOOK.md
+├── METRICS.md               
+├── system_prompt.md         
+├── memory/                  
+├── evals/                   
+└── logs/
 ```
 
 | Field | Value |
@@ -161,9 +189,23 @@ agents/mira/
 
 ```
 agents/rae/
+├── README.md
+├── SPEC.md
 ├── SOUL.md
 ├── agent.yaml
-└── system_prompt.md
+├── MEMORY.md
+├── tools.yaml
+├── models.yaml
+├── config.yaml
+├── POLICY.md
+├── GUARDRAILS.yaml
+├── EVALS.yaml
+├── RUNBOOK.md
+├── METRICS.md               
+├── system_prompt.md         
+├── memory/                  
+├── evals/                   
+└── logs/
 ```
 
 | Field | Value |
@@ -211,9 +253,23 @@ agents/rae/
 
 ```
 agents/lex/
+├── README.md
+├── SPEC.md
 ├── SOUL.md
 ├── agent.yaml
-└── system_prompt.md
+├── MEMORY.md
+├── tools.yaml
+├── models.yaml
+├── config.yaml
+├── POLICY.md
+├── GUARDRAILS.yaml
+├── EVALS.yaml
+├── RUNBOOK.md
+├── METRICS.md               
+├── system_prompt.md         
+├── memory/                  
+├── evals/                   
+└── logs/
 ```
 
 | Field | Value |
@@ -260,9 +316,23 @@ agents/lex/
 
 ```
 agents/iris/
+├── README.md
+├── SPEC.md
 ├── SOUL.md
 ├── agent.yaml
-└── system_prompt.md
+├── MEMORY.md
+├── tools.yaml
+├── models.yaml
+├── config.yaml
+├── POLICY.md
+├── GUARDRAILS.yaml
+├── EVALS.yaml
+├── RUNBOOK.md
+├── METRICS.md               
+├── system_prompt.md         
+├── memory/                  
+├── evals/                   
+└── logs/
 ```
 
 | Field | Value |
@@ -308,9 +378,23 @@ agents/iris/
 
 ```
 agents/chronology/
+├── README.md
+├── SPEC.md
 ├── SOUL.md
 ├── agent.yaml
-└── system_prompt.md
+├── MEMORY.md
+├── tools.yaml
+├── models.yaml
+├── config.yaml
+├── POLICY.md
+├── GUARDRAILS.yaml
+├── EVALS.yaml
+├── RUNBOOK.md
+├── METRICS.md               
+├── system_prompt.md         
+├── memory/                  
+├── evals/                   
+└── logs/
 ```
 
 | Field | Value |
@@ -351,9 +435,23 @@ agents/chronology/
 
 ```
 agents/citation_authority/
+├── README.md
+├── SPEC.md
 ├── SOUL.md
 ├── agent.yaml
-└── system_prompt.md
+├── MEMORY.md
+├── tools.yaml
+├── models.yaml
+├── config.yaml
+├── POLICY.md
+├── GUARDRAILS.yaml
+├── EVALS.yaml
+├── RUNBOOK.md
+├── METRICS.md               
+├── system_prompt.md         
+├── memory/                  
+├── evals/                   
+└── logs/
 ```
 
 | Field | Value |
@@ -397,9 +495,23 @@ agents/citation_authority/
 
 ```
 agents/casey/
+├── README.md
+├── SPEC.md
 ├── SOUL.md
 ├── agent.yaml
-└── system_prompt.md
+├── MEMORY.md
+├── tools.yaml
+├── models.yaml
+├── config.yaml
+├── POLICY.md
+├── GUARDRAILS.yaml
+├── EVALS.yaml
+├── RUNBOOK.md
+├── METRICS.md               
+├── system_prompt.md         
+├── memory/                  
+├── evals/                   
+└── logs/
 ```
 
 | Field | Value |
@@ -443,9 +555,23 @@ agents/casey/
 
 ```
 agents/atlas/
+├── README.md
+├── SPEC.md
 ├── SOUL.md
 ├── agent.yaml
-└── system_prompt.md
+├── MEMORY.md
+├── tools.yaml
+├── models.yaml
+├── config.yaml
+├── POLICY.md
+├── GUARDRAILS.yaml
+├── EVALS.yaml
+├── RUNBOOK.md
+├── METRICS.md               
+├── system_prompt.md         
+├── memory/                  
+├── evals/                   
+└── logs/
 ```
 
 | Field | Value |
@@ -486,9 +612,23 @@ agents/atlas/
 
 ```
 agents/veritas/
+├── README.md
+├── SPEC.md
 ├── SOUL.md
 ├── agent.yaml
-└── system_prompt.md
+├── MEMORY.md
+├── tools.yaml
+├── models.yaml
+├── config.yaml
+├── POLICY.md
+├── GUARDRAILS.yaml
+├── EVALS.yaml
+├── RUNBOOK.md
+├── METRICS.md               
+├── system_prompt.md         
+├── memory/                  
+├── evals/                   
+└── logs/
 ```
 
 | Field | Value |
@@ -531,9 +671,23 @@ agents/veritas/
 
 ```
 agents/ollie/
+├── README.md
+├── SPEC.md
 ├── SOUL.md
 ├── agent.yaml
-└── system_prompt.md
+├── MEMORY.md
+├── tools.yaml
+├── models.yaml
+├── config.yaml
+├── POLICY.md
+├── GUARDRAILS.yaml
+├── EVALS.yaml
+├── RUNBOOK.md
+├── METRICS.md               
+├── system_prompt.md         
+├── memory/                  
+├── evals/                   
+└── logs/
 ```
 
 | Field | Value |
@@ -572,9 +726,23 @@ agents/ollie/
 
 ```
 agents/webmaster/
+├── README.md
+├── SPEC.md
 ├── SOUL.md
 ├── agent.yaml
-└── system_prompt.md
+├── MEMORY.md
+├── tools.yaml
+├── models.yaml
+├── config.yaml
+├── POLICY.md
+├── GUARDRAILS.yaml
+├── EVALS.yaml
+├── RUNBOOK.md
+├── METRICS.md               
+├── system_prompt.md         
+├── memory/                  
+├── evals/                   
+└── logs/
 ```
 
 | Field | Value |
@@ -619,9 +787,23 @@ agents/webmaster/
 
 ```
 agents/social_media_manager/
+├── README.md
+├── SPEC.md
 ├── SOUL.md
 ├── agent.yaml
-└── system_prompt.md
+├── MEMORY.md
+├── tools.yaml
+├── models.yaml
+├── config.yaml
+├── POLICY.md
+├── GUARDRAILS.yaml
+├── EVALS.yaml
+├── RUNBOOK.md
+├── METRICS.md               
+├── system_prompt.md         
+├── memory/                  
+├── evals/                   
+└── logs/
 ```
 
 | Field | Value |
@@ -664,9 +846,23 @@ agents/social_media_manager/
 
 ```
 agents/sol/
+├── README.md
+├── SPEC.md
 ├── SOUL.md
 ├── agent.yaml
-└── system_prompt.md
+├── MEMORY.md
+├── tools.yaml
+├── models.yaml
+├── config.yaml
+├── POLICY.md
+├── GUARDRAILS.yaml
+├── EVALS.yaml
+├── RUNBOOK.md
+├── METRICS.md               
+├── system_prompt.md         
+├── memory/                  
+├── evals/                   
+└── logs/
 ```
 
 | Field | Value |
@@ -719,9 +915,23 @@ agents/sol/
 
 ```
 agents/quill/
+├── README.md
+├── SPEC.md
 ├── SOUL.md
 ├── agent.yaml
-└── system_prompt.md
+├── MEMORY.md
+├── tools.yaml
+├── models.yaml
+├── config.yaml
+├── POLICY.md
+├── GUARDRAILS.yaml
+├── EVALS.yaml
+├── RUNBOOK.md
+├── METRICS.md               
+├── system_prompt.md         
+├── memory/                  
+├── evals/                   
+└── logs/
 ```
 
 | Field | Value |
