@@ -1,0 +1,562 @@
+# =============================================================================
+# agents/hermes/models.yaml
+# Hermes — Human Interface & Control Agent
+# LLM Model Registry and Inference Configuration
+# MISJustice Alliance Firm
+# =============================================================================
+# This file defines every LLM model available to Hermes, including primary,
+# fallback, and classification sub-call configurations. It is the single source
+# of truth for:
+#   - Model identifiers as sent to LiteLLM
+#   - Per-model inference parameters
+#   - Fallback chain order and activation conditions
+#   - Per-role model assignments (response, classification, evaluation)
+#   - Token budgets and context window constraints
+#   - Cost center tags for billing attribution
+#   - Provider failover and degraded-mode behavior
+#
+# All API credentials are injected via environment variables. No secrets here.
+# All model identifiers must match the aliases registered in LiteLLM config.
+#
+# Relationship to other files:
+#   agent.yaml   — references primary_model, fallback_model, local_fallback
+#   config.yaml  — references provider, fallback chain, classification_model
+#   METRICS.md   — hermes_llm_* metrics are derived from this file's models
+# =============================================================================
+
+meta:
+  agent: hermes
+  agent_version: "1.0.0"
+  schema_version: "1.0.0"
+  effective_date: "2026-04-16"
+  maintainer: MISJustice Alliance Platform Team
+
+# =============================================================================
+# LITELLM PROXY
+# All model calls route through the LiteLLM proxy. LiteLLM handles
+# provider-level authentication, routing, retry, and cost tracking.
+# Hermes never calls provider APIs directly.
+# =============================================================================
+litellm_proxy:
+  base_url_env: LITELLM_BASE_URL          # http://litellm:4000
+  master_key_env: LITELLM_MASTER_KEY
+  # LiteLLM config file (managed by platform team, not this agent):
+  config_path: services/litellm/config.yaml
+  # Budget tag used for LiteLLM's internal cost tracking:
+  virtual_key_tag: hermes
+
+# =============================================================================
+# MODEL REGISTRY
+# =============================================================================
+models:
+
+  # ---------------------------------------------------------------------------
+  # PRIMARY: gpt-4o
+  # Role: Main response generation, tool calling, ReAct reasoning
+  # ---------------------------------------------------------------------------
+  - id: primary
+    litellm_model: gpt-4o
+    litellm_alias: openai/gpt-4o       # Alias registered in services/litellm/config.yaml
+    provider: openai
+    api_key_env: OPENAI_API_KEY         # Injected into LiteLLM proxy, not Hermes directly
+    context_window_tokens: 128000
+    max_output_tokens: 4096
+    native_tools: true                  # Supports OpenAI function/tool calling format
+    native_streaming: true
+    native_structured_output: true      # Supports JSON mode and structured output schemas
+    multimodal: true                    # Accepts image attachments if needed
+
+    inference_params:
+      temperature: 0.2                  # Low temperature — precision over creativity
+      max_tokens: 4096
+      top_p: 1.0
+      frequency_penalty: 0.0
+      presence_penalty: 0.0
+      seed: null                        # Non-deterministic; reproducibility not required
+
+    request:
+      timeout_seconds: 60
+      streaming: true
+      retry_attempts: 2
+      retry_backoff_seconds: 3
+      retry_on:
+        - rate_limit_error
+        - service_unavailable
+        - gateway_timeout
+
+    token_budget:
+      # Soft limits — Hermes will warn if approaching these thresholds
+      prompt_tokens_warn_at: 100000
+      prompt_tokens_hard_limit: 120000  # Leave 8k headroom for output
+      daily_prompt_tokens_warn_at: 400000
+      daily_completion_tokens_warn_at: 100000
+
+    cost_per_1k_tokens:
+      prompt: 0.005                     # USD — reference only; LiteLLM tracks actuals
+      completion: 0.015
+
+    use_for:
+      - operator_response_generation
+      - intent_confirmation_block_generation
+      - tool_call_reasoning
+      - hitl_gate_summary_generation
+      - policy_conflict_explanation
+      - open_notebook_entry_drafting
+      - legal_disclaimer_attachment
+      - skill_factory_code_generation
+      - subagent_task_brief_generation
+
+    health_check:
+      endpoint: /health/liveliness      # LiteLLM proxy health endpoint
+      interval_seconds: 30
+      timeout_seconds: 5
+
+    cost_center: hermes-llm-primary
+    notes: >
+      Primary model for all Hermes response and reasoning tasks.
+      Chosen for state-of-the-art instruction following, native tool calling,
+      and reliable structured output. Low temperature enforces consistent,
+      precise behavior appropriate for an interface agent operating in a
+      legal services context.
+
+  # ---------------------------------------------------------------------------
+  # FALLBACK 1: claude-3-5-sonnet-20241022
+  # Role: Drop-in replacement when OpenAI is unreachable or rate-limited
+  # ---------------------------------------------------------------------------
+  - id: fallback_1
+    litellm_model: claude-3-5-sonnet-20241022
+    litellm_alias: anthropic/claude-3-5-sonnet-20241022
+    provider: anthropic
+    api_key_env: ANTHROPIC_API_KEY      # Injected into LiteLLM proxy
+    context_window_tokens: 200000
+    max_output_tokens: 8096
+    native_tools: true                  # Supports Anthropic tool use format
+    native_streaming: true
+    native_structured_output: true
+    multimodal: true
+
+    inference_params:
+      temperature: 0.2
+      max_tokens: 4096
+      top_p: 1.0
+
+    request:
+      timeout_seconds: 60
+      streaming: true
+      retry_attempts: 2
+      retry_backoff_seconds: 3
+      retry_on:
+        - rate_limit_error
+        - overloaded_error
+        - service_unavailable
+
+    token_budget:
+      prompt_tokens_warn_at: 150000
+      prompt_tokens_hard_limit: 190000
+      daily_prompt_tokens_warn_at: 400000
+      daily_completion_tokens_warn_at: 100000
+
+    cost_per_1k_tokens:
+      prompt: 0.003
+      completion: 0.015
+
+    activate_when:
+      - primary_unreachable
+      - primary_rate_limited
+      - primary_timeout_exceeded
+
+    operator_notice:
+      enabled: true
+      message: >
+        Hermes is operating on Claude 3.5 Sonnet (Anthropic) — the primary
+        model (GPT-4o) is currently unavailable. Full functionality is maintained.
+
+    use_for:
+      - operator_response_generation
+      - intent_confirmation_block_generation
+      - tool_call_reasoning
+      - hitl_gate_summary_generation
+      - policy_conflict_explanation
+      - open_notebook_entry_drafting
+      - legal_disclaimer_attachment
+      - skill_factory_code_generation
+      - subagent_task_brief_generation
+
+    cost_center: hermes-llm-fallback-1
+    notes: >
+      First fallback. Claude 3.5 Sonnet offers comparable instruction-following
+      and tool-calling quality to GPT-4o, with a larger context window.
+      LiteLLM proxy handles format translation between OpenAI tool-call schema
+      and Anthropic tool-use schema transparently.
+
+  # ---------------------------------------------------------------------------
+  # FALLBACK 2: llama3 (Ollama local inference)
+  # Role: Air-gapped / fully local fallback when all external APIs are down
+  # ---------------------------------------------------------------------------
+  - id: fallback_2
+    litellm_model: ollama/llama3
+    litellm_alias: ollama/llama3
+    provider: ollama
+    base_url_env: OLLAMA_BASE_URL       # http://ollama:11434
+    api_key_env: null                   # No API key required for local Ollama
+    context_window_tokens: 8192
+    max_output_tokens: 4096
+    native_tools: false                 # llama3 does not support native tool calling
+    native_streaming: true
+    native_structured_output: false
+    multimodal: false
+
+    inference_params:
+      temperature: 0.2
+      max_tokens: 4096
+      top_p: 0.9
+      num_ctx: 8192                     # Ollama context window override
+
+    request:
+      timeout_seconds: 120              # Local inference is slower
+      streaming: true
+      retry_attempts: 1
+      retry_backoff_seconds: 5
+
+    tool_calling_adaptation:
+      # llama3 does not natively support tool calling.
+      # LiteLLM injects a text-based tool manifest into the system prompt
+      # and parses tool invocations from structured response output.
+      method: litellm_function_call_shim
+      reliability: degraded             # Tool call parsing is less reliable
+      max_tool_calls_per_turn: 3        # Limit to reduce parsing failures
+
+    activate_when:
+      - all_external_providers_unreachable
+
+    operator_notice:
+      enabled: true
+      severity: warning
+      message: >
+        Hermes is operating on local inference (Ollama/llama3). All external
+        LLM providers are currently unavailable. Response quality and speed
+        are reduced. Tool calling reliability is degraded — please verify all
+        task dispatch confirmations carefully. External providers will be
+        retried every 5 minutes.
+
+    capability_limitations:
+      - tool_calling_unreliable
+      - no_structured_json_output
+      - reduced_instruction_following
+      - no_multimodal_support
+      - context_window_8k_only
+
+    cost_per_1k_tokens:
+      prompt: 0.0                       # Local compute only
+      completion: 0.0
+
+    cost_center: hermes-llm-fallback-2-local
+    notes: >
+      Air-gapped local fallback. Hermes remains operational for basic
+      operator interaction and task status queries. Complex reasoning,
+      skill generation, and structured task dispatch should be deferred
+      until external providers are restored. LiteLLM handles Ollama
+      adapter internally.
+
+  # ---------------------------------------------------------------------------
+  # CLASSIFICATION: gpt-4o-mini
+  # Role: Fast, cheap intent classification on every operator instruction
+  # Used by: classify_operator_intent (internal tool)
+  # ---------------------------------------------------------------------------
+  - id: classification
+    litellm_model: gpt-4o-mini
+    litellm_alias: openai/gpt-4o-mini
+    provider: openai
+    api_key_env: OPENAI_API_KEY
+    context_window_tokens: 128000
+    max_output_tokens: 512
+    native_tools: false                 # Classification uses structured prompt, not tools
+    native_streaming: false             # Classification is synchronous
+    native_structured_output: true      # JSON mode used for deterministic output
+
+    inference_params:
+      temperature: 0.0                  # Fully deterministic classification
+      max_tokens: 512
+      top_p: 1.0
+      response_format:
+        type: json_object               # Force JSON output for output parser
+
+    request:
+      timeout_seconds: 15
+      streaming: false
+      retry_attempts: 2
+      retry_backoff_seconds: 2
+      retry_on:
+        - rate_limit_error
+        - service_unavailable
+
+    token_budget:
+      prompt_tokens_warn_at: 8000
+      prompt_tokens_hard_limit: 15000
+      daily_prompt_tokens_warn_at: 200000
+
+    cost_per_1k_tokens:
+      prompt: 0.00015
+      completion: 0.0006
+
+    use_for:
+      - classify_operator_intent
+
+    fallback_on_unavailable:
+      model_id: primary                 # Fall back to gpt-4o for classification if mini is down
+      inference_params_override:
+        max_tokens: 512
+        response_format:
+          type: json_object
+
+    cost_center: hermes-llm-classification
+    notes: >
+      Dedicated fast path for intent classification. Every operator message
+      triggers a classification sub-call before the main reasoning loop.
+      GPT-4o-mini is 10x cheaper than GPT-4o and sufficiently capable for
+      structured classification against a fixed taxonomy. Temperature 0
+      ensures deterministic intent labels.
+
+  # ---------------------------------------------------------------------------
+  # EVALUATION: gpt-4o (shared with primary)
+  # Role: LangSmith evaluation and output quality scoring
+  # Used by: LangSmith evaluator jobs (not invoked by Hermes directly)
+  # ---------------------------------------------------------------------------
+  - id: evaluation
+    litellm_model: gpt-4o
+    litellm_alias: openai/gpt-4o
+    provider: openai
+    api_key_env: OPENAI_API_KEY
+    context_window_tokens: 128000
+    max_output_tokens: 1024
+    native_tools: false
+    native_streaming: false
+
+    inference_params:
+      temperature: 0.0                  # Deterministic scoring
+      max_tokens: 1024
+      response_format:
+        type: json_object
+
+    request:
+      timeout_seconds: 30
+      streaming: false
+      retry_attempts: 2
+      retry_backoff_seconds: 5
+
+    use_for:
+      - langsmith_trace_evaluation
+      - disclaimer_presence_check
+      - policy_conflict_surface_check
+      - hard_limit_enforcement_check
+
+    cost_center: hermes-llm-evaluation
+    invoked_by: langsmith_evaluation_jobs   # Not invoked directly by Hermes
+    notes: >
+      Used exclusively by LangSmith evaluator jobs to score Hermes output traces
+      for policy compliance, disclaimer attachment, and hard limit enforcement.
+      Results populate hermes_safety_hard_limit_violation_total (via Veritas)
+      and inform the 90-day SOUL.md review cycle.
+
+# =============================================================================
+# FALLBACK CHAIN
+# Defines the ordered model selection strategy Hermes applies when a model
+# is unavailable, rate-limited, or exceeds timeout.
+# =============================================================================
+fallback_chain:
+  strategy: ordered_with_conditions
+  # Each entry is evaluated in order. The first model whose conditions are
+  # satisfied is selected.
+  chain:
+    - model_id: primary
+      condition: always_try_first
+      healthy: true
+
+    - model_id: fallback_1
+      condition:
+        primary_status:
+          - unreachable
+          - rate_limited
+          - timeout
+      healthy: true
+
+    - model_id: fallback_2
+      condition:
+        all_external_providers_status:
+          - unreachable
+      healthy: true
+      degraded_mode: true
+
+  recovery:
+    retry_primary_after_seconds: 300    # Re-probe primary every 5 min when on fallback
+    auto_restore_to_primary: true       # Silently restore when primary recovers
+    restore_notify_operator: true
+    restore_message: >
+      Primary LLM (GPT-4o) is available again. Hermes has restored to primary
+      inference.
+
+  # Classification model has its own fallback (see classification.fallback_on_unavailable)
+  # Evaluation model is managed by LangSmith; no Hermes-side fallback needed.
+
+# =============================================================================
+# PER-ROLE MODEL ASSIGNMENTS
+# Maps Hermes internal task roles to model IDs defined above.
+# =============================================================================
+role_assignments:
+  default: primary
+  roles:
+    - role: operator_response_generation
+      model_id: primary
+      fallback_chain: true              # Use global fallback chain if primary down
+
+    - role: intent_confirmation_block_generation
+      model_id: primary
+      fallback_chain: true
+      notes: >
+        Confirmation blocks MUST be generated by a capable instruction-following
+        model. If fallback_2 (llama3) is the only available model, Hermes will
+        generate a simplified confirmation block and explicitly note degraded
+        confirmation quality to the operator.
+
+    - role: classify_operator_intent
+      model_id: classification
+      fallback_chain: false             # Classification model has its own fallback
+
+    - role: skill_factory_code_generation
+      model_id: primary
+      fallback_chain: true
+      min_capability_required: native_structured_output
+      on_min_capability_unavailable: >
+        Defer skill generation until a model with structured output support is
+        available. Notify operator.
+
+    - role: hitl_gate_summary_generation
+      model_id: primary
+      fallback_chain: true
+
+    - role: policy_conflict_explanation
+      model_id: primary
+      fallback_chain: true
+
+    - role: open_notebook_entry_drafting
+      model_id: primary
+      fallback_chain: true
+
+    - role: legal_disclaimer_attachment
+      model_id: primary
+      fallback_chain: true
+      notes: >
+        The disclaimer template is pre-defined and appended by the output
+        parser — LLM is only responsible for the research summary it precedes.
+        Legal disclaimer attachment is enforced structurally, not by model.
+
+    - role: subagent_task_brief_generation
+      model_id: primary
+      fallback_chain: true
+
+    - role: langsmith_trace_evaluation
+      model_id: evaluation
+      fallback_chain: false             # Managed by LangSmith evaluator
+      invoked_by: langsmith_evaluation_jobs
+
+# =============================================================================
+# TOKEN BUDGET POLICY
+# =============================================================================
+token_budget_policy:
+  enforcement: warn_and_log             # warn_and_log | hard_truncate | abort
+  # Hermes uses soft enforcement: budget overruns are logged and alerted,
+  # but calls are not aborted mid-stream. Hard truncation would produce
+  # incomplete HITL gates or partial confirmation blocks, which is worse
+  # than a slightly over-budget call.
+
+  prompt_compression:
+    enabled: true
+    trigger_at_percent: 80              # Compress when prompt > 80% of hard limit
+    strategy:
+      - truncate_delegation_history     # Drop oldest delegation history entries first
+      - truncate_session_context        # Trim oldest session context
+      - preserve_system_prompt          # Never truncate system prompt
+      - preserve_current_operator_turn  # Never truncate the current instruction
+
+  daily_budget_usd:
+    warn_at: 5.00
+    alert_at: 10.00
+    hard_stop_at: null                  # No hard stop — operator alert only
+    alert_channels:
+      - telegram
+      - loki_log
+
+# =============================================================================
+# LITELLM ROUTER HINTS
+# Optional hints passed to LiteLLM's routing layer to influence load balancing
+# and provider selection. These are advisory; LiteLLM may override based on
+# its own health checks and rate limit state.
+# =============================================================================
+litellm_router_hints:
+  # Prefer lower-latency deployments for Hermes's interactive use case
+  prefer_low_latency: true
+
+  # Tag all Hermes calls with virtual key for cost attribution
+  virtual_key_env: LITELLM_HERMES_VIRTUAL_KEY
+
+  # RPM/TPM limits Hermes sets on its own LiteLLM virtual key
+  rate_limits:
+    rpm: 60                             # 60 requests per minute max
+    tpm: 100000                         # 100k tokens per minute max
+    daily_usd_limit: 15.00
+
+  # Circuit breaker: if a provider fails 3 times in 60s, mark unavailable
+  circuit_breaker:
+    failure_threshold: 3
+    window_seconds: 60
+    cooldown_seconds: 120
+
+# =============================================================================
+# OBSERVABILITY
+# =============================================================================
+observability:
+  langsmith:
+    tag_model_id: true                  # Tag each trace with model_id from this file
+    tag_fallback_state: true            # Tag traces where fallback was active
+    tag_role: true                      # Tag traces with role_assignment.role
+
+  prometheus:
+    # Metric labels derived from this file
+    model_label_source: litellm_model   # Use litellm_model as the `model` label
+    provider_label_source: provider     # Use provider as the `provider` label
+    # Relevant metrics (defined in METRICS.md):
+    #   hermes_llm_requests_total{model, provider, request_type}
+    #   hermes_llm_latency_seconds{model, provider, latency_type}
+    #   hermes_llm_tokens_total{model, token_type}
+    #   hermes_llm_fallback_total{from_model, to_model, reason}
+    #   hermes_llm_error_total{model, error_type}
+    #   hermes_llm_streaming_active{interface}
+    #   hermes_llm_context_length_tokens{model}
+    #   hermes_degraded_llm_fallback_active{active_model}
+
+# =============================================================================
+# CHANGE POLICY
+# =============================================================================
+change_policy:
+  behavioral_change_triggers_soul_review:
+    # Changes to the following fields require a SOUL.md review cycle before
+    # merge to main:
+    - inference_params.temperature      # Temperature change affects output consistency
+    - fallback_chain                    # Fallback order is a behavioral safety property
+    - role_assignments                  # Role-to-model mapping affects task quality
+    - token_budget_policy.enforcement   # Changing to hard_truncate is behavioral
+
+  non_behavioral_changes:
+    # These changes may be made without SOUL.md review:
+    - cost_per_1k_tokens                # Reference only
+    - token_budget.daily_warn_at        # Operational threshold
+    - litellm_router_hints.rate_limits  # Operational limit
+    - model health_check intervals
+
+  version_history:
+    - version: "1.0.0"
+      date: "2026-04-16"
+      author: MISJustice Alliance Platform Team
+      changes: Initial version. Primary GPT-4o, fallback Claude 3.5 Sonnet,
+               local fallback llama3 via Ollama. Classification on GPT-4o-mini.
+               Evaluation on GPT-4o via LangSmith.
