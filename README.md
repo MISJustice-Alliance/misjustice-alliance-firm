@@ -463,27 +463,57 @@ misjustice-alliance-firm/
 ├── agents/                          # Agent role definitions
 │   ├── README.md
 │   ├── hermes/                      # Hermes human interface & control agent
-│   │   ├── SOUL.md                  # Hermes identity constitution
+│   │   ├── README.md                # Short, practical overview and entrypoint.
+│   │   ├── SPEC.md                  # Canonical “what and why” document.
+│   │   ├── SOUL.md                  # Define the agent’s core identity, values, and personality, independent of any single project or codebase.
 │   │   ├── agent.yaml               # Role config, Skill Factory config, subagent spawning policy
-│   │   └── system_prompt.md
-│   ├── atlas/                       # Case lifecycle coordinator
-│   ├── veritas/                     # Internal integrity monitor
-│   ├── avery/
+│   │   ├── MEMORY.md                # High‑signal, curated long‑term memory.
+│   │   ├── tools.yaml               # Central registry of tools/APIs the agent can call.
+│   │   ├── models.yaml              # Define which models are used, where, and how.
+│   │   ├── config.yaml              # Non‑secret configuration for the agent service.
+│   │   ├── POLICY.md                # Human‑readable behavioral and data‑handling policies.
+│   │   ├── GUARDRAILS.yaml          # Machine‑readable safety and content rules.
+│   │   ├── EVALS.yaml               # Define evaluation suites for the agent.
+│   │   ├── RUNBOOK.md               # Operational guide for running and debugging the agent.
+│   │   ├── METRICS.md               # Define what “good” looks like in measurable terms.
+│   │   ├── system_prompt.md         # define the agent’s role, scope, and core behavior within this repo or deployment.
+│   │   ├── memory/                  # Topic‑specific memories and knowledge.
+│   │   ├── evals/                   # Store detailed evaluation scenarios and artifacts.
+│   │   ├── logs/                    # Session/run logs, incident reports, reasoning traces.
+│   │   ├── k8s/                     # Kubernetes manifests for deploying the agent service
+│   │   └── infra/                   # Terraform/Pulumi/other IaC definitions
+│   ├── avery/                       # Intake & Evidence
+│   │   ├── README.md
+│   │   ├── SPEC.md
 │   │   ├── SOUL.md
 │   │   ├── agent.yaml
-│   │   └── system_prompt.md
-│   ├── rae/
-│   ├── lex/
-│   ├── iris/
-│   ├── mira/
-│   ├── casey/
-│   ├── ollie/
-│   ├── chronology/
-│   ├── citation_authority/
-│   ├── webmaster/
-│   ├── social_media_manager/
-│   ├── sol/
-│   └── quill/
+│   │   ├── MEMORY.md
+│   │   ├── tools.yaml
+│   │   ├── models.yaml
+│   │   ├── config.yaml
+│   │   ├── POLICY.md
+│   │   ├── GUARDRAILS.yaml
+│   │   ├── EVALS.yaml
+│   │   ├── RUNBOOK.md
+│   │   ├── METRICS.md               
+│   │   ├── system_prompt.md         
+│   │   ├── memory/                  
+│   │   ├── evals/                   
+│   │   └── logs/
+│   ├── atlas/                       # Case lifecycle coordinator
+│   ├── veritas/                     # Internal integrity monitor
+│   ├── rae/                         # Paralegal Researcher        
+│   ├── lex/                         # Senior Analyst
+│   ├── iris/                        # PI / Public Records Researcher
+│   ├── mira/                        # Telephony & Messaging
+│   ├── casey/                       # Counsel Scout
+│   ├── ollie/                       # Outreach Coodinator
+│   ├── chronology/                  # Event-to-timeline assembly, evidentiary gap flagging.
+│   ├── citation_authority/          # Citation verification and primary authority cross-reference
+│   ├── webmaster/                   # Manages all public web properties
+│   ├── social_media_manager/        # Manages public presence across social media platforms
+│   ├── sol/                         # Public Content QA
+│   └── quill/                       # GitBook Curator
 │
 ├── prompts/                         # Shared prompt templates and policy fragments
 │   ├── base_system_policy.md        # Universal MISJustice ethics + scope guardrails
