@@ -1,0 +1,1380 @@
+# =============================================================================
+# services/legal-research-mcp/tools.yaml
+# MCP Tool Definitions — Legal Research MCP Server
+# MISJustice Alliance Firm
+# =============================================================================
+#
+# This file defines all MCP tools exposed by the legal-research-mcp server.
+# These tools are loaded by the MCP server at startup and made available to
+# all authorised agent clients (Rae, Lex, Citation/Authority Agent) via the
+# MCP protocol.
+#
+# Each tool maps to a task endpoint on the Legal Source Gateway
+# (services/legal-source-gateway/) at LEGAL_GATEWAY_BASE_URL/v1/query.
+# Agents never call upstream legal APIs directly — all legal data access
+# flows through this MCP server → Legal Source Gateway → source connectors.
+#
+# Access control:
+#   Tools are grouped by minimum search tier required. The MCP server
+#   enforces tier checks against the calling agent's registered role
+#   (via Paperclip agent manifest) before forwarding any request.
+#
+#   Tier map:
+#     T1-internal  : Rae, Citation/Authority Agent, Chronology Agent
+#     T2-restricted: Lex, Casey
+#     T3-pi        : Iris (OSINT / public-records tasks only)
+#
+# Source policy:
+#   ingest_and_index  — full retrieval, indexing, and embedding permitted
+#   link_only         — returned as outbound reference URL only; no text extracted
+#   manual_reference  — no automated access; human researchers only
+#
+# Provenance:
+#   Every tool response includes a `provenance` block containing
+#   upstream_url, license, and retrieved_at. This is automatically
+#   included in agent citations and written to the Veritas audit log.
+#
+# Last updated: 2026-04-17
+# Maintainer: MISJustice Alliance Platform Team
+# =============================================================================
+
+mcp_server:
+  name: legal-research-mcp
+  version: "0.1.0"
+  description: >
+    MCP server exposing normalised legal research tools to authorised platform
+    agents. All tools proxy through the Legal Source Gateway. No tool in this
+    server holds upstream API credentials — credentials are managed exclusively
+    by the gateway.
+  base_url: "${LEGAL_GATEWAY_BASE_URL}/v1/query"
+  auth:
+    type: bearer
+    token_env: LEGAL_GATEWAY_API_KEY
+  timeout_seconds: 60
+  max_retries: 3
+  retry_backoff_seconds: 2
+  audit_log: true          # emit every tool call to Veritas audit stream
+  paperclip_policy: true   # enforce tier checks via Paperclip before forwarding
+
+# =============================================================================
+# TOOL GROUPS
+# =============================================================================
+
+tools:
+
+  # ---------------------------------------------------------------------------
+  # GROUP 1: Case Law
+  # Min tier: T1-internal
+  # Sources: CourtListener (live), Caselaw Access Project (historical)
+  # Policy: ingest_and_index
+  # ---------------------------------------------------------------------------
+
+  - name: cases_search
+    group: case_law
+    min_tier: T1-internal
+    description: >
+      Full-text and semantic search across US case law. Searches live opinions
+      via CourtListener (updated daily) and historical corpus via the Caselaw
+      Access Project (1658–2020, 6.7M cases). Supports hybrid mode combining
+      keyword and semantic (Inception / ModernBERT) retrieval.
+      Use for: finding precedent, pattern-of-practice research, identifying
+      controlling authority for a legal issue, 9th Circuit and Montana/Washington
+      State case law retrieval.
+      Do NOT include matter IDs, complainant names, or case-specific PII in queries.
+    gateway_task: cases.search
+    parameters:
+      query:
+        type: string
+        required: true
+        description: >
+          Natural-language legal research question or keyword string.
+          Example: "qualified immunity excessive force 9th circuit 2020-2024"
+      filters:
+        type: object
+        required: false
+        description: Optional structured filters applied server-side.
+        properties:
+          jurisdiction:
+            type: array
+            items: { type: string }
+            description: >
+              Jurisdiction codes. Examples: "federal", "montana", "washington",
+              "ca9" (9th Circuit), "scotus", "mont" (Montana Supreme Court).
+            example: ["federal", "montana"]
+          court:
+            type: array
+            items: { type: string }
+            description: >
+              CourtListener court slug(s). Examples: "ca9", "scotus", "montd",
+              "wawd", "mont", "wash".
+            example: ["ca9", "mont"]
+          date_from:
+            type: string
+            format: date
+            description: "Earliest decision date (YYYY-MM-DD)."
+            example: "2015-01-01"
+          date_to:
+            type: string
+            format: date
+            description: "Latest decision date (YYYY-MM-DD)."
+            example: "2026-04-17"
+          source:
+            type: array
+            items:
+              type: string
+              enum: [courtlistener, cap]
+            description: >
+              Restrict to specific source(s). Omit to search both.
+            example: ["courtlistener"]
+          status:
+            type: string
+            enum: [published, unpublished, all]
+            default: all
+            description: "Opinion publication status filter."
+      mode:
+        type: string
+        enum: [semantic, keyword, hybrid]
+        default: hybrid
+        description: >
+          Retrieval mode.
+          semantic  — vector search via Inception embeddings (best for concept queries).
+          keyword   — Elasticsearch full-text BM25 (best for citation strings, names).
+          hybrid    — combines both with RRF fusion (recommended default).
+      return_fields:
+        type: array
+        items: { type: string }
+        default: [summary, citations, source_links, provenance]
+        description: >
+          Fields to include in each result document. Available:
+          summary, full_text, citations, related_entities, source_links,
+          graph_edges, provenance, judges, court, cluster_id, docket_id.
+      page:
+        type: integer
+        default: 1
+        description: "Result page number (1-indexed)."
+      per_page:
+        type: integer
+        default: 10
+        maximum: 50
+        description: "Number of results per page (max 50)."
+    returns:
+      type: array
+      description: "List of canonical opinion documents matching the query."
+      items:
+        $ref: "#/schemas/CanonicalOpinion"
+    errors:
+      - code: TIER_DENIED
+        description: "Calling agent does not meet minimum tier T1-internal."
+      - code: GATEWAY_TIMEOUT
+        description: "Legal Source Gateway did not respond within timeout."
+      - code: SOURCE_UNAVAILABLE
+        description: "Upstream source (CourtListener or CAP) is temporarily unavailable."
+
+  - name: cases_get
+    group: case_law
+    min_tier: T1-internal
+    description: >
+      Fetch the full opinion text, metadata, and citation list for a single
+      case by its canonical document ID. Use after cases_search to retrieve
+      the complete text of a specific opinion identified in search results.
+    gateway_task: cases.get
+    parameters:
+      document_id:
+        type: string
+        required: true
+        description: >
+          Canonical document ID in the form "cl:opinion:{id}" (CourtListener)
+          or "cap:case:{id}" (Caselaw Access Project).
+          Example: "cl:opinion:3849021"
+      return_fields:
+        type: array
+        items: { type: string }
+        default: [full_text, citations, related_entities, provenance]
+        description: "Fields to return. full_text retrieves the complete opinion body."
+    returns:
+      $ref: "#/schemas/CanonicalOpinion"
+
+  - name: cases_citation_lookup
+    group: case_law
+    min_tier: T1-internal
+    description: >
+      Resolve a legal citation string (e.g. "42 F.3d 1234" or
+      "Graham v. Connor, 490 U.S. 386") to a canonical CourtListener opinion
+      document. Use to verify citations found in research memos, pleadings,
+      or secondary sources before including them in any output.
+      Always run this tool on every case citation before finalising a
+      research memo or referral packet.
+    gateway_task: cases.citation_lookup
+    parameters:
+      citation:
+        type: string
+        required: true
+        description: >
+          Raw citation string to resolve.
+          Examples: "490 U.S. 386", "Graham v. Connor", "42 F.3d 1234 (9th Cir. 1994)"
+      strict:
+        type: boolean
+        default: false
+        description: >
+          If true, return only exact citation matches.
+          If false (default), return the closest match with confidence score.
+    returns:
+      type: object
+      properties:
+        resolved:
+          type: boolean
+          description: "True if a match was found."
+        confidence:
+          type: number
+          format: float
+          description: "Match confidence (0.0–1.0). Values below 0.7 should be human-verified."
+        document:
+          $ref: "#/schemas/CanonicalOpinion"
+        alternatives:
+          type: array
+          description: "Other possible matches if confidence is below 0.9."
+          items:
+            $ref: "#/schemas/CanonicalOpinion"
+
+  # ---------------------------------------------------------------------------
+  # GROUP 2: Dockets (RECAP / CourtListener)
+  # Min tier: T1-internal
+  # Sources: CourtListener RECAP Archive
+  # Policy: ingest_and_index
+  # ---------------------------------------------------------------------------
+
+  - name: dockets_search
+    group: dockets
+    min_tier: T1-internal
+    description: >
+      Search RECAP federal court docket data via CourtListener. Returns
+      docket metadata, party lists, assigned judges, and filing counts.
+      Use for: locating active or closed federal cases involving identified
+      actors, agencies, or legal issues; establishing whether a matter has
+      existing federal litigation.
+      Do NOT include complainant PII in search queries.
+    gateway_task: dockets.search
+    parameters:
+      query:
+        type: string
+        required: true
+        description: >
+          Docket search query. Examples: "excessive force Missoula County",
+          "42 USC 1983 Missoula Police Department".
+      filters:
+        type: object
+        required: false
+        properties:
+          court:
+            type: array
+            items: { type: string }
+            description: "CourtListener court slug(s). Example: ['mtd'] (D. Mont.)."
+            example: ["mtd"]
+          date_filed_from:
+            type: string
+            format: date
+            description: "Earliest filing date (YYYY-MM-DD)."
+          date_filed_to:
+            type: string
+            format: date
+            description: "Latest filing date (YYYY-MM-DD)."
+          nature_of_suit:
+            type: string
+            description: >
+              PACER nature-of-suit code or description.
+              Example: "440" (Civil Rights) or "civil rights".
+      per_page:
+        type: integer
+        default: 10
+        maximum: 50
+    returns:
+      type: array
+      items:
+        $ref: "#/schemas/CanonicalDocket"
+
+  - name: dockets_watch
+    group: dockets
+    min_tier: T1-internal
+    description: >
+      Register a CourtListener docket alert for a specific case. The gateway
+      will forward new filing notifications to the platform's n8n webhook
+      endpoint (DOCKET_ALERT_WEBHOOK_URL), which routes to Atlas for
+      lifecycle tracking and to Hermes for operator notification.
+      Use for: monitoring active federal litigation relevant to a tracked matter.
+    gateway_task: dockets.watch
+    parameters:
+      docket_id:
+        type: string
+        required: true
+        description: >
+          Canonical docket ID in the form "cl:docket:{id}".
+          Example: "cl:docket:67291847"
+      matter_id:
+        type: string
+        required: true
+        description: "MCAS matter ID to associate with this alert. Example: MCAS-MATTER-042"
+      alert_label:
+        type: string
+        required: false
+        description: "Human-readable label for this alert. Included in n8n notification."
+    returns:
+      type: object
+      properties:
+        alert_id:
+          type: string
+          description: "CourtListener alert ID for this watch registration."
+        status:
+          type: string
+          enum: [registered, already_exists, failed]
+        webhook_url:
+          type: string
+          description: "n8n webhook URL that will receive alert notifications."
+
+  # ---------------------------------------------------------------------------
+  # GROUP 3: Federal Statutes
+  # Min tier: T1-internal
+  # Sources: GovInfo (USLM XML), Elasticsearch full-text index
+  # Policy: ingest_and_index
+  # ---------------------------------------------------------------------------
+
+  - name: statutes_lookup
+    group: statutes
+    min_tier: T1-internal
+    description: >
+      Retrieve the current text of a specific United States Code section by
+      citation. Returns the authoritative USLM XML-sourced text from GovInfo
+      (GPO), normalized to the canonical document schema.
+      Use for: retrieving the exact statutory text of 42 U.S.C. § 1983,
+      18 U.S.C. § 242, Montana Code Annotated sections, RCW sections,
+      or any other federal or state statute needed for element analysis.
+      Note: For Montana Code Annotated and RCW, use lawglance_retriever
+      (LawGlance) for corpus-indexed retrieval. This tool covers USC only.
+    gateway_task: statutes.lookup
+    parameters:
+      citation:
+        type: string
+        required: true
+        description: >
+          US Code citation string.
+          Examples: "42 U.S.C. § 1983", "42 USC 1983", "18 U.S.C. 242",
+          "Title 42, Section 1983".
+      edition:
+        type: string
+        enum: [current, latest_annual]
+        default: current
+        description: >
+          current        — eCFR / GovInfo current edition (default).
+          latest_annual  — Most recent annual GPO codification.
+    returns:
+      $ref: "#/schemas/CanonicalStatute"
+
+  - name: statutes_search
+    group: statutes
+    min_tier: T1-internal
+    description: >
+      Full-text search across all US Code titles. Use for: finding statutory
+      provisions relevant to a legal issue when the exact citation is unknown;
+      locating definitions, remedies, or enforcement provisions across multiple
+      USC titles; identifying statutes related to civil rights, excessive force,
+      false arrest, malicious prosecution, or other relevant issues.
+    gateway_task: statutes.search
+    parameters:
+      query:
+        type: string
+        required: true
+        description: >
+          Natural-language or keyword search query.
+          Example: "civil action deprivation rights color of law"
+      filters:
+        type: object
+        required: false
+        properties:
+          title:
+            type: array
+            items: { type: integer }
+            description: "USC title number(s) to restrict search. Example: [42, 18]."
+          chapter:
+            type: string
+            description: "USC chapter identifier."
+      per_page:
+        type: integer
+        default: 10
+        maximum: 50
+    returns:
+      type: array
+      items:
+        $ref: "#/schemas/CanonicalStatute"
+
+  # ---------------------------------------------------------------------------
+  # GROUP 4: Federal Regulations (CFR / eCFR / Federal Register)
+  # Min tier: T1-internal
+  # Sources: eCFR (current), GovInfo CFR XML (annual), Federal Register API
+  # Policy: ingest_and_index
+  # ---------------------------------------------------------------------------
+
+  - name: regulations_current
+    group: regulations
+    min_tier: T1-internal
+    description: >
+      Retrieve the current text of a Code of Federal Regulations section
+      from the live eCFR (updated continuously). Use for: retrieving current
+      DOJ, FBI, law enforcement, or other agency regulations relevant to a
+      civil rights matter; verifying whether a regulation has been amended
+      since the annual CFR edition.
+    gateway_task: regulations.current
+    parameters:
+      citation:
+        type: string
+        required: true
+        description: >
+          CFR citation string.
+          Examples: "28 C.F.R. § 35.190", "28 CFR 35.190",
+          "Title 28, Part 35, Section 190".
+    returns:
+      $ref: "#/schemas/CanonicalRegulation"
+
+  - name: regulations_lookup
+    group: regulations
+    min_tier: T1-internal
+    description: >
+      Retrieve a specific CFR section from the most recent annual GPO
+      codification via GovInfo. Use when a historically fixed annual edition
+      text is required (e.g. for a matter where the relevant regulation was
+      in effect during a specific year).
+    gateway_task: regulations.lookup
+    parameters:
+      citation:
+        type: string
+        required: true
+        description: "CFR citation string. Example: '28 C.F.R. § 35.190'."
+      year:
+        type: integer
+        required: false
+        description: >
+          CFR edition year (e.g. 2023). Omit for most recent annual edition.
+    returns:
+      $ref: "#/schemas/CanonicalRegulation"
+
+  - name: regulations_changes
+    group: regulations
+    min_tier: T1-internal
+    description: >
+      Retrieve Federal Register rulemaking documents (proposed rules, final
+      rules, notices, executive orders) for a specific agency or CFR citation
+      within a date range. Use for: tracking regulatory changes that may affect
+      civil rights enforcement; identifying agency rulemaking relevant to a
+      matter; researching an agency's regulatory history.
+    gateway_task: regulations.changes
+    parameters:
+      query:
+        type: string
+        required: false
+        description: >
+          Optional keyword query to filter documents.
+          Example: "use of force policy law enforcement"
+      filters:
+        type: object
+        required: false
+        properties:
+          agency:
+            type: array
+            items: { type: string }
+            description: >
+              Federal agency slug(s) from the Federal Register API.
+              Examples: ["department-of-justice", "department-of-homeland-security"].
+          cfr_citation:
+            type: string
+            description: >
+              CFR citation to find rulemaking for.
+              Example: "28 CFR 35". Returns all FR documents affecting this citation.
+          document_type:
+            type: array
+            items:
+              type: string
+              enum: [proposed_rule, rule, notice, presidential_document]
+            description: "Filter by Federal Register document type."
+          date_from:
+            type: string
+            format: date
+            description: "Earliest publication date (YYYY-MM-DD)."
+          date_to:
+            type: string
+            format: date
+            description: "Latest publication date (YYYY-MM-DD)."
+      per_page:
+        type: integer
+        default: 10
+        maximum: 50
+    returns:
+      type: array
+      items:
+        $ref: "#/schemas/CanonicalFederalRegisterDocument"
+
+  - name: regulations_monitor
+    group: regulations
+    min_tier: T1-internal
+    description: >
+      Register a change-watch on a CFR section via the Federal Register API.
+      When new rulemaking is published affecting the monitored citation, the
+      gateway forwards a notification to the platform's n8n webhook endpoint
+      (REGULATION_MONITOR_WEBHOOK_URL), which routes to Atlas and Hermes.
+      Use for: monitoring regulatory changes relevant to active matters or
+      ongoing advocacy campaigns.
+    gateway_task: regulations.monitor
+    parameters:
+      cfr_citation:
+        type: string
+        required: true
+        description: >
+          CFR citation to monitor. Example: "28 CFR 35" or "28 C.F.R. § 35.190".
+      matter_id:
+        type: string
+        required: false
+        description: "MCAS matter ID to associate with this monitor. Example: MCAS-MATTER-042."
+      alert_label:
+        type: string
+        required: false
+        description: "Human-readable label for this monitor. Included in n8n notification."
+      document_types:
+        type: array
+        items:
+          type: string
+          enum: [proposed_rule, rule, notice, presidential_document, all]
+        default: [all]
+        description: "Types of Federal Register documents to trigger alerts."
+    returns:
+      type: object
+      properties:
+        monitor_id:
+          type: string
+          description: "Internal monitor registration ID."
+        status:
+          type: string
+          enum: [registered, already_exists, failed]
+        webhook_url:
+          type: string
+
+  # ---------------------------------------------------------------------------
+  # GROUP 5: State Legislation
+  # Min tier: T1-internal
+  # Sources: Open States (real-time), LegiScan (bulk + push)
+  # Policy: ingest_and_index (CC BY 4.0 for LegiScan)
+  # ---------------------------------------------------------------------------
+
+  - name: bills_search
+    group: legislation
+    min_tier: T1-internal
+    description: >
+      Search state and federal legislative bills by topic, keyword, state,
+      or session. Combines Open States (real-time) and LegiScan (bulk) indexes.
+      Use for: researching pending or enacted state legislation relevant to
+      civil rights, police accountability, shelter policy, or other advocacy
+      topics; identifying bills that may affect a tracked matter; monitoring
+      legislative activity in Montana and Washington State.
+    gateway_task: bills.search
+    parameters:
+      query:
+        type: string
+        required: true
+        description: >
+          Natural-language or keyword query.
+          Example: "police accountability use of force reporting Montana"
+      filters:
+        type: object
+        required: false
+        properties:
+          jurisdiction:
+            type: array
+            items: { type: string }
+            description: >
+              State postal codes or "us" for federal.
+              Examples: ["mt", "wa", "us"].
+            example: ["mt", "wa"]
+          session:
+            type: string
+            description: >
+              Legislative session identifier.
+              Example: "2025" or "2025 Regular Session".
+          status:
+            type: string
+            enum: [introduced, passed_one, passed_both, signed, vetoed, failed, all]
+            default: all
+            description: "Filter by bill status."
+          subjects:
+            type: array
+            items: { type: string }
+            description: >
+              Subject area filter tags from Open States taxonomy.
+              Example: ["Criminal Justice", "Law Enforcement"].
+          sponsor:
+            type: string
+            description: "Filter by legislator name or ID."
+          source:
+            type: array
+            items:
+              type: string
+              enum: [open_states, legiscan]
+            description: "Restrict to a specific source. Omit to search both."
+      per_page:
+        type: integer
+        default: 10
+        maximum: 50
+    returns:
+      type: array
+      items:
+        $ref: "#/schemas/CanonicalBill"
+
+  - name: bills_track
+    group: legislation
+    min_tier: T1-internal
+    description: >
+      Register a legislative alert on a specific bill or a topic-based keyword
+      watch. Notifications are forwarded to the platform's n8n webhook endpoint
+      (LEGISLATIVE_ALERT_WEBHOOK_URL), which routes to Atlas and the Social
+      Media Manager for campaign coordination.
+    gateway_task: bills.track
+    parameters:
+      type:
+        type: string
+        required: true
+        enum: [bill, topic]
+        description: >
+          bill  — watch a specific bill by ID.
+          topic — watch all bills matching a keyword query and jurisdiction.
+      bill_id:
+        type: string
+        required: false
+        description: >
+          Required when type=bill. Canonical bill ID.
+          Example: "ocd-bill/mt/2025/HB0001" (Open States) or "1234567" (LegiScan).
+      query:
+        type: string
+        required: false
+        description: "Required when type=topic. Keyword watch query."
+      jurisdiction:
+        type: array
+        items: { type: string }
+        required: false
+        description: "Required when type=topic. Jurisdiction filter. Example: ['mt', 'wa']."
+      matter_id:
+        type: string
+        required: false
+        description: "MCAS matter ID to associate with this alert."
+      alert_label:
+        type: string
+        required: false
+        description: "Human-readable label. Included in n8n notification."
+    returns:
+      type: object
+      properties:
+        alert_id:
+          type: string
+        status:
+          type: string
+          enum: [registered, already_exists, failed]
+        webhook_url:
+          type: string
+
+  - name: legislators_lookup
+    group: legislation
+    min_tier: T1-internal
+    description: >
+      Look up a current or former state legislator by name, district,
+      jurisdiction, or location (address or coordinates) via Open States.
+      Use for: identifying the legislators representing a complainant's
+      address; researching a legislator's bill sponsorship history; linking
+      a legislator to advocacy contacts or outreach campaigns.
+    gateway_task: legislators.lookup
+    parameters:
+      name:
+        type: string
+        required: false
+        description: "Legislator full or partial name. Example: 'Jane Smith'."
+      jurisdiction:
+        type: array
+        items: { type: string }
+        required: false
+        description: "State postal code(s). Example: ['mt']."
+      district:
+        type: string
+        required: false
+        description: "District identifier. Example: 'HD-001'."
+      location:
+        type: object
+        required: false
+        description: >
+          Geographic coordinates or address for 'legislators at this location'
+          lookup. Provide either lat/lng or address string.
+        properties:
+          lat:
+            type: number
+            description: "Latitude (WGS84)."
+          lng:
+            type: number
+            description: "Longitude (WGS84)."
+          address:
+            type: string
+            description: "Street address (geocoded server-side)."
+      current_only:
+        type: boolean
+        default: true
+        description: "If true, return only currently serving legislators."
+    returns:
+      type: array
+      items:
+        $ref: "#/schemas/CanonicalLegislator"
+
+  # ---------------------------------------------------------------------------
+  # GROUP 6: Citations
+  # Min tier: T1-internal (T1-publicsafe for resolve)
+  # Sources: CourtListener Reporters DB
+  # ---------------------------------------------------------------------------
+
+  - name: citations_resolve
+    group: citations
+    min_tier: T1-internal
+    description: >
+      Parse and validate a legal citation string against the CourtListener
+      Reporters Database. Returns structured citation metadata and, if
+      resolvable, a link to the canonical opinion document.
+      Always run this tool on every citation before including it in a
+      research memo, referral packet, or published document. Citations with
+      confidence below 0.7 must be flagged for human review.
+    gateway_task: citations.resolve
+    parameters:
+      citation:
+        type: string
+        required: true
+        description: >
+          Raw citation string to parse and validate.
+          Examples: "490 U.S. 386", "Graham v. Connor, 490 U.S. 386 (1989)",
+          "42 F.3d 1234 (9th Cir. 1994)", "42 U.S.C. § 1983".
+      citation_type:
+        type: string
+        enum: [case, statute, regulation, auto]
+        default: auto
+        description: >
+          Hint for the citation parser. auto (default) attempts type detection.
+    returns:
+      type: object
+      properties:
+        valid:
+          type: boolean
+          description: "True if the citation string is well-formed."
+        resolved:
+          type: boolean
+          description: "True if a canonical document was found."
+        confidence:
+          type: number
+          format: float
+          description: "Resolution confidence (0.0–1.0)."
+        citation_type:
+          type: string
+          enum: [case, statute, regulation, unknown]
+        parsed:
+          type: object
+          description: "Structured parsed citation fields."
+          properties:
+            volume: { type: string }
+            reporter: { type: string }
+            page: { type: string }
+            year: { type: integer }
+            court: { type: string }
+            party_1: { type: string }
+            party_2: { type: string }
+        document:
+          description: "Resolved canonical document (if resolved=true)."
+          oneOf:
+            - $ref: "#/schemas/CanonicalOpinion"
+            - $ref: "#/schemas/CanonicalStatute"
+            - $ref: "#/schemas/CanonicalRegulation"
+        needs_human_review:
+          type: boolean
+          description: "True if confidence < 0.7. Agent must flag this citation in output."
+
+  # ---------------------------------------------------------------------------
+  # GROUP 7: Citation Knowledge Graph
+  # Min tier: T1-internal
+  # Backend: Neo4j (citation and authority knowledge graph)
+  # ---------------------------------------------------------------------------
+
+  - name: graph_expand
+    group: knowledge_graph
+    min_tier: T1-internal
+    description: >
+      Traverse the citation and authority knowledge graph starting from a
+      seed opinion, statute, or regulation. Returns related nodes and
+      relationships up to the specified depth.
+      Use for: finding all cases that cite a key precedent; tracing how a
+      statute has been interpreted across circuits; identifying related
+      authority for a legal argument; building citation trees for briefs.
+      Example multi-hop query: "All 9th Circuit opinions citing
+      42 U.S.C. § 1983 that applied 28 C.F.R. Part 35, authored after 2018."
+    gateway_task: graph.expand
+    parameters:
+      seed_id:
+        type: string
+        required: true
+        description: >
+          Canonical document ID to start traversal from.
+          Examples: "cl:opinion:3849021", "usc:42:1983", "cfr:28:35:190".
+      relationship_types:
+        type: array
+        items:
+          type: string
+          enum: [CITES, INTERPRETED, APPLIED, IMPLEMENTS, ENACTED_AS, AUTHORED, ISSUED, CONTAINS, all]
+        default: [all]
+        description: >
+          Relationship types to traverse. Use 'all' for unrestricted traversal.
+          CITES        — opinion cites opinion.
+          INTERPRETED  — opinion interpreted a statute.
+          APPLIED      — opinion applied a regulation.
+          IMPLEMENTS   — regulation implements a statute.
+          ENACTED_AS   — bill enacted as statute.
+          AUTHORED     — judge authored opinion.
+          ISSUED       — court issued opinion.
+          CONTAINS     — docket contains document.
+      direction:
+        type: string
+        enum: [outbound, inbound, both]
+        default: both
+        description: >
+          outbound — nodes the seed document points to (what it cites).
+          inbound  — nodes that point to the seed (what cites it).
+          both     — full neighbourhood traversal.
+      max_depth:
+        type: integer
+        default: 2
+        maximum: 4
+        description: >
+          Maximum graph traversal depth. Depth 1 = direct relationships only.
+          Depth 2 = relationships of relationships (recommended default).
+          Depth 3–4 = broad neighbourhood (use with filters to avoid runaway traversal).
+      filters:
+        type: object
+        required: false
+        description: "Filters applied to nodes returned at each traversal depth."
+        properties:
+          node_types:
+            type: array
+            items:
+              type: string
+              enum: [Opinion, Statute, Regulation, Bill, Court, Judge, Agency, Docket]
+            description: "Restrict returned nodes to these types."
+          jurisdiction:
+            type: array
+            items: { type: string }
+            description: "Restrict Opinion nodes to these jurisdictions."
+          date_from:
+            type: string
+            format: date
+            description: "Restrict Opinion nodes to decisions after this date."
+          court:
+            type: array
+            items: { type: string }
+            description: "Restrict Opinion nodes to these courts."
+      limit:
+        type: integer
+        default: 50
+        maximum: 200
+        description: "Maximum number of nodes to return across all depths."
+    returns:
+      type: object
+      properties:
+        seed:
+          type: object
+          description: "The seed document node."
+        nodes:
+          type: array
+          description: "All related nodes found within depth and filter constraints."
+          items:
+            type: object
+            properties:
+              node_id: { type: string }
+              node_type: { type: string }
+              label: { type: string }
+              depth: { type: integer }
+              document:
+                description: "Canonical document if node_type is Opinion, Statute, or Regulation."
+        relationships:
+          type: array
+          description: "All relationship edges in the traversal result."
+          items:
+            type: object
+            properties:
+              from_id: { type: string }
+              to_id: { type: string }
+              type: { type: string }
+              properties: { type: object }
+        total_nodes: { type: integer }
+        truncated:
+          type: boolean
+          description: "True if the result was limited by the 'limit' parameter."
+
+  # ---------------------------------------------------------------------------
+  # GROUP 8: Link-Only Reference Tools
+  # Min tier: T1-internal
+  # Sources: LII (Cornell) — link_only policy; no text extracted or indexed
+  # Note: These tools return reference URLs only. Agents must treat returned
+  #       URLs as outbound links for human researchers — never as ingest targets.
+  # ---------------------------------------------------------------------------
+
+  - name: lii_reference
+    group: link_only_reference
+    min_tier: T1-internal
+    description: >
+      Look up a US Code section or CFR citation on the Legal Information
+      Institute (Cornell LII) and return a human-readable reference URL.
+      LII is a LINK-ONLY source. This tool returns a URL only — no text
+      is extracted, indexed, or stored. The URL is for human researcher
+      reference only and must not be passed to any ingestion tool.
+      Use for: providing operators and attorneys with a clean,
+      human-readable link to a statute or regulation for citation
+      in correspondence or referral packets.
+    gateway_task: lii.reference_url
+    source_policy: link_only
+    parameters:
+      citation:
+        type: string
+        required: true
+        description: >
+          US Code or CFR citation string.
+          Examples: "42 U.S.C. § 1983", "28 C.F.R. § 35.190".
+    returns:
+      type: object
+      properties:
+        citation: { type: string }
+        lii_url:
+          type: string
+          description: "Human-readable LII URL for this citation. Link-only — do not ingest."
+        policy:
+          type: string
+          enum: [link_only]
+          description: "Always 'link_only'. Reminder that this URL must not be used as an ingest source."
+
+# =============================================================================
+# SCHEMAS
+# Canonical document schemas shared across all tool return types.
+# =============================================================================
+
+schemas:
+
+  CanonicalOpinion:
+    type: object
+    description: "Normalised representation of a court opinion from any source."
+    properties:
+      document_id:
+        type: string
+        description: "Platform-internal canonical ID. Format: 'cl:opinion:{id}' or 'cap:case:{id}'."
+      source:
+        type: string
+        enum: [courtlistener, cap]
+      type:
+        type: string
+        enum: [opinion, order, per_curiam]
+      title:
+        type: string
+        description: "Case name. Example: 'Graham v. Connor'."
+      citation:
+        type: string
+        description: "Primary citation string. Example: '490 U.S. 386'."
+      citations_all:
+        type: array
+        items: { type: string }
+        description: "All known citation strings for this opinion."
+      court:
+        type: string
+        description: "CourtListener court slug. Example: 'scotus', 'ca9', 'mont'."
+      jurisdiction:
+        type: string
+        description: "Jurisdiction label. Example: 'federal', 'montana'."
+      decision_date:
+        type: string
+        format: date
+      status:
+        type: string
+        enum: [published, unpublished, errata, separate, in-chambers, relating-to, unknown]
+      summary:
+        type: string
+        description: "Auto-generated or CourtListener-provided abstract (max 500 chars)."
+      full_text:
+        type: string
+        description: "Full opinion text. Only included when return_fields includes full_text."
+      citations_cited:
+        type: array
+        items: { type: string }
+        description: "Citations this opinion references."
+      related_entities:
+        type: object
+        properties:
+          judges:
+            type: array
+            items: { type: string }
+            description: "CourtListener judge IDs."
+          cluster_id: { type: string }
+          docket_id: { type: string }
+      source_url:
+        type: string
+        description: "Upstream CourtListener or CAP URL for this opinion."
+      provenance:
+        $ref: "#/schemas/Provenance"
+
+  CanonicalDocket:
+    type: object
+    description: "Normalised RECAP docket from CourtListener."
+    properties:
+      document_id:
+        type: string
+        description: "Format: 'cl:docket:{id}'."
+      source:
+        type: string
+        enum: [courtlistener_recap]
+      case_name: { type: string }
+      docket_number: { type: string }
+      court: { type: string }
+      date_filed:
+        type: string
+        format: date
+      date_terminated:
+        type: string
+        format: date
+        nullable: true
+      assigned_to: { type: string }
+      nature_of_suit: { type: string }
+      cause: { type: string }
+      party_count: { type: integer }
+      document_count: { type: integer }
+      source_url: { type: string }
+      provenance:
+        $ref: "#/schemas/Provenance"
+
+  CanonicalStatute:
+    type: object
+    description: "Normalised US Code section from GovInfo (USLM XML)."
+    properties:
+      document_id:
+        type: string
+        description: "Format: 'usc:{title}:{section}'. Example: 'usc:42:1983'."
+      source:
+        type: string
+        enum: [govinfo_usc, ecfr]
+      type:
+        type: string
+        enum: [statute, usc_section]
+      citation: { type: string }
+      title: { type: integer }
+      section: { type: string }
+      heading: { type: string }
+      text: { type: string }
+      edition:
+        type: string
+        description: "Edition year or 'current'."
+      source_url: { type: string }
+      provenance:
+        $ref: "#/schemas/Provenance"
+
+  CanonicalRegulation:
+    type: object
+    description: "Normalised CFR section from eCFR (current) or GovInfo (annual)."
+    properties:
+      document_id:
+        type: string
+        description: "Format: 'cfr:{title}:{part}:{section}'. Example: 'cfr:28:35:190'."
+      source:
+        type: string
+        enum: [ecfr, govinfo_cfr]
+      type:
+        type: string
+        enum: [regulation, cfr_section]
+      citation: { type: string }
+      title: { type: integer }
+      part: { type: integer }
+      section: { type: string }
+      heading: { type: string }
+      text: { type: string }
+      agency: { type: string }
+      edition:
+        type: string
+        description: "'current' for eCFR or edition year for annual GovInfo."
+      source_url: { type: string }
+      provenance:
+        $ref: "#/schemas/Provenance"
+
+  CanonicalFederalRegisterDocument:
+    type: object
+    description: "Normalised Federal Register document."
+    properties:
+      document_id:
+        type: string
+        description: "Format: 'fr:{document_number}'. Example: 'fr:2024-12345'."
+      source:
+        type: string
+        enum: [federal_register]
+      type:
+        type: string
+        enum: [proposed_rule, rule, notice, presidential_document]
+      title: { type: string }
+      document_number: { type: string }
+      agencies:
+        type: array
+        items: { type: string }
+      publication_date:
+        type: string
+        format: date
+      effective_date:
+        type: string
+        format: date
+        nullable: true
+      cfr_references:
+        type: array
+        items: { type: string }
+        description: "CFR titles/parts affected. Example: ['28 CFR 35']."
+      abstract: { type: string }
+      full_text_url: { type: string }
+      source_url: { type: string }
+      provenance:
+        $ref: "#/schemas/Provenance"
+
+  CanonicalBill:
+    type: object
+    description: "Normalised legislative bill from Open States or LegiScan."
+    properties:
+      document_id:
+        type: string
+        description: >
+          Format: 'os:bill:{ocd_id}' (Open States) or 'ls:bill:{id}' (LegiScan).
+      source:
+        type: string
+        enum: [open_states, legiscan]
+      type:
+        type: string
+        enum: [bill, resolution, concurrent_resolution, joint_resolution, amendment]
+      identifier: { type: string }
+      title: { type: string }
+      jurisdiction: { type: string }
+      session: { type: string }
+      status: { type: string }
+      sponsors:
+        type: array
+        items:
+          type: object
+          properties:
+            name: { type: string }
+            party: { type: string }
+            classification: { type: string }
+      subjects:
+        type: array
+        items: { type: string }
+      latest_action:
+        type: object
+        properties:
+          date: { type: string, format: date }
+          description: { type: string }
+      full_text_url:
+        type: string
+        nullable: true
+      source_url: { type: string }
+      provenance:
+        $ref: "#/schemas/Provenance"
+
+  CanonicalLegislator:
+    type: object
+    description: "Normalised legislator record from Open States."
+    properties:
+      document_id:
+        type: string
+        description: "Format: 'os:person:{ocd_id}'."
+      source:
+        type: string
+        enum: [open_states]
+      name: { type: string }
+      party: { type: string }
+      jurisdiction: { type: string }
+      current_role:
+        type: object
+        properties:
+          title: { type: string }
+          chamber: { type: string }
+          district: { type: string }
+          start_date: { type: string, format: date }
+      email:
+        type: string
+        nullable: true
+      offices:
+        type: array
+        items:
+          type: object
+          properties:
+            type: { type: string }
+            address: { type: string }
+            phone: { type: string }
+      source_url: { type: string }
+      provenance:
+        $ref: "#/schemas/Provenance"
+
+  Provenance:
+    type: object
+    description: >
+      Source provenance block included in every tool response.
+      Automatically written to the Veritas audit log and included
+      in agent citation outputs.
+    properties:
+      upstream_url:
+        type: string
+        description: "Direct URL to the source document on the upstream provider."
+      license:
+        type: string
+        description: >
+          License or copyright status of the retrieved document.
+          Examples: "public domain / no known copyright", "CC BY 4.0",
+          "17 U.S.C. § 105 (federal government works)", "open access".
+      source_policy:
+        type: string
+        enum: [ingest_and_index, link_only, manual_reference_only]
+        description: "Gateway source policy classification for this document."
+      retrieved_at:
+        type: string
+        format: date-time
+        description: "ISO 8601 UTC timestamp of retrieval from upstream."
+      gateway_version:
+        type: string
+        description: "Legal Source Gateway version that served this response."
+
+# =============================================================================
+# AGENT ACCESS MATRIX
+# Maps agent roles to permitted tool groups and any additional constraints.
+# Enforced by the MCP server via Paperclip policy check before forwarding
+# each request to the Legal Source Gateway.
+# =============================================================================
+
+access_matrix:
+
+  - agent_role: rae
+    permitted_groups:
+      - case_law
+      - dockets
+      - statutes
+      - regulations
+      - legislation
+      - citations
+      - knowledge_graph
+      - link_only_reference
+    constraints:
+      - "Must not include matter IDs, complainant names, or PII in gateway queries."
+      - "citations_resolve confidence < 0.7 must set needs_human_review=true in memo output."
+      - "graph_expand max_depth capped at 3 for Rae (Paperclip enforcement)."
+
+  - agent_role: lex
+    permitted_groups:
+      - case_law
+      - dockets
+      - statutes
+      - regulations
+      - legislation
+      - citations
+      - knowledge_graph
+      - link_only_reference
+    constraints:
+      - "Must not include matter IDs, complainant names, or PII in gateway queries."
+      - "citations_resolve confidence < 0.7 must flag for human QA before memo publication."
+      - "graph_expand max_depth capped at 4 (Lex senior analyst — broader traversal permitted)."
+
+  - agent_role: citation_agent
+    permitted_groups:
+      - citations
+      - case_law          # cases_citation_lookup and cases_get only
+      - link_only_reference
+    permitted_tasks:
+      - cases.citation_lookup
+      - cases.get
+      - citations.resolve
+      - lii.reference_url
+    constraints:
+      - "May not call cases.search, statutes.*, regulations.*, bills.*, or graph.expand."
+      - "All citations with confidence < 0.7 must emit needs_human_review=true."
+
+  - agent_role: chronology_agent
+    permitted_groups:
+      - case_law
+      - statutes
+      - citations
+    permitted_tasks:
+      - cases.search
+      - cases.get
+      - cases.citation_lookup
+      - statutes.lookup
+      - citations.resolve
+    constraints:
+      - "Must not call dockets_watch, bills_track, regulations_monitor, or graph_expand."
+      - "Query scope limited to events and statutes directly cited in MCAS matter timeline."
+
+  - agent_role: iris
+    permitted_groups:
+      - case_law
+      - dockets
+      - legislation
+      - citations
+    constraints:
+      - "May not call statutes.search, regulations.*, or graph_expand."
+      - "dockets_search queries must not include complainant PII."
+      - "dockets_watch may only be registered for matters with active HITL approval."
+
+# =============================================================================
+# RATE LIMIT CONFIGURATION
+# Per-source rate limit pools managed by the Legal Source Gateway.
+# Agents never interact with these limits directly.
+# =============================================================================
+
+rate_limits:
+
+  courtlistener:
+    requests_per_minute: 60
+    burst: 10
+    notes: >
+      Free authenticated tier. Rate limit applies per COURTLISTENER_TOKEN.
+      Gateway queues excess requests. Bulk embedding downloads use a separate
+      monthly scheduled job (not subject to per-minute limits).
+
+  cap:
+    requests_per_minute: 30
+    burst: 5
+    notes: >
+      Researcher-tier access. CAP API key required for non-public jurisdictions.
+      Historical bulk download is one-time; ongoing API calls are for targeted
+      case retrieval only.
+
+  govinfo:
+    requests_per_minute: 100
+    burst: 20
+    notes: >
+      api.data.gov key. High rate limit. Bulk XML downloads (annual US Code,
+      CFR) use scheduled jobs, not per-request API calls.
+
+  ecfr:
+    requests_per_minute: 200
+    burst: 50
+    notes: >
+      Public API, no authentication required. High rate limit.
+
+  federal_register:
+    requests_per_minute: 100
+    burst: 20
+    notes: >
+      Public API. regulations_monitor webhooks are low-frequency by design.
+
+  open_states:
+    requests_per_minute: 60
+    burst: 10
+    notes: >
+      Free API key tier. Real-time legislative data.
+
+  legiscan:
+    requests_per_minute: 30
+    burst: 5
+    notes: >
+      Free tier: 30 req/min, weekly bulk download cadence.
+      Premium tier: 4-hour push cadence. Upgrade evaluated in v1.1.
+
+# =============================================================================
+# END OF FILE
+# =============================================================================
