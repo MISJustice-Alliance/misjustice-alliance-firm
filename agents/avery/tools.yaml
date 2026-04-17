@@ -1,0 +1,1618 @@
+# =============================================================================
+# agents/avery/tools.yaml
+# Avery — Intake & Evidence Agent
+# Tool Registry
+# MISJustice Alliance Firm
+# =============================================================================
+# This file is the canonical tool registry for the Avery agent.
+# It is the authoritative source for:
+#   - Tool identity, purpose, and implementation path
+#   - Input/output schemas
+#   - Confirmation and HITL requirements
+#   - Classification ceilings and access constraints
+#   - Deny list with rationale
+#   - Runtime enforcement cross-references
+#
+# Relationship to other files:
+#   agent.yaml           — references tool names; this file is the detail record
+#   SOUL.md              — defines behavioral constraints tools must enforce
+#   POLICY.md            — section 6 defines tool access policy
+#   SPEC.md              — §12 defines NemoClaw rails enforced per tool
+#   avery_policy.paperclip.yaml — runtime allow/deny enforcement
+#   agents/base/tools/   — implementation files referenced by path
+#
+# Tool naming convention: snake_case, globally unique within the platform.
+# All tools are LangChain BaseTool subclasses unless noted otherwise.
+#
+# Classification ceiling notation:
+#   tier0 — never accessible to any agent
+#   tier1 — human-only or human-gate-required
+#   tier2 — agent-accessible with HITL gate
+#   tier3 — agent-accessible, no gate required (read-only / low-risk)
+# =============================================================================
+
+meta:
+  agent: avery
+  agent_version: "1.0.0"
+  tools_schema_version: "1.0.0"
+  effective_date: "2026-04-16"
+  maintainer: MISJustice Alliance Platform Team
+  total_allowed: 18
+  total_denied: 14
+
+# =============================================================================
+# ALLOWED TOOLS
+# =============================================================================
+allowed:
+
+  # ---------------------------------------------------------------------------
+  # GROUP 1 — MCAS API (Write)
+  # Avery has write access to intake-stage MCAS models only: Person,
+  # Organization, Matter, Event, Document. All records are created with
+  # status=draft or status=pending_classification. Finalization and Tier
+  # classification require human HITL gate confirmation. No delete access.
+  # ---------------------------------------------------------------------------
+
+  - name: mcas_create_person
+    display_name: "MCAS Create Person Record"
+    group: mcas_write
+    version: "1.0.0"
+    path: agents/base/tools/mcas_create_person.py
+    description: >
+      Create a new Person record in MCAS for a complainant, respondent,
+      or witness identified during intake. All new Person records are
+      created with status=draft and proposed_tier populated by Avery.
+      Tier finalization requires human HITL gate confirmation.
+      Tier-0 fields (legal_name, date_of_birth, ssn, address_residential,
+      phone_direct, email_direct, government_id) are NEVER written by Avery —
+      these fields are human-only and must be entered directly by the
+      operator in the MCAS UI. Avery writes only pseudonym, role, and
+      non-identifying descriptive fields.
+    use_cases:
+      - Creating a complainant Person record during new matter intake (Workflow A)
+      - Creating a respondent Person record from operator-provided description
+      - Creating a witness Person record identified in the complainant's account
+    inputs:
+      pseudonym:
+        type: string
+        required: true
+        description: >
+          System-generated or operator-confirmed pseudonym for this person.
+          Must not be the person's real name. Format: COMP-{YYYYMMDD}-{seq}
+          for complainants; RESP-{YYYYMMDD}-{seq} for respondents.
+        pattern: "^(COMP|RESP|WITN)-[0-9]{8}-[0-9]{3}$"
+      role:
+        type: string
+        required: true
+        enum: [complainant, respondent, witness, unknown]
+      matter_id:
+        type: string
+        required: false
+        description: >
+          MCAS matter ID to associate this Person record with.
+          May be omitted if the Matter record has not yet been created.
+        pattern: "^MCAS-[0-9]{4,}$"
+      organization_id:
+        type: string
+        required: false
+        description: MCAS organization ID if this person is affiliated with a known org
+      description:
+        type: string
+        required: false
+        description: >
+          Non-identifying descriptive summary (e.g. "respondent officer,
+          described as male, approximately 6 feet, uniformed"). Must not
+          contain PII, real name, address, or contact information.
+        max_length: 1000
+      proposed_tier:
+        type: string
+        required: true
+        enum: [T1, T2, T3]
+        description: >
+          Avery's proposed Tier classification for this record.
+          Complainant records default to T1. Must be confirmed by
+          human operator before record is finalized.
+      notes:
+        type: string
+        required: false
+        description: Additional intake notes relevant to this person record
+        max_length: 2000
+    outputs:
+      person_id:
+        type: string
+        description: MCAS person record ID (e.g. PERSON-0042)
+      status:
+        type: string
+        enum: [draft]
+        description: Always draft — finalization requires human gate
+      proposed_tier:
+        type: string
+      created_at:
+        type: string
+        format: iso8601
+    requires_confirmation: false
+    classification_ceiling: tier2
+    nemo_rails:
+      - tier0_data_isolation    # Blocks any attempt to write Tier-0 fields
+      - no_record_fabrication   # Flags fields not sourced from session input
+    paperclip_policy_ref: avery_policy.paperclip.yaml#mcas_create_person
+    errors:
+      - code: MCAS_UNAVAILABLE
+        action: pause_session_notify_operator
+      - code: DUPLICATE_PSEUDONYM
+        action: surface_error_request_correction
+      - code: INVALID_MATTER_ID
+        action: surface_error_request_correction
+
+  - name: mcas_create_organization
+    display_name: "MCAS Create Organization Record"
+    group: mcas_write
+    version: "1.0.0"
+    path: agents/base/tools/mcas_create_organization.py
+    description: >
+      Create a new Organization record in MCAS for a law enforcement agency,
+      department, or other institutional respondent identified during intake.
+      All records created with status=draft. Organization names and public
+      identifiers (badge numbers, department codes) are Tier-2 and may be
+      written by Avery. No PII about individual officers may be stored in
+      Organization records.
+    use_cases:
+      - Creating a respondent law enforcement agency record (Workflow A)
+      - Creating a department or precinct record associated with a respondent
+      - Linking a known organization to a new matter
+    inputs:
+      name:
+        type: string
+        required: true
+        description: Organization name (e.g. "Missoula Police Department")
+        max_length: 500
+      org_type:
+        type: string
+        required: true
+        enum: [law_enforcement, corrections, court, government_agency, other]
+      jurisdiction:
+        type: string
+        required: false
+        description: Jurisdiction (city, county, state, federal)
+      matter_id:
+        type: string
+        required: false
+        pattern: "^MCAS-[0-9]{4,}$"
+      public_identifiers:
+        type: object
+        required: false
+        description: >
+          Publicly available identifiers (e.g. department badge prefix,
+          ORI number, FIPS code). No individual officer PII.
+        properties:
+          ori_number: {type: string}
+          fips_code: {type: string}
+          badge_prefix: {type: string}
+          website: {type: string}
+      proposed_tier:
+        type: string
+        required: true
+        enum: [T2, T3]
+        description: Organization records are T2 or T3 only. Never T0/T1.
+      notes:
+        type: string
+        required: false
+        max_length: 2000
+    outputs:
+      org_id:
+        type: string
+        description: MCAS organization record ID (e.g. ORG-0017)
+      status:
+        type: string
+        enum: [draft]
+      proposed_tier:
+        type: string
+      created_at:
+        type: string
+        format: iso8601
+    requires_confirmation: false
+    classification_ceiling: tier2
+    nemo_rails:
+      - tier0_data_isolation
+      - no_record_fabrication
+    paperclip_policy_ref: avery_policy.paperclip.yaml#mcas_create_organization
+    errors:
+      - code: MCAS_UNAVAILABLE
+        action: pause_session_notify_operator
+      - code: DUPLICATE_ORG_NAME
+        action: surface_warning_continue   # Warn on potential duplicate, do not block
+
+  - name: mcas_create_matter
+    display_name: "MCAS Create Matter Record"
+    group: mcas_write
+    version: "1.0.0"
+    path: agents/base/tools/mcas_create_matter.py
+    description: >
+      Create a new Matter record in MCAS to represent a case or complaint.
+      All new Matter records are created with status=draft. The matter
+      must not be finalized until the human operator accepts it through
+      the intake_acceptance HITL gate. Avery proposes the matter type,
+      jurisdiction, and Tier — the operator confirms or revises before
+      finalization. Duplicate checking against existing MCAS matters is
+      performed before creation via the mcas_search_matters tool.
+    use_cases:
+      - Opening a new matter record during new matter intake (Workflow A, Step 2)
+      - Creating a matter from a telephony intake summary received from Mira
+    inputs:
+      title:
+        type: string
+        required: true
+        description: >
+          Non-identifying matter title. Must not contain complainant name.
+          Format: "{MatterType} — {Jurisdiction} — {YYYY-MM-DD}"
+          Example: "Excessive Force — Missoula PD — 2026-04-14"
+        max_length: 300
+      matter_type:
+        type: string
+        required: true
+        enum:
+          - excessive_force
+          - unlawful_search
+          - false_arrest
+          - misconduct_general
+          - retaliation
+          - civil_rights_violation
+          - custody_abuse
+          - other
+      jurisdiction:
+        type: string
+        required: true
+        description: Primary jurisdiction (city/county/state/federal)
+      intake_date:
+        type: string
+        required: true
+        format: iso8601
+        description: Date of initial intake session
+      complainant_pseudonym:
+        type: string
+        required: false
+        description: Pseudonym of associated complainant Person record
+        pattern: "^COMP-[0-9]{8}-[0-9]{3}$"
+      respondent_ids:
+        type: array
+        required: false
+        description: MCAS person or org IDs for respondents identified at intake
+        items:
+          type: string
+      proposed_tier:
+        type: string
+        required: true
+        enum: [T1, T2, T3]
+        description: >
+          Proposed Tier based on sensitivity of case content.
+          Matters involving credible safety risk or sensitive PII default to T1.
+      summary:
+        type: string
+        required: false
+        description: >
+          Non-identifying matter summary. Must not contain PII or Tier-0 content.
+          Maximum 2000 characters.
+        max_length: 2000
+      flags:
+        type: array
+        required: false
+        description: Any flags raised during intake (e.g. safety_concern, minor_involved)
+        items:
+          type: string
+          enum:
+            - safety_concern
+            - minor_involved
+            - active_retaliation_risk
+            - statute_of_limitations_risk
+            - duplicate_suspected
+            - incomplete_information
+    outputs:
+      matter_id:
+        type: string
+        description: MCAS matter ID (e.g. MCAS-0088)
+      status:
+        type: string
+        enum: [draft]
+      proposed_tier:
+        type: string
+      created_at:
+        type: string
+        format: iso8601
+    requires_confirmation: false
+    classification_ceiling: tier2
+    nemo_rails:
+      - tier0_data_isolation
+      - no_record_fabrication
+      - no_premature_handoff      # Handoff blocked until intake_acceptance gate cleared
+      - no_autonomous_classification
+    paperclip_policy_ref: avery_policy.paperclip.yaml#mcas_create_matter
+    notes: >
+      Avery must run mcas_search_matters before calling this tool to check
+      for potential duplicates. If a probable duplicate is found, the operator
+      must be informed and consent to proceeding with a new record.
+    errors:
+      - code: MCAS_UNAVAILABLE
+        action: pause_session_notify_operator
+      - code: DUPLICATE_DETECTED
+        action: surface_warning_require_operator_confirmation
+
+  - name: mcas_create_event
+    display_name: "MCAS Create Event Record"
+    group: mcas_write
+    version: "1.0.0"
+    path: agents/base/tools/mcas_create_event.py
+    description: >
+      Create a new Event record in MCAS to document a specific incident,
+      interaction, or occurrence relevant to a matter. Events are the
+      chronological building blocks of a case — Chronology agent builds
+      the timeline from these records post-intake. Avery creates Event
+      records from complainant narrative and operator-provided information.
+      Events must be grounded in intake session content — no fabrication.
+    use_cases:
+      - Recording the primary incident event during Workflow A intake
+      - Recording prior incidents identified in the complainant account
+      - Recording an arrest, search, or use-of-force event
+      - Recording a filing or administrative action event
+    inputs:
+      matter_id:
+        type: string
+        required: true
+        pattern: "^MCAS-[0-9]{4,}$"
+      event_type:
+        type: string
+        required: true
+        enum:
+          - use_of_force
+          - arrest
+          - search_seizure
+          - traffic_stop
+          - detainment
+          - retaliation_act
+          - administrative_filing
+          - court_proceeding
+          - complaint_filed
+          - other
+      event_date:
+        type: string
+        required: false
+        description: >
+          Date of the event (ISO 8601). May be approximate — use
+          date_precision to indicate confidence level.
+        format: iso8601
+      date_precision:
+        type: string
+        required: false
+        enum: [exact, approximate, month_only, year_only, unknown]
+        default: exact
+      location:
+        type: string
+        required: false
+        description: >
+          Non-identifying location description (city, neighborhood, public
+          space). No residential addresses.
+        max_length: 500
+      description:
+        type: string
+        required: true
+        description: >
+          Factual description of the event. Must be based on intake session
+          content. No legal conclusions, merit assessments, or PII beyond
+          pseudonyms. Maximum 3000 characters.
+        max_length: 3000
+      actors:
+        type: array
+        required: false
+        description: MCAS person or org IDs of actors involved in this event
+        items:
+          type: string
+      source:
+        type: string
+        required: false
+        enum: [complainant_statement, document, operator_input, telephony_summary]
+        description: Source of information for this event record
+      proposed_tier:
+        type: string
+        required: true
+        enum: [T1, T2, T3]
+    outputs:
+      event_id:
+        type: string
+        description: MCAS event record ID (e.g. EVENT-0033)
+      status:
+        type: string
+        enum: [draft]
+      proposed_tier:
+        type: string
+      created_at:
+        type: string
+        format: iso8601
+    requires_confirmation: false
+    classification_ceiling: tier2
+    nemo_rails:
+      - tier0_data_isolation
+      - no_record_fabrication
+      - no_legal_analysis         # Event descriptions must not assess legal merit
+    paperclip_policy_ref: avery_policy.paperclip.yaml#mcas_create_event
+    errors:
+      - code: MCAS_UNAVAILABLE
+        action: pause_session_notify_operator
+      - code: INVALID_MATTER_ID
+        action: surface_error_request_correction
+
+  - name: mcas_create_document
+    display_name: "MCAS Create Document Record"
+    group: mcas_write
+    version: "1.0.0"
+    path: agents/base/tools/mcas_create_document.py
+    description: >
+      Create a new Document record in MCAS for an uploaded file after OCR
+      processing has been completed by Chandra. Avery must never create a
+      Document record from an unprocessed file — chandra_ocr_submit must
+      be called and a successful OCR result received before this tool is
+      invoked. All Document records are created with
+      status=pending_classification. Tier confirmation requires human gate.
+    use_cases:
+      - Creating a Document record after successful OCR (Workflow B, Step DOC-05)
+      - Recording a police report, body cam transcript, or medical record
+      - Recording a complainant-submitted photo or video transcript
+    inputs:
+      matter_id:
+        type: string
+        required: true
+        pattern: "^MCAS-[0-9]{4,}$"
+      document_type:
+        type: string
+        required: true
+        enum:
+          - police_report
+          - body_camera_transcript
+          - medical_record
+          - court_document
+          - photo
+          - video_transcript
+          - audio_transcript
+          - complainant_statement
+          - correspondence
+          - other
+      original_filename:
+        type: string
+        required: true
+        description: Original filename of the uploaded file (sanitized)
+        max_length: 255
+      ocr_job_id:
+        type: string
+        required: true
+        description: Chandra OCR job ID confirming successful processing
+        pattern: "^OCR-[0-9]{6,}$"
+      ocr_confidence:
+        type: number
+        required: true
+        description: OCR confidence score returned by Chandra (0.0–1.0)
+        minimum: 0.0
+        maximum: 1.0
+      ocr_text_ref:
+        type: string
+        required: true
+        description: >
+          Reference path to the OCR text output stored in the platform
+          document store. Avery does not embed full OCR text in the record.
+      document_date:
+        type: string
+        required: false
+        format: iso8601
+        description: Date on the document (if determinable from OCR output)
+      issuing_authority:
+        type: string
+        required: false
+        description: >
+          Issuing authority (e.g. "Missoula Police Department", "St. Patrick
+          Hospital"). No PII. Max 300 characters.
+        max_length: 300
+      anomalies:
+        type: array
+        required: false
+        description: >
+          Anomaly flags detected during OCR or document review
+          (e.g. redaction_detected, date_inconsistency).
+        items:
+          type: string
+          enum:
+            - redaction_detected
+            - date_inconsistency
+            - missing_pages
+            - low_ocr_confidence
+            - apparent_alteration
+            - format_unusual
+      proposed_tier:
+        type: string
+        required: true
+        enum: [T0, T1, T2, T3]
+        description: >
+          Avery's proposed Tier for this document. Medical records, direct
+          complainant PII documents, and privileged correspondence default
+          to T0 or T1 — these proposals require human confirmation before
+          the record is finalized. Avery may propose T0 but cannot finalize it.
+      notes:
+        type: string
+        required: false
+        max_length: 2000
+    outputs:
+      document_id:
+        type: string
+        description: MCAS document record ID (e.g. DOC-0019)
+      status:
+        type: string
+        enum: [pending_classification]
+      proposed_tier:
+        type: string
+      created_at:
+        type: string
+        format: iso8601
+    requires_confirmation: false
+    classification_ceiling: tier2
+    nemo_rails:
+      - tier0_data_isolation
+      - no_record_fabrication
+      - no_autonomous_classification
+    paperclip_policy_ref: avery_policy.paperclip.yaml#mcas_create_document
+    errors:
+      - code: MCAS_UNAVAILABLE
+        action: pause_session_notify_operator
+      - code: OCR_JOB_NOT_FOUND
+        action: surface_error_block_record_creation
+      - code: INVALID_MATTER_ID
+        action: surface_error_request_correction
+
+  - name: mcas_update_record
+    display_name: "MCAS Update Record (Intake-Stage)"
+    group: mcas_write
+    version: "1.0.0"
+    path: agents/base/tools/mcas_update_record.py
+    description: >
+      Update an existing MCAS record created by Avery in the current or
+      prior intake session. Avery may only update records it created
+      (creating_agent=avery) that are in draft or pending_classification
+      status. Finalized records may not be updated by Avery. Tier
+      classification fields may be updated only to a proposed value —
+      finalization is always human-only. Supports all five record types:
+      Person, Organization, Matter, Event, Document.
+    use_cases:
+      - Updating a Matter record with additional respondent IDs (Workflow C)
+      - Updating an Event record with a date clarified by the operator
+      - Adding anomaly flags to a Document record after review
+      - Revising a proposed Tier based on operator feedback before gate
+    inputs:
+      record_type:
+        type: string
+        required: true
+        enum: [person, organization, matter, event, document]
+      record_id:
+        type: string
+        required: true
+        description: MCAS record ID to update (e.g. MCAS-0042, DOC-0019)
+      updates:
+        type: object
+        required: true
+        description: >
+          Map of field names to new values. Fields that are Tier-0 or
+          restricted (see agent.yaml fields_excluded_from_read) will be
+          rejected by MCAS and blocked by NemoClaw. The update must
+          reflect information from the current session — no fabricated values.
+      update_reason:
+        type: string
+        required: true
+        description: >
+          Plain-language reason for the update, written to the audit log.
+          Example: "Operator clarified incident date during session."
+        max_length: 500
+    outputs:
+      record_id:
+        type: string
+      record_type:
+        type: string
+      updated_fields:
+        type: array
+        items:
+          type: string
+      updated_at:
+        type: string
+        format: iso8601
+      status:
+        type: string
+        description: Record status after update (unchanged unless explicitly updated)
+    requires_confirmation: false
+    classification_ceiling: tier2
+    nemo_rails:
+      - tier0_data_isolation
+      - no_record_fabrication
+      - no_autonomous_classification
+    paperclip_policy_ref: avery_policy.paperclip.yaml#mcas_update_record
+    errors:
+      - code: MCAS_UNAVAILABLE
+        action: pause_session_notify_operator
+      - code: RECORD_NOT_OWNED_BY_AVERY
+        action: hard_block_surface_error
+      - code: RECORD_FINALIZED
+        action: hard_block_surface_error
+      - code: RESTRICTED_FIELD_WRITE_ATTEMPT
+        action: hard_block_surface_error
+
+  # ---------------------------------------------------------------------------
+  # GROUP 2 — MCAS API (Read)
+  # Read-only MCAS access for duplicate detection, related-matter lookup,
+  # and session context loading. Tier-0 and Tier-1 sensitive fields are
+  # never returned regardless of query. Read scope is the minimum required
+  # for Avery's intake functions.
+  # ---------------------------------------------------------------------------
+
+  - name: mcas_search_matters
+    display_name: "MCAS Search Matters (Read)"
+    group: mcas_read
+    version: "1.0.0"
+    path: agents/base/tools/mcas_search_matters.py
+    description: >
+      Search existing MCAS matter records to detect potential duplicates
+      or related matters before creating a new record. Returns matter IDs,
+      titles, types, jurisdictions, and intake dates only — no Tier-0/1
+      content, no complainant PII. Avery must call this tool before
+      mcas_create_matter whenever a new matter intake is initiated.
+    use_cases:
+      - Duplicate matter detection before new matter creation (Workflow A, Step 1)
+      - Identifying related matters for operator awareness
+      - Checking if a prior intake exists for the same incident or respondent
+    inputs:
+      query:
+        type: string
+        required: true
+        description: >
+          Search query describing the matter (incident type, jurisdiction,
+          approximate date). Must not contain PII or real names.
+        max_length: 500
+      matter_type:
+        type: string
+        required: false
+        enum:
+          - excessive_force
+          - unlawful_search
+          - false_arrest
+          - misconduct_general
+          - retaliation
+          - civil_rights_violation
+          - custody_abuse
+          - other
+      jurisdiction:
+        type: string
+        required: false
+      date_range:
+        type: object
+        required: false
+        properties:
+          from: {type: string, format: iso8601}
+          to: {type: string, format: iso8601}
+      limit:
+        type: integer
+        required: false
+        default: 10
+        maximum: 25
+    outputs:
+      results:
+        type: array
+        items:
+          type: object
+          properties:
+            matter_id: {type: string}
+            title: {type: string}
+            matter_type: {type: string}
+            jurisdiction: {type: string}
+            intake_date: {type: string}
+            status: {type: string}
+            similarity_score: {type: number}
+      total_results:
+        type: integer
+    requires_confirmation: false
+    classification_ceiling: tier2
+    data_never_returned:
+      - complainant_name
+      - complainant_contact
+      - tier0_fields
+      - tier1_pii
+    paperclip_policy_ref: avery_policy.paperclip.yaml#mcas_search_matters
+
+  - name: mcas_search_persons
+    display_name: "MCAS Search Persons (Read)"
+    group: mcas_read
+    version: "1.0.0"
+    path: agents/base/tools/mcas_search_persons.py
+    description: >
+      Search existing MCAS person records to identify known respondents or
+      witnesses by non-identifying attributes (role, organization affiliation,
+      public badge number). Used to detect existing respondent records and
+      avoid duplicates. Returns pseudonyms, roles, and organization
+      affiliations only — no Tier-0/1 PII under any circumstance.
+    use_cases:
+      - Checking whether a described respondent officer already has a MCAS record
+      - Linking a new intake to an existing respondent record
+      - Identifying witnesses referenced in prior matters
+    inputs:
+      role:
+        type: string
+        required: false
+        enum: [complainant, respondent, witness, unknown]
+      org_id:
+        type: string
+        required: false
+        description: Filter by MCAS organization ID
+      description_query:
+        type: string
+        required: false
+        description: >
+          Non-identifying description query (e.g. "uniformed officer
+          Missoula PD badge 4##"). Must not contain real names or PII.
+        max_length: 300
+      public_identifiers:
+        type: object
+        required: false
+        properties:
+          badge_number_partial: {type: string}
+          department: {type: string}
+      limit:
+        type: integer
+        required: false
+        default: 10
+        maximum: 25
+    outputs:
+      results:
+        type: array
+        items:
+          type: object
+          properties:
+            person_id: {type: string}
+            pseudonym: {type: string}
+            role: {type: string}
+            org_affiliation: {type: string}
+            matter_count: {type: integer}
+            created_at: {type: string}
+    requires_confirmation: false
+    classification_ceiling: tier2
+    data_never_returned:
+      - legal_name
+      - date_of_birth
+      - ssn
+      - address_residential
+      - phone_direct
+      - email_direct
+      - government_id
+      - tier0_fields
+    paperclip_policy_ref: avery_policy.paperclip.yaml#mcas_search_persons
+
+  - name: mcas_read_matter_detail
+    display_name: "MCAS Read Matter Detail (Read)"
+    group: mcas_read
+    version: "1.0.0"
+    path: agents/base/tools/mcas_read_matter_detail.py
+    description: >
+      Read the non-sensitive detail of an existing MCAS matter record to
+      provide session context during a matter update workflow (Workflow C).
+      Returns matter type, phase, jurisdiction, associated record IDs,
+      key dates, and assigned agents. Does NOT return Tier-0/1 content,
+      complainant PII, or document body text.
+    use_cases:
+      - Loading matter context at the start of Workflow C (matter update)
+      - Verifying matter state before adding new records
+    inputs:
+      matter_id:
+        type: string
+        required: true
+        pattern: "^MCAS-[0-9]{4,}$"
+    outputs:
+      matter_id:
+        type: string
+      title: {type: string}
+      matter_type: {type: string}
+      phase: {type: string}
+      jurisdiction: {type: string}
+      proposed_tier: {type: string}
+      finalized_tier: {type: string}
+      status: {type: string}
+      intake_date: {type: string}
+      last_updated: {type: string}
+      associated_person_ids: {type: array, items: {type: string}}
+      associated_org_ids: {type: array, items: {type: string}}
+      associated_document_ids: {type: array, items: {type: string}}
+      associated_event_ids: {type: array, items: {type: string}}
+      flags: {type: array, items: {type: string}}
+    requires_confirmation: false
+    classification_ceiling: tier2
+    data_never_returned:
+      - complainant_name
+      - complainant_contact
+      - tier0_fields
+      - tier1_pii
+      - document_ocr_text
+    paperclip_policy_ref: avery_policy.paperclip.yaml#mcas_read_matter_detail
+
+
+  # ---------------------------------------------------------------------------
+  # GROUP 3 — Chandra OCR
+  # Avery submits uploaded documents to Chandra for OCR processing before
+  # creating any Document record. Two tools: submit and poll/retrieve result.
+  # Avery never stores OCR text directly — only the reference path and
+  # job metadata are written to the MCAS Document record.
+  # ---------------------------------------------------------------------------
+
+  - name: chandra_ocr_submit
+    display_name: "Chandra OCR Submit"
+    group: chandra_ocr
+    version: "1.0.0"
+    path: agents/base/tools/chandra_ocr_submit.py
+    description: >
+      Submit an uploaded document file to the Chandra OCR service for
+      text extraction and processing. Returns a job ID for status polling.
+      Avery must call this tool before creating any MCAS Document record
+      from an uploaded file. Supported formats: PDF, PNG, JPG, JPEG, TIFF,
+      DOCX. Maximum file size: 50 MB.
+    use_cases:
+      - Submitting an uploaded document for OCR before record creation (Workflow B, DOC-02)
+      - Re-submitting a failed OCR job after operator confirmation
+    inputs:
+      file_ref:
+        type: string
+        required: true
+        description: >
+          Platform document store reference path for the uploaded file.
+          Must be a verified reference from the current session.
+      original_filename:
+        type: string
+        required: true
+        max_length: 255
+      file_format:
+        type: string
+        required: true
+        enum: [pdf, png, jpg, jpeg, tiff, docx]
+      matter_id:
+        type: string
+        required: false
+        pattern: "^MCAS-[0-9]{4,}$"
+        description: Associated matter ID for audit trail linkage
+      priority:
+        type: string
+        required: false
+        enum: [normal, high]
+        default: normal
+    outputs:
+      ocr_job_id:
+        type: string
+        description: Chandra OCR job ID (e.g. OCR-004821)
+        pattern: "^OCR-[0-9]{6,}$"
+      status:
+        type: string
+        enum: [submitted, queued, processing]
+      submitted_at:
+        type: string
+        format: iso8601
+      estimated_completion_seconds:
+        type: integer
+    requires_confirmation: false
+    classification_ceiling: tier2
+    paperclip_policy_ref: avery_policy.paperclip.yaml#chandra_ocr_submit
+    errors:
+      - code: CHANDRA_UNAVAILABLE
+        action: pause_session_notify_operator
+      - code: UNSUPPORTED_FORMAT
+        action: surface_error_request_operator_action
+      - code: FILE_TOO_LARGE
+        action: surface_error_request_operator_action
+      - code: FILE_REF_NOT_FOUND
+        action: surface_error_request_correction
+
+  - name: chandra_ocr_result
+    display_name: "Chandra OCR Result"
+    group: chandra_ocr
+    version: "1.0.0"
+    path: agents/base/tools/chandra_ocr_result.py
+    description: >
+      Retrieve the result of a completed Chandra OCR job by job ID. Returns
+      status, confidence score, and the reference path to the output text
+      stored in the platform document store. Avery uses the output_text_ref
+      when creating the MCAS Document record — it does not embed or persist
+      the full OCR text directly. If the job has not yet completed, returns
+      the current status for Avery to retry after delay.
+    use_cases:
+      - Polling for OCR completion during Workflow B (DOC-03 through DOC-04)
+      - Retrieving the OCR confidence score and text reference for record creation
+    inputs:
+      ocr_job_id:
+        type: string
+        required: true
+        pattern: "^OCR-[0-9]{6,}$"
+    outputs:
+      ocr_job_id:
+        type: string
+      status:
+        type: string
+        enum: [queued, processing, complete, failed, timeout]
+      confidence:
+        type: number
+        description: OCR confidence score (0.0–1.0). Present only when status=complete.
+        minimum: 0.0
+        maximum: 1.0
+      output_text_ref:
+        type: string
+        description: >
+          Reference path to OCR text output in platform document store.
+          Present only when status=complete and confidence >= 0.70.
+      anomalies_detected:
+        type: array
+        description: Any anomalies detected during OCR processing
+        items:
+          type: string
+          enum:
+            - redaction_detected
+            - low_confidence
+            - missing_pages
+            - apparent_alteration
+            - format_unusual
+      completed_at:
+        type: string
+        format: iso8601
+      error_message:
+        type: string
+        description: Error detail when status=failed or status=timeout
+    requires_confirmation: false
+    classification_ceiling: tier2
+    paperclip_policy_ref: avery_policy.paperclip.yaml#chandra_ocr_result
+    notes: >
+      If status=failed or status=timeout after a single retry, Avery must
+      surface the failure to the operator with the error_message and request
+      operator action. Avery must not attempt more than 2 automated retries.
+
+
+  # ---------------------------------------------------------------------------
+  # GROUP 4 — OpenRAG (Query Only)
+  # Avery queries the internal-safe OpenRAG index exclusively for duplicate
+  # and related-matter detection. No ingestion or write access.
+  # ---------------------------------------------------------------------------
+
+  - name: openrag_query_intake
+    display_name: "OpenRAG Query (Intake Duplicate Check)"
+    group: openrag
+    version: "1.0.0"
+    path: agents/base/tools/openrag_query_intake.py
+    description: >
+      Query the OpenRAG internal-safe index for prior intake summaries,
+      matter context, and related records to support duplicate detection
+      and related-matter identification. Returns semantic similarity results
+      against the avery-matter-context index only. Avery does not query
+      the full research knowledge base — that is Rae/Lex scope.
+    use_cases:
+      - Semantic duplicate check before creating a new matter (Workflow A, Step 1)
+      - Identifying related prior matters with similar incident descriptions
+      - Checking prior document intake for provenance verification
+    inputs:
+      query:
+        type: string
+        required: true
+        description: >
+          Semantic query describing the matter or document to check against.
+          Must not contain PII or real names.
+        max_length: 500
+      index:
+        type: string
+        required: false
+        enum: [avery-matter-context]
+        default: avery-matter-context
+        description: Avery may only query the avery-matter-context index
+      limit:
+        type: integer
+        required: false
+        default: 5
+        maximum: 15
+      similarity_threshold:
+        type: number
+        required: false
+        default: 0.75
+        minimum: 0.0
+        maximum: 1.0
+    outputs:
+      results:
+        type: array
+        items:
+          type: object
+          properties:
+            matter_id: {type: string}
+            similarity_score: {type: number}
+            summary_snippet: {type: string}
+            intake_date: {type: string}
+      query_id:
+        type: string
+    requires_confirmation: false
+    classification_ceiling: tier2
+    paperclip_policy_ref: avery_policy.paperclip.yaml#openrag_query_intake
+    errors:
+      - code: OPENRAG_UNAVAILABLE
+        action: log_warn_continue_without_rag
+        notes: >
+          OpenRAG unavailability must not block intake. Avery logs a warning,
+          informs the operator that semantic duplicate check was skipped,
+          and continues with MCAS-only duplicate detection.
+
+
+  # ---------------------------------------------------------------------------
+  # GROUP 5 — Open Notebook
+  # Avery writes intake summaries and record confirmation logs to the
+  # operator-facing Open Notebook for human review. The intake summary
+  # is the primary human-review artifact produced at session end.
+  # ---------------------------------------------------------------------------
+
+  - name: open_notebook_write_intake
+    display_name: "Open Notebook Write (Intake Summary)"
+    group: open_notebook
+    version: "1.0.0"
+    path: agents/base/tools/open_notebook_write_intake.py
+    description: >
+      Write a structured intake summary to Open Notebook for human operator
+      review. This is Avery's primary output artifact — produced at the end
+      of every intake session (Workflow A and B) and presented to the
+      operator before the HITL gates are triggered. The summary is the
+      basis on which the operator makes intake_acceptance and
+      tier_classification gate decisions. Must not contain Tier-0 content.
+    use_cases:
+      - Writing the full intake summary at session end (Workflow A, Step 5)
+      - Writing the document ingestion summary (Workflow B, DOC-07)
+      - Writing a matter update summary (Workflow C)
+    inputs:
+      entry_type:
+        type: string
+        required: true
+        enum:
+          - intake_summary
+          - document_ingestion_summary
+          - matter_update_summary
+          - safety_escalation_record
+      title:
+        type: string
+        required: true
+        description: >
+          Notebook entry title. Must not contain complainant real name.
+          Format: "{EntryType} — {MatterID} — {YYYY-MM-DD}"
+        max_length: 300
+      content:
+        type: string
+        required: true
+        description: >
+          Full Markdown-formatted intake summary. Must follow the output
+          template defined in agent.yaml output.formats.intake_summary.
+          Must not contain Tier-0 PII, real complainant names, or
+          unredacted sensitive identifiers.
+        max_length: 50000
+      matter_id:
+        type: string
+        required: false
+        pattern: "^MCAS-[0-9]{4,}$"
+      record_ids:
+        type: array
+        required: false
+        description: All MCAS record IDs created or updated in this session
+        items:
+          type: string
+      flags:
+        type: array
+        required: false
+        description: Any session-level flags to surface prominently in the summary
+        items:
+          type: string
+      tags:
+        type: array
+        required: false
+        items:
+          type: string
+    outputs:
+      entry_id:
+        type: string
+      written_at:
+        type: string
+        format: iso8601
+      notebook_url:
+        type: string
+        description: URL to the entry in the Open Web UI notebook interface
+    requires_confirmation: false
+    classification_ceiling: tier2
+    prohibited_content:
+      - tier0_pii
+      - real_complainant_name
+      - ssn_any
+      - unredacted_contact_info
+    paperclip_policy_ref: avery_policy.paperclip.yaml#open_notebook_write_intake
+
+
+  # ---------------------------------------------------------------------------
+  # GROUP 6 — SearXNG (Internal T1 Tier)
+  # Avery's search access is T1 (internal-safe) scoped exclusively to
+  # duplicate detection, related-record lookup, and document provenance
+  # verification. Avery does NOT perform legal research via search —
+  # that is Rae/Lex scope. No OSINT, no social, no PI-tier.
+  # ---------------------------------------------------------------------------
+
+  - name: searxng_internal_search
+    display_name: "SearXNG Internal Search (T1)"
+    group: searxng
+    version: "1.0.0"
+    path: agents/base/tools/searxng_internal_search.py
+    description: >
+      Execute a T1 (internal-safe) search against the private SearXNG instance
+      for duplicate matter detection, related-record lookup, and document
+      provenance verification. Engine groups are restricted to:
+      internal_mcas, internal_openrag, public_legal, public_web_safe.
+      No OSINT, social media, or PI-tier engine groups are available on
+      Avery's T1 token. Search is never used by Avery for legal research.
+    use_cases:
+      - Cross-system duplicate detection before matter creation
+      - Document provenance lookup (e.g. checking if a police report exists publicly)
+      - Related-matter detection across internal indexes
+    inputs:
+      query:
+        type: string
+        required: true
+        description: >
+          Search query. Must not contain PII or real names. Structured around
+          incident type, jurisdiction, date, and public identifiers only.
+        max_length: 500
+      engine_groups:
+        type: array
+        required: false
+        description: Engine groups to search (subset of T1 permitted groups)
+        items:
+          type: string
+          enum:
+            - internal_mcas
+            - internal_openrag
+            - public_legal
+            - public_web_safe
+        default: [internal_mcas, internal_openrag]
+      permitted_purpose:
+        type: string
+        required: true
+        enum:
+          - duplicate_matter_detection
+          - related_record_lookup
+          - document_provenance_verification
+        description: Must match one of Avery's permitted search purposes from agent.yaml
+      limit:
+        type: integer
+        required: false
+        default: 10
+        maximum: 20
+    outputs:
+      results:
+        type: array
+        items:
+          type: object
+          properties:
+            title: {type: string}
+            url: {type: string}
+            snippet: {type: string}
+            engine: {type: string}
+            score: {type: number}
+      total_results:
+        type: integer
+      query_id:
+        type: string
+    requires_confirmation: false
+    classification_ceiling: tier2
+    search_tier: T1
+    denied_engine_groups:
+      - osint_social
+      - osint_people_search
+      - pi_tier
+      - external_commercial
+    paperclip_policy_ref: avery_policy.paperclip.yaml#searxng_internal_search
+    errors:
+      - code: SEARXNG_UNAVAILABLE
+        action: log_warn_continue_without_search
+
+
+  # ---------------------------------------------------------------------------
+  # GROUP 7 — n8n HITL Gate Triggering
+  # Avery triggers HITL gate webhooks to route approval requests to the
+  # human operator. Avery triggers but does not resolve gates — resolution
+  # is Hermes's responsibility via the operator interface.
+  # Two gates: intake_acceptance and tier_classification.
+  # ---------------------------------------------------------------------------
+
+  - name: n8n_trigger_intake_gate
+    display_name: "n8n HITL Trigger (Intake Gates)"
+    group: n8n
+    version: "1.0.0"
+    path: agents/base/tools/n8n_trigger_hitl.py
+    description: >
+      Trigger an n8n HITL approval workflow to route an intake gate event
+      to the human operator channel. Avery may trigger only the two
+      intake-specific gates: intake_acceptance and tier_classification.
+      Both gates must be triggered at session end, in order, after the
+      intake summary has been written to Open Notebook. Avery waits for
+      gate resolution before triggering downstream handoffs.
+    use_cases:
+      - Triggering intake_acceptance gate after intake summary is ready (Gate 1)
+      - Triggering tier_classification gate after intake_acceptance is approved (Gate 2)
+    inputs:
+      gate_id:
+        type: string
+        required: true
+        enum:
+          - intake_acceptance
+          - tier_classification
+        description: >
+          Avery may only trigger these two gate IDs. Any other gate_id
+          will be blocked by NemoClaw.
+      matter_id:
+        type: string
+        required: true
+        pattern: "^MCAS-[0-9]{4,}$"
+      notebook_entry_id:
+        type: string
+        required: true
+        description: Open Notebook entry ID containing the intake summary for review
+      record_ids:
+        type: array
+        required: true
+        description: All MCAS record IDs created in this session requiring gate review
+        items:
+          type: string
+      summary:
+        type: string
+        required: true
+        description: >
+          Human-readable summary of what the operator needs to review/approve.
+          Shown in the gate notification.
+        max_length: 1000
+      proposed_tiers:
+        type: array
+        required: false
+        description: Proposed Tier for each record — required for tier_classification gate
+        items:
+          type: object
+          properties:
+            record_id: {type: string}
+            record_type: {type: string}
+            proposed_tier: {type: string}
+            rationale: {type: string}
+      priority:
+        type: string
+        required: false
+        enum: [normal, high, critical]
+        default: normal
+    outputs:
+      execution_id:
+        type: string
+        description: n8n workflow execution ID
+      triggered_at:
+        type: string
+        format: iso8601
+      routing:
+        type: array
+        description: Channels the gate was routed to
+        items:
+          type: string
+    requires_confirmation: false
+    classification_ceiling: tier2
+    gate_trigger_scope:
+      permitted_gates: [intake_acceptance, tier_classification]
+      denied_gates: [all_others]
+    paperclip_policy_ref: avery_policy.paperclip.yaml#n8n_trigger_intake_gate
+    errors:
+      - code: N8N_UNAVAILABLE
+        action: pause_session_notify_operator
+      - code: INVALID_GATE_ID
+        action: hard_block_surface_error
+
+
+  # ---------------------------------------------------------------------------
+  # GROUP 8 — MemoryPalace MCP
+  # Cross-session memory scoped to matters created by Avery. Stores
+  # matter context references (IDs, document refs, intake summary refs)
+  # for use in follow-up sessions. Never stores Tier-0/1 content or PII.
+  # ---------------------------------------------------------------------------
+
+  - name: memorypalace_write_intake
+    display_name: "MemoryPalace Write (Intake Context)"
+    group: memorypalace
+    version: "1.0.0"
+    path: agents/base/tools/memorypalace_write.py
+    description: >
+      Write matter context references to MemoryPalace for cross-session
+      persistence. Avery uses this after session end to persist the matter
+      ID, associated record IDs, and intake summary reference so they are
+      available in follow-up sessions for Workflow C (matter update).
+      Must never store PII, real names, Tier-0/1 content, or full OCR text.
+      Only IDs and structural references are stored.
+    use_cases:
+      - Persisting matter context after session end for Workflow C continuity
+      - Storing document record IDs for follow-up ingestion sessions
+    permitted_categories:
+      - avery_matter_context
+    inputs:
+      category:
+        type: string
+        required: true
+        enum: [avery_matter_context]
+        description: Avery may only write to the avery_matter_context category
+      key:
+        type: string
+        required: true
+        description: "Format: matter:{matter_id}:{field}"
+      value:
+        type: any
+        required: true
+        description: >
+          Value to store. Permitted: matter IDs, record IDs, notebook entry
+          references, session timestamps, session type, flags list.
+          Prohibited: PII, real names, OCR text, Tier-0/1 content, case
+          narrative, legal conclusions.
+      ttl_days:
+        type: integer
+        required: false
+        default: 365
+        description: Retention TTL. Default 1 year.
+    outputs:
+      key: {type: string}
+      written_at: {type: string, format: iso8601}
+    requires_confirmation: false
+    classification_ceiling: tier2
+    prohibited_content:
+      - pii_any_form
+      - tier0_material
+      - tier1_material
+      - real_names
+      - ocr_text_body
+      - legal_conclusions
+    paperclip_policy_ref: avery_policy.paperclip.yaml#memorypalace_write_intake
+
+  - name: memorypalace_read_intake
+    display_name: "MemoryPalace Read (Intake Context)"
+    group: memorypalace
+    version: "1.0.0"
+    path: agents/base/tools/memorypalace_read.py
+    description: >
+      Read persisted intake context from MemoryPalace for matters previously
+      handled by Avery. Used at the start of Workflow C to load prior session
+      context before updating a matter. Read-only — returns only entries
+      written under the avery_matter_context category.
+    use_cases:
+      - Loading prior session context at Workflow C start
+      - Retrieving document record IDs from a prior ingestion session
+    inputs:
+      category:
+        type: string
+        required: false
+        enum: [avery_matter_context]
+        default: avery_matter_context
+      key:
+        type: string
+        required: false
+        description: Exact key lookup (e.g. matter:MCAS-0042:record_ids)
+      query:
+        type: string
+        required: false
+        description: Semantic search within avery_matter_context
+      limit:
+        type: integer
+        required: false
+        default: 10
+    outputs:
+      entries:
+        type: array
+        items:
+          type: object
+          properties:
+            key: {type: string}
+            category: {type: string}
+            value: {type: any}
+            written_at: {type: string}
+    requires_confirmation: false
+    classification_ceiling: tier2
+    paperclip_policy_ref: avery_policy.paperclip.yaml#memorypalace_read_intake
+
+
+  # ---------------------------------------------------------------------------
+  # GROUP 9 — Safety Escalation (Internal)
+  # Invoked automatically by the safety_escalation NemoClaw rail when a
+  # safety risk indicator is detected. Routes an urgent alert to the human
+  # operator queue via the designated escalation channel. Avery pauses the
+  # intake session until operator clearance is received.
+  # ---------------------------------------------------------------------------
+
+  - name: safety_escalation_alert
+    display_name: "Safety Escalation Alert"
+    group: internal
+    version: "1.0.0"
+    path: agents/base/tools/safety_escalation_alert.py
+    internal: false   # Operator-visible effect — shown in TUI
+    description: >
+      Immediately pause the current intake session and route an urgent
+      safety alert to the human operator queue. Triggered automatically
+      by the safety_escalation NemoClaw rail upon detection of:
+      immediate physical danger, credible threat of harm, minor at risk,
+      or active stalking/surveillance indicators. Avery must not resume
+      the intake session until the operator explicitly provides clearance
+      via the safety_clearance response channel. This tool is always
+      called with requires_confirmation=false — it does not wait for
+      Avery's own confirmation because the safety scenario may require
+      immediate action.
+    use_cases:
+      - Pausing intake and alerting operator when complainant discloses
+        immediate physical danger (SPEC.md §7, SAFETY-01 through SAFETY-06)
+      - Routing minor-at-risk disclosure to operator for mandatory review
+      - Escalating active retaliation or stalking indicators
+    inputs:
+      matter_id:
+        type: string
+        required: false
+        pattern: "^MCAS-[0-9]{4,}$"
+        description: Matter ID if one has been created in this session
+      indicator:
+        type: string
+        required: true
+        enum:
+          - immediate_physical_danger
+          - credible_threat_of_harm
+          - minor_at_risk
+          - active_stalking_or_surveillance
+      description:
+        type: string
+        required: true
+        description: >
+          Non-identifying description of the safety indicator detected.
+          Must not contain Tier-0 PII. Maximum 1000 characters.
+        max_length: 1000
+      session_state_snapshot:
+        type: string
+        required: false
+        description: >
+          Reference to current session state for resume context after clearance.
+          Not PII — structural reference only.
+    outputs:
+      alert_id:
+        type: string
+      escalation_channel:
+        type: string
+        enum: [human_operator_queue]
+      alerted_at:
+        type: string
+        format: iso8601
+      session_paused:
+        type: boolean
+        description: Always true — session is always paused on safety escalation
+    requires_confirmation: false
+    classification_ceiling: tier2
+    priority: urgent
+    paperclip_policy_ref: avery_policy.paperclip.yaml#safety_escalation_alert
+
+
+# =============================================================================
+# DENIED TOOLS
+# These tools are explicitly unavailable to Avery. Enforced at runtime
+# by NemoClaw and Paperclip policy. Listed here as the source-of-truth
+# for deny rules with full rationale for each denial.
+# =============================================================================
+denied:
+
+  - name: lawglance_retriever
+    rationale: >
+      Legal research and statute/case law retrieval is exclusively within
+      the scope of Rae (LegalResearchCrew) and Lex. Avery is an intake agent
+      and must never perform legal analysis or legal research. Providing
+      Avery with legal retrieval access would create a vector for legal
+      conclusions entering MCAS records without proper research workflow
+      oversight.
+
+  - name: auto_research_claw
+    rationale: >
+      Research loop invocation is Rae/Lex scope. Avery does not conduct
+      research. Allowing Avery to invoke the research loop would bypass
+      the tiered search token enforcement model and permit research
+      activities without operator scope approval.
+
+  - name: researchclaw_skill
+    rationale: >
+      Same as auto_research_claw. All research delegation routes through
+      OpenClaw crew dispatch to the appropriate research agent.
+
+  - name: openrag_ingest
+    rationale: >
+      RAG index ingestion (document embedding and index writes) is performed
+      by dedicated ingestion pipelines scoped to research agents. Avery has
+      query-only OpenRAG access. Allowing ingestion would risk populating
+      the research knowledge base with unreviewed intake content.
+
+  - name: openrag_delete
+    rationale: >
+      Deletion from the RAG index requires explicit human authorization.
+      No agent may delete knowledge base content autonomously.
+
+  - name: mcas_delete_any
+    rationale: >
+      Deletion of any MCAS record requires explicit human authorization
+      at the HOB level. No agent may delete records autonomously. Avery
+      specifically must not be able to delete intake records it creates —
+      all record lifecycle management is human-controlled.
+
+  - name: mcas_read_tier0
+    rationale: >
+      Tier-0 content (privileged attorney-client communications, protected
+      personal disclosures, direct PII fields) must never enter the agent
+      pipeline. Avery has no OAuth2 scope for Tier-0 MCAS endpoints.
+      Tier-0 fields must be entered directly by human operators in the
+      MCAS secure UI.
+
+  - name: mcas_classification_finalize
+    rationale: >
+      Tier classification finalization is exclusively human-authorized.
+      The /classification/finalize endpoint is blocked in agent.yaml
+      denied_endpoints and enforced by NemoClaw no_autonomous_classification
+      rail. Avery may propose Tier values but may never finalize them.
+
+  - name: mcas_persons_dereference
+    rationale: >
+      Pseudonym-to-real-name mapping (dereference) is a Tier-0 operation
+      that is human-only. Avery works exclusively with pseudonyms and must
+      never have access to the dereference mapping table.
+
+  - name: agentic_mail
+    rationale: >
+      Avery has no outbound communication channel. All external communications
+      route through Ollie (referral) or Casey (assessment) with mandatory
+      human approval gates. Allowing Avery to send external email would create
+      an unauthorized external transmission vector from the intake pipeline.
+
+  - name: social_connectors
+    rationale: >
+      Social media platform access is exclusively Social Media Manager scope.
+      Avery has no role in social media operations and must never access
+      social platforms.
+
+  - name: gitbook
+    rationale: >
+      GitBook publication access is exclusively Webmaster/Quill scope with
+      mandatory publication_approval HITL gate. Avery produces intake
+      summaries for Open Notebook (internal) only — never for public
+      publication.
+
+  - name: openclaw_dispatch
+    rationale: >
+      Avery does not dispatch to OpenClaw crews directly. Avery's downstream
+      handoffs (to Rae, Chronology, Iris) are triggered by OpenClaw event
+      conditions after the human operator clears both HITL gates. Avery
+      triggers the HITL gates that authorize handoffs — it does not dispatch
+      the handoffs itself. This preserves the operator-in-the-loop model
+      for all downstream crew activation.
+
+  - name: spawn_transient_subagent
+    rationale: >
+      Avery operates as a single focused intake agent and does not spawn
+      subagents. All parallel workstreams downstream of intake are managed
+      by OpenClaw crew routing after human gate clearance. Subagent spawning
+      would add unpredictable execution paths to the tightly gated intake
+      pipeline.
+
+  - name: proton_send
+    rationale: >
+      Proton Mail Bridge is reserved exclusively for human-to-human
+      privileged communication of Tier-0 material. No agent may send
+      via Proton under any condition.
+
+# =============================================================================
+# Runtime Enforcement Summary
+# =============================================================================
+# Allow enforcement:  avery_policy.paperclip.yaml — tool allow/deny rules
+# Ceiling enforcement: MCAS OAuth2 scopes (Avery token = T1/T2 write, T0 blocked)
+#                      OpenRAG OAuth2 scopes (query-only on avery-matter-context)
+# NemoClaw rails:     tier0_data_isolation, no_autonomous_classification,
+#                     no_record_fabrication, no_premature_handoff,
+#                     no_legal_analysis, safety_escalation
+# HITL enforcement:   n8n webhook (intake_acceptance + tier_classification gates)
+#                     Avery waits for gate resolution before triggering handoffs
+# Audit:              All tool calls, MCAS writes, HITL events, NemoClaw rail
+#                     triggers, session start/end logged to platform audit trail
+#                     (AUDIT_LOG_ENDPOINT env var)
+# Pre-commit:         detect-secrets, keyword scan (no case data in git)
+# =============================================================================
