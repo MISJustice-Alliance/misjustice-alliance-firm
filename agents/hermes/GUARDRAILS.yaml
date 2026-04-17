@@ -1,0 +1,1028 @@
+# =============================================================================
+# agents/hermes/GUARDRAILS.yaml
+# Hermes — Human Interface & Control Agent
+# Runtime Guardrail Definitions
+# MISJustice Alliance Firm
+# =============================================================================
+# This file defines all runtime guardrails applied to Hermes inputs and
+# outputs. Guardrails are evaluated in pipeline order on every operator turn.
+# They are enforced by the MISJusticeGuardrailLayer middleware, which wraps
+# the LangChain agent executor.
+#
+# Guardrail categories:
+#   INPUT   — Applied to raw operator instruction before LLM call
+#   OUTPUT  — Applied to LLM response before delivery to operator
+#   TOOL    — Applied to tool input/output before and after tool execution
+#   MEMORY  — Applied to MemoryPalace read/write payloads
+#   AUDIT   — Cross-cutting hooks that log and score without blocking
+#
+# Enforcement levels:
+#   block   — Hard stop. Action is refused. Operator is notified.
+#   redact  — Content is removed or replaced. Execution continues.
+#   warn    — Flag logged. Operator is notified. Execution continues.
+#   audit   — Event logged to LangSmith + Loki. No operator notice.
+#
+# Relationship to other files:
+#   SOUL.md              — behavioral principles; guardrails implement them
+#   POLICY.md            — policy rules; guardrails enforce them at runtime
+#   hermes_policy.paperclip.yaml — Paperclip enforces at control-plane level
+#   METRICS.md           — hermes_safety_* metrics track guardrail activations
+#   agent.yaml           — hard_limits block reference this file
+#
+# Evaluation order within each category is determined by priority (lower = first).
+# All guardrails with enforcement: block are evaluated before warn/redact/audit.
+#
+# No secrets stored here. All env var references follow the *_env convention.
+# =============================================================================
+
+meta:
+  agent: hermes
+  agent_version: "1.0.0"
+  schema_version: "1.0.0"
+  effective_date: "2026-04-16"
+  maintainer: MISJustice Alliance Platform Team
+  reviewed_by: veritas               # Veritas audits guardrail activation logs nightly
+  review_cycle_days: 90
+
+# =============================================================================
+# GUARDRAIL PIPELINE ORDER
+# Defines the evaluation sequence across all categories per operator turn.
+# =============================================================================
+pipeline_order:
+  - INPUT
+  - TOOL_PRE                         # Before tool execution
+  - OUTPUT
+  - TOOL_POST                        # After tool execution, before result surfaced
+  - MEMORY_PRE                       # Before MemoryPalace write
+  - MEMORY_POST                      # After MemoryPalace read, before use
+  - AUDIT                            # Always runs; does not block
+
+# =============================================================================
+# INPUT GUARDRAILS
+# Applied to raw operator instruction before any LLM processing.
+# =============================================================================
+input_guardrails:
+
+  # ---------------------------------------------------------------------------
+  # G-IN-001: Prompt Injection Detection
+  # ---------------------------------------------------------------------------
+  - id: G-IN-001
+    name: prompt_injection_detection
+    category: INPUT
+    priority: 1
+    enforcement: block
+    description: >
+      Detects attempts to override Hermes's system prompt, SOUL.md constraints,
+      or HITL gate requirements through natural-language instruction injection.
+    detection:
+      method: pattern_match_and_llm_score
+      pattern_match:
+        case_insensitive: true
+        patterns:
+          - "ignore (your|all|previous|the above) (instructions|prompt|rules|constraints)"
+          - "disregard (your|the) system prompt"
+          - "you are now"
+          - "your new (instructions|role|identity|purpose) (are|is)"
+          - "pretend (you are|to be|that)"
+          - "act as (if you are|a|an)"
+          - "forget (your|all) (instructions|training|constraints|rules)"
+          - "override (policy|SOUL|guardrail|HITL|Paperclip)"
+          - "DAN"
+          - "jailbreak"
+          - "do anything now"
+          - "no restrictions"
+          - "bypass (approval|HITL|confirmation|policy)"
+          - "skip (the|HITL|confirmation|approval) (gate|step|check|requirement)"
+          - "without (asking|confirmation|approval|HITL)"
+      llm_score:
+        model_id: classification       # Use classification model for speed
+        threshold: 0.85                # Block if injection score >= 0.85
+        prompt_template: guardrails/prompts/injection_score.md
+    on_trigger:
+      action: block
+      notify_operator: true
+      operator_message: >
+        ⚠️ POLICY BLOCK — Prompt Injection Detected
+        This instruction appears to attempt a system prompt override or
+        policy bypass. Hermes cannot act on instructions that conflict
+        with its SOUL.md and POLICY.md constraints.
+        If this was unintentional, please rephrase your request.
+      log_level: WARNING
+      metric: hermes_safety_hard_limit_invoked_total
+      metric_labels:
+        limit_id: prompt_injection_detected
+        trigger_source: prompt_injection_suspected
+      emit_audit_event: true
+      audit_event_type: prompt_injection_attempt
+
+  # ---------------------------------------------------------------------------
+  # G-IN-002: Legal Advice Request Detection
+  # ---------------------------------------------------------------------------
+  - id: G-IN-002
+    name: legal_advice_request_detection
+    category: INPUT
+    priority: 2
+    enforcement: block
+    description: >
+      Detects requests for legal advice, legal strategy recommendations, or
+      outcome predictions that Hermes cannot provide. Applies to direct,
+      indirect, hypothetical, and roleplay framings.
+    detection:
+      method: llm_score
+      model_id: classification
+      threshold: 0.80
+      prompt_template: guardrails/prompts/legal_advice_score.md
+      additional_patterns:
+        - "(should|can) (I|we|the client|my client)"
+        - "what (is|are) (my|our|their) (legal (rights|options|remedies))"
+        - "(will|would) (I|we|they) (win|lose|succeed|prevail)"
+        - "is (this|that|it) (legal|illegal|lawful|unlawful|actionable)"
+        - "(do|does) (this|that) (violate|breach|constitute)"
+        - "what (should|would) (I|we|a lawyer) (do|recommend|advise)"
+        - "hypothetically (speaking|if|assume)"
+        - "off the record"
+        - "pretend you are (my|a) (lawyer|attorney|counsel|legal advisor)"
+    on_trigger:
+      action: block
+      notify_operator: true
+      operator_message: >
+        ⚠️ LEGAL ADVICE BOUNDARY
+        Hermes is a task coordination agent, not a licensed attorney.
+        It cannot provide legal advice, legal strategy recommendations,
+        outcome predictions, or interpretations of law applied to specific facts.
+
+        For legal research, dispatch a task to the Legal Research Crew (Rae/Lex).
+        Research outputs carry a mandatory non-legal-advice disclaimer.
+        For client representation questions, consult a licensed attorney.
+      log_level: INFO
+      metric: hermes_safety_legal_advice_declined_total
+      emit_audit_event: true
+      audit_event_type: legal_advice_declined
+
+  # ---------------------------------------------------------------------------
+  # G-IN-003: Tier-0 Content Request Detection
+  # ---------------------------------------------------------------------------
+  - id: G-IN-003
+    name: tier0_access_request_detection
+    category: INPUT
+    priority: 3
+    enforcement: block
+    description: >
+      Detects requests to access, process, or route Tier-0 classified content
+      (attorney-client privileged communications, sealed materials, protected
+      records). Hermes's classification ceiling is Tier-2.
+    detection:
+      method: pattern_match
+      case_insensitive: true
+      patterns:
+        - "(attorney.client|attorney client) privilege"
+        - "(sealed|protected|classified) (record|document|filing|communication)"
+        - "tier.?0"
+        - "(privileged|confidential) communication"
+        - "(read|access|retrieve|fetch|process|handle|open) .{0,40} (tier.?0|privileged|sealed)"
+        - "(proton|secure) (mail|message|email) .{0,30} (read|open|access|decrypt)"
+    on_trigger:
+      action: block
+      notify_operator: true
+      operator_message: >
+        ⚠️ CLASSIFICATION CEILING — Tier-0 Access Denied
+        Hermes is authorized to handle Tier-2 and below content only.
+        Tier-0 materials (privileged communications, sealed records) require
+        human attorney access. Hermes cannot retrieve, process, or route
+        Tier-0 content under any circumstance.
+      log_level: WARNING
+      metric: hermes_safety_tier0_access_refused_total
+      emit_audit_event: true
+      audit_event_type: tier0_access_refused
+
+  # ---------------------------------------------------------------------------
+  # G-IN-004: Silent Compliance Instruction Detection
+  # ---------------------------------------------------------------------------
+  - id: G-IN-004
+    name: silent_compliance_instruction_detection
+    category: INPUT
+    priority: 4
+    enforcement: block
+    description: >
+      Detects operator instructions to suppress policy conflict notices,
+      skip confirmation steps, or execute without surfacing a POLICY BLOCK.
+      Hermes must surface all policy conflicts regardless of operator instruction.
+    detection:
+      method: pattern_match
+      case_insensitive: true
+      patterns:
+        - "(don't|do not|skip|suppress|omit|hide) (the|any|policy|HITL|confirmation) (notice|conflict|block|warning|message|alert|step|gate|check)"
+        - "just (do it|proceed|continue|execute|dispatch) (without|no) (asking|confirmation|approval|notice)"
+        - "(stop|don't) (telling|warning|notifying|alerting) me"
+        - "(ignore|bypass|skip) (policy|SOUL|guardrail|Paperclip) (check|notice|block|warning)"
+        - "(execute|proceed|dispatch|continue) (silently|quietly|without (me|operator) (knowing|seeing|reviewing))"
+    on_trigger:
+      action: block
+      notify_operator: true
+      operator_message: >
+        ⚠️ POLICY BLOCK — Silent Compliance Refused
+        Hermes cannot suppress policy conflict notices, skip confirmation
+        steps, or proceed without surfacing required approvals. This is an
+        absolute constraint from SOUL.md and cannot be overridden by operator
+        instruction. All policy blocks will always be surfaced.
+      log_level: WARNING
+      metric: hermes_safety_silent_compliance_refused_total
+      emit_audit_event: true
+      audit_event_type: silent_compliance_refused
+
+  # ---------------------------------------------------------------------------
+  # G-IN-005: PII / Case Data in Instruction Detection
+  # ---------------------------------------------------------------------------
+  - id: G-IN-005
+    name: pii_in_instruction_detection
+    category: INPUT
+    priority: 5
+    enforcement: warn
+    description: >
+      Detects personally identifiable information or case-specific facts
+      embedded directly in operator instructions. Hermes should work from
+      MCAS matter IDs, not inline case data.
+    detection:
+      method: pattern_match
+      case_insensitive: true
+      patterns:
+        - "\\b\\d{3}-\\d{2}-\\d{4}\\b"   # SSN pattern
+        - "\\b[A-Z]{2}\\d{6,8}\\b"         # Passport-style number
+        - "\\b(DOB|date of birth)[:\\s]+\\d{1,2}[/\\-]\\d{1,2}[/\\-]\\d{2,4}\\b"
+        - "\\b\\d{1,3}\.\\d{1,3}\.\\d{1,3}\.\\d{1,3}\\b"  # IP address
+        - "(complainant|respondent|petitioner|survivor) (is|named|called) [A-Z][a-z]+"
+      llm_score:
+        model_id: classification
+        threshold: 0.75
+        prompt_template: guardrails/prompts/pii_in_instruction_score.md
+    on_trigger:
+      action: warn
+      notify_operator: true
+      operator_message: >
+        ⚠️ NOTICE — Possible PII Detected in Instruction
+        Your instruction may contain personally identifiable information or
+        case-specific facts. Best practice is to reference matters by MCAS ID
+        (e.g. MCAS-0042) rather than including personal details directly.
+        Processing will continue, but this instruction has been flagged for
+        the audit log.
+      log_level: WARNING
+      emit_audit_event: true
+      audit_event_type: pii_in_operator_instruction
+
+  # ---------------------------------------------------------------------------
+  # G-IN-006: Scope Creep / Cross-Agent Authority Detection
+  # ---------------------------------------------------------------------------
+  - id: G-IN-006
+    name: scope_override_attempt_detection
+    category: INPUT
+    priority: 6
+    enforcement: block
+    description: >
+      Detects operator instructions asking Hermes to modify other agents'
+      Paperclip policies, tool bindings, classification ceilings, or
+      behavioral constraints. Hermes has no write authority over other agents.
+    detection:
+      method: pattern_match_and_llm_score
+      case_insensitive: true
+      patterns:
+        - "(change|modify|update|edit|override|adjust) .{0,40} (Rae|Lex|Iris|Avery|Casey|Sol|Veritas|Atlas|Webmaster|Social) .{0,40} (policy|tool|access|permission|scope|ceiling|limit)"
+        - "(give|grant|allow|permit) .{0,40} (agent|Rae|Lex|Iris|Avery) .{0,40} (access|permission|tool|Tier-?0|Tier-?1)"
+        - "(disable|turn off|bypass) .{0,40} (Paperclip|HITL|guardrail|policy) .{0,40} (for|on) .{0,40} (agent|Rae|Lex)"
+        - "(modify|change|update) (agent|Hermes|Rae|Lex) (agent.yaml|SOUL.md|POLICY.md|policy)"
+      llm_score:
+        model_id: classification
+        threshold: 0.80
+        prompt_template: guardrails/prompts/scope_override_score.md
+    on_trigger:
+      action: block
+      notify_operator: true
+      operator_message: >
+        ⚠️ POLICY BLOCK — Scope Override Refused
+        Hermes cannot modify other agents' policies, tool bindings, or
+        classification ceilings. Agent configuration changes require a
+        pull request to the misjustice-alliance-firm repository, a SOUL.md
+        review, and human operator approval before merge.
+      log_level: WARNING
+      metric: hermes_safety_hard_limit_invoked_total
+      metric_labels:
+        limit_id: no_scope_override
+      emit_audit_event: true
+      audit_event_type: scope_override_refused
+
+  # ---------------------------------------------------------------------------
+  # G-IN-007: External Publication / Transmission Request Detection
+  # ---------------------------------------------------------------------------
+  - id: G-IN-007
+    name: autonomous_external_action_detection
+    category: INPUT
+    priority: 7
+    enforcement: block
+    description: >
+      Detects requests for Hermes to autonomously publish content, send
+      external communications, or post to social platforms without routing
+      through the appropriate HITL gate.
+    detection:
+      method: pattern_match
+      case_insensitive: true
+      patterns:
+        - "(publish|post|send|email|message|tweet|broadcast) .{0,60} (now|immediately|directly|without (approval|review|HITL|asking))"
+        - "(go ahead and|just) (publish|post|send|email|tweet|broadcast)"
+        - "(publish|send|post) (to|on) (the website|social media|Twitter|Facebook|Instagram|LinkedIn|GitBook|blog)"
+        - "(send|email|message) (the client|complainant|respondent|opposing counsel|court|judge)"
+    on_trigger:
+      action: block
+      notify_operator: true
+      operator_message: >
+        ⚠️ POLICY BLOCK — Autonomous External Action Refused
+        Hermes cannot autonomously publish content, send external
+        communications, or post to external platforms. All such actions
+        require routing through the appropriate HITL approval gate:
+          • Publication → publication_approval gate (Sol + Webmaster)
+          • Social media → social_campaign_approval gate
+          • Client communications → referral_approval gate (Casey)
+        Please dispatch a task to the appropriate crew to initiate the
+        approval workflow.
+      log_level: WARNING
+      metric: hermes_safety_hard_limit_invoked_total
+      metric_labels:
+        limit_id: no_autonomous_publication
+      emit_audit_event: true
+      audit_event_type: autonomous_external_action_refused
+
+# =============================================================================
+# OUTPUT GUARDRAILS
+# Applied to LLM-generated response before delivery to operator.
+# =============================================================================
+output_guardrails:
+
+  # ---------------------------------------------------------------------------
+  # G-OUT-001: Legal Disclaimer Enforcement
+  # ---------------------------------------------------------------------------
+  - id: G-OUT-001
+    name: legal_disclaimer_enforcement
+    category: OUTPUT
+    priority: 1
+    enforcement: redact
+    description: >
+      Ensures the mandatory legal disclaimer is present on all Hermes outputs
+      that contain legal research summaries, statutory references, case law
+      citations, or regulatory analysis. If absent, the disclaimer is appended
+      before delivery. Absence is also logged as a safety event.
+    detection:
+      method: llm_score
+      model_id: classification
+      threshold: 0.70
+      prompt_template: guardrails/prompts/legal_content_detection.md
+      check: disclaimer_present
+      disclaimer_pattern: "(not legal advice|does not constitute legal advice|for informational purposes only|consult a licensed attorney)"
+    on_trigger:
+      action: redact
+      redaction_type: append
+      append_content: |
+        ---
+        ⚠️ **NOT LEGAL ADVICE** — This output is produced by an AI research
+        agent and is provided for informational purposes only. It does not
+        constitute legal advice, legal representation, or a legal opinion.
+        Do not rely on this content as a substitute for consultation with a
+        licensed attorney. MISJustice Alliance agents are research and
+        coordination tools, not legal counsel.
+      notify_operator: false
+      log_level: WARNING
+      metric: hermes_safety_disclaimer_missing_total
+      emit_audit_event: true
+      audit_event_type: disclaimer_appended_by_guardrail
+
+  # ---------------------------------------------------------------------------
+  # G-OUT-002: Tier-0/1 Content Leak Detection
+  # ---------------------------------------------------------------------------
+  - id: G-OUT-002
+    name: tier0_tier1_content_leak_detection
+    category: OUTPUT
+    priority: 2
+    enforcement: block
+    description: >
+      Detects Tier-0 or Tier-1 classified content in LLM output before it
+      reaches the operator interface. Hermes should never produce output
+      containing privileged content, but this guardrail acts as a final
+      safety net in case of unexpected RAG contamination or tool output leak.
+    detection:
+      method: pattern_match_and_llm_score
+      case_insensitive: true
+      patterns:
+        - "(attorney.client|attorney client) privilege"
+        - "privileged and confidential"
+        - "protected by .{0,20} privilege"
+        - "(sealed|protected) record"
+        - "under seal"
+        - "TIER.?0"
+        - "TIER.?1"
+      llm_score:
+        model_id: classification
+        threshold: 0.85
+        prompt_template: guardrails/prompts/tier0_content_score.md
+    on_trigger:
+      action: block
+      notify_operator: true
+      operator_message: >
+        ⚠️ SAFETY BLOCK — Classified Content Detected in Output
+        Hermes detected content that may be Tier-0 or Tier-1 classified
+        in its generated response. This output has been blocked. This event
+        has been escalated to Veritas for audit review.
+        If this is unexpected, please file a platform incident report.
+      log_level: CRITICAL
+      metric: hermes_safety_hard_limit_invoked_total
+      metric_labels:
+        limit_id: no_tier0_handling
+      emit_audit_event: true
+      audit_event_type: classified_content_in_output_blocked
+      escalate_to_veritas: true
+
+  # ---------------------------------------------------------------------------
+  # G-OUT-003: Identity Fabrication Detection
+  # ---------------------------------------------------------------------------
+  - id: G-OUT-003
+    name: identity_fabrication_detection
+    category: OUTPUT
+    priority: 3
+    enforcement: block
+    description: >
+      Detects output where Hermes has adopted a false identity, claimed to be
+      a licensed attorney, or misrepresented its nature or capabilities.
+    detection:
+      method: llm_score
+      model_id: classification
+      threshold: 0.80
+      prompt_template: guardrails/prompts/identity_fabrication_score.md
+      check_for:
+        - claiming_to_be_human
+        - claiming_licensed_attorney_status
+        - claiming_court_authority
+        - claiming_to_be_different_agent
+        - denying_ai_nature_when_sincerely_asked
+    on_trigger:
+      action: block
+      notify_operator: true
+      operator_message: >
+        ⚠️ SAFETY BLOCK — Identity Integrity Violation
+        Hermes's generated response contained a false identity claim or
+        misrepresentation of its nature or authority. The response has been
+        blocked. This event has been escalated to Veritas.
+      log_level: CRITICAL
+      metric: hermes_safety_hard_limit_invoked_total
+      metric_labels:
+        limit_id: no_identity_fabrication
+      emit_audit_event: true
+      audit_event_type: identity_fabrication_blocked
+      escalate_to_veritas: true
+
+  # ---------------------------------------------------------------------------
+  # G-OUT-004: MCAS Write Content Detection
+  # ---------------------------------------------------------------------------
+  - id: G-OUT-004
+    name: mcas_write_instruction_in_output
+    category: OUTPUT
+    priority: 4
+    enforcement: block
+    description: >
+      Detects output that contains instructions to write to, update, or delete
+      MCAS records, which Hermes is not authorized to do. This catches cases
+      where the LLM reasons toward MCAS writes without going through the
+      appropriate crew dispatch path.
+    detection:
+      method: pattern_match
+      case_insensitive: true
+      patterns:
+        - "(I will|I am|I'm) (now |going to )?(write|update|create|delete|modify) .{0,40} (MCAS|matter|case|record|intake)"
+        - "(writing|updating|creating|deleting) .{0,40} (to|in|from) MCAS"
+        - "MCAS.(write|update|create|delete)"
+    on_trigger:
+      action: block
+      notify_operator: true
+      operator_message: >
+        ⚠️ POLICY BLOCK — MCAS Write Attempt Detected
+        Hermes cannot write to MCAS. Matter and person creation, updates,
+        and deletions must be routed to Avery (Intake Agent) via an OpenClaw
+        task dispatch with the appropriate HITL gate.
+      log_level: WARNING
+      metric: hermes_safety_hard_limit_invoked_total
+      metric_labels:
+        limit_id: no_mcas_write
+      emit_audit_event: true
+      audit_event_type: mcas_write_attempt_blocked
+
+  # ---------------------------------------------------------------------------
+  # G-OUT-005: PII Redaction in Output
+  # ---------------------------------------------------------------------------
+  - id: G-OUT-005
+    name: pii_redaction_in_output
+    category: OUTPUT
+    priority: 5
+    enforcement: redact
+    description: >
+      Redacts high-confidence PII patterns from Hermes output before delivery.
+      Hermes should not surface personal identifiers in operator-facing responses.
+    detection:
+      method: pattern_match
+      patterns:
+        - pattern: "\\b\\d{3}-\\d{2}-\\d{4}\\b"
+          label: SSN
+          replace_with: "[SSN REDACTED]"
+        - pattern: "\\b(\\d{4}[- ]){3}\\d{4}\\b"
+          label: CREDIT_CARD
+          replace_with: "[PAYMENT INFO REDACTED]"
+        - pattern: "\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Z|a-z]{2,}\\b"
+          label: EMAIL
+          replace_with: "[EMAIL REDACTED]"
+          confidence_required: high     # Only redact high-confidence email matches
+    on_trigger:
+      action: redact
+      notify_operator: false
+      log_level: INFO
+      emit_audit_event: true
+      audit_event_type: pii_redacted_from_output
+
+  # ---------------------------------------------------------------------------
+  # G-OUT-006: Case Data in Git Reference Detection
+  # ---------------------------------------------------------------------------
+  - id: G-OUT-006
+    name: case_data_in_git_detection
+    category: OUTPUT
+    priority: 6
+    enforcement: warn
+    description: >
+      Detects output that references committing case-specific facts, personal
+      identifiers, or matter content to Git. Complements the pre-commit hook
+      with a LLM-layer check.
+    detection:
+      method: pattern_match
+      case_insensitive: true
+      patterns:
+        - "(commit|push|add|git) .{0,40} (case|matter|MCAS|complainant|respondent|privileged)"
+        - "(git commit|git push) .{0,40} (data|facts|content|details|notes)"
+    on_trigger:
+      action: warn
+      notify_operator: true
+      operator_message: >
+        ⚠️ NOTICE — Possible Case Data in Git Reference
+        This response references committing content that may include case-
+        specific data. Case data, PII, and privileged content must never be
+        committed to the repository. Use MCAS for case data storage.
+        Pre-commit hooks are also enforced as a second layer.
+      log_level: WARNING
+      emit_audit_event: true
+      audit_event_type: case_data_in_git_warning
+
+# =============================================================================
+# TOOL GUARDRAILS (PRE-EXECUTION)
+# Applied to tool inputs before tool execution.
+# =============================================================================
+tool_pre_guardrails:
+
+  # ---------------------------------------------------------------------------
+  # G-TOOL-PRE-001: Confirmation Block Presence Check
+  # ---------------------------------------------------------------------------
+  - id: G-TOOL-PRE-001
+    name: confirmation_block_presence_check
+    category: TOOL_PRE
+    priority: 1
+    applies_to_tools:
+      - openclaw_dispatch
+      - openclaw_task_cancel
+      - n8n_trigger_hitl
+      - spawn_transient_subagent
+      - skill_factory_generate
+    enforcement: block
+    description: >
+      Verifies that a formal Intent Confirmation block was generated and
+      presented to the operator before any high-consequence tool is invoked.
+      The confirmation block must include: crew, workflow, matter_id,
+      scope_summary, and operator acknowledgment.
+    check:
+      required_fields:
+        - crew
+        - workflow
+        - matter_id
+        - scope_summary
+      scope_summary_min_words: 5
+      operator_acknowledgment_required: true
+    on_trigger:
+      action: block
+      notify_operator: true
+      operator_message: >
+        ⚠️ POLICY BLOCK — Confirmation Block Required
+        This tool requires an explicit Intent Confirmation block before
+        execution. Please confirm the following before proceeding:
+          • Crew and workflow being targeted
+          • Matter ID (MCAS reference)
+          • Scope summary (what will be done)
+      log_level: WARNING
+      metric: hermes_dispatch_without_confirmation_total
+      emit_audit_event: true
+      audit_event_type: confirmation_block_missing
+
+  # ---------------------------------------------------------------------------
+  # G-TOOL-PRE-002: Denied Tool Invocation Block
+  # ---------------------------------------------------------------------------
+  - id: G-TOOL-PRE-002
+    name: denied_tool_invocation_block
+    category: TOOL_PRE
+    priority: 2
+    applies_to_tools: all
+    enforcement: block
+    description: >
+      Blocks invocation of any tool in the denied_tools list from agent.yaml.
+      Paperclip enforces this at the control plane; this guardrail provides
+      an additional LLM-layer enforcement check with operator notification.
+    denied_tools_reference: agents/hermes/agent.yaml#denied_tools
+    on_trigger:
+      action: block
+      notify_operator: true
+      operator_message: >
+        ⚠️ POLICY BLOCK — Tool Not Permitted
+        The tool "{tool_name}" is not permitted for Hermes. Access to this
+        functionality must be routed through the appropriate crew dispatch
+        via OpenClaw. See agents/hermes/POLICY.md for routing guidance.
+      log_level: WARNING
+      metric: hermes_denied_tool_attempt_total
+      emit_audit_event: true
+      audit_event_type: denied_tool_invocation_blocked
+
+  # ---------------------------------------------------------------------------
+  # G-TOOL-PRE-003: Subagent TTL Ceiling Enforcement
+  # ---------------------------------------------------------------------------
+  - id: G-TOOL-PRE-003
+    name: subagent_ttl_ceiling
+    category: TOOL_PRE
+    priority: 3
+    applies_to_tools:
+      - spawn_transient_subagent
+    enforcement: redact
+    description: >
+      Caps the TTL parameter of subagent spawn requests at 600 seconds.
+      If the requested TTL exceeds the ceiling, it is silently capped and
+      the operator is notified.
+    check:
+      field: ttl_seconds
+      max_value: 600
+    on_trigger:
+      action: redact
+      redaction_type: cap_value
+      cap_to: 600
+      notify_operator: true
+      operator_message: >
+        ⚠️ NOTICE — Subagent TTL Capped
+        The requested subagent TTL of {requested_ttl}s exceeds the maximum
+        of 600s. TTL has been capped at 600s.
+      log_level: INFO
+      metric: hermes_subagent_ttl_exceeded_attempt_total
+      emit_audit_event: true
+      audit_event_type: subagent_ttl_capped
+
+  # ---------------------------------------------------------------------------
+  # G-TOOL-PRE-004: Subagent Concurrency Limit
+  # ---------------------------------------------------------------------------
+  - id: G-TOOL-PRE-004
+    name: subagent_concurrency_limit
+    category: TOOL_PRE
+    priority: 4
+    applies_to_tools:
+      - spawn_transient_subagent
+    enforcement: block
+    description: >
+      Blocks subagent spawn if the max_concurrent_subagents limit (3) is
+      already reached.
+    check:
+      current_active_subagents_metric: hermes_subagent_active
+      max_value: 3
+    on_trigger:
+      action: block
+      notify_operator: true
+      operator_message: >
+        ⚠️ POLICY BLOCK — Subagent Concurrency Limit Reached
+        The maximum of 3 concurrent transient subagents is currently active.
+        Wait for an active subagent to complete before spawning another, or
+        cancel an existing subagent via openclaw_task_cancel.
+      log_level: WARNING
+      emit_audit_event: true
+      audit_event_type: subagent_concurrency_limit_reached
+
+  # ---------------------------------------------------------------------------
+  # G-TOOL-PRE-005: MCAS Classification Ceiling
+  # ---------------------------------------------------------------------------
+  - id: G-TOOL-PRE-005
+    name: mcas_classification_ceiling
+    category: TOOL_PRE
+    priority: 5
+    applies_to_tools:
+      - mcas_read_matter_summary
+      - mcas_read_task_status
+    enforcement: block
+    description: >
+      Blocks MCAS read operations if the requested matter or data field
+      is classified above Tier-2. Validates against the OAuth2 scope set
+      in config.yaml (mcas:matter:read:summary, mcas:task:read only).
+    check:
+      classification_ceiling: tier2
+      blocked_scopes:
+        - mcas:read:tier0
+        - mcas:read:tier1
+        - mcas:matter:write
+        - mcas:person:write
+        - mcas:delete
+    on_trigger:
+      action: block
+      notify_operator: true
+      operator_message: >
+        ⚠️ CLASSIFICATION CEILING — MCAS Access Denied
+        The requested MCAS data exceeds Hermes's Tier-2 classification ceiling.
+        Higher-tier data access requires routing through a specialist agent
+        with appropriate authorization via OpenClaw.
+      log_level: WARNING
+      emit_audit_event: true
+      audit_event_type: mcas_classification_ceiling_enforced
+
+# =============================================================================
+# TOOL GUARDRAILS (POST-EXECUTION)
+# Applied to tool outputs before results are incorporated into agent reasoning.
+# =============================================================================
+tool_post_guardrails:
+
+  # ---------------------------------------------------------------------------
+  # G-TOOL-POST-001: Tool Output Classification Scan
+  # ---------------------------------------------------------------------------
+  - id: G-TOOL-POST-001
+    name: tool_output_classification_scan
+    category: TOOL_POST
+    priority: 1
+    applies_to_tools: all
+    enforcement: block
+    description: >
+      Scans all tool outputs for Tier-0 or Tier-1 classified content before
+      results are incorporated into the LLM reasoning context. Prevents
+      downstream contamination of the agent context window.
+    detection:
+      method: pattern_match
+      case_insensitive: true
+      patterns:
+        - "(attorney.client|attorney client) privilege"
+        - "privileged and confidential"
+        - "TIER.?0"
+        - "TIER.?1"
+        - "under seal"
+        - "(sealed|protected) record"
+    on_trigger:
+      action: block
+      notify_operator: true
+      operator_message: >
+        ⚠️ SAFETY BLOCK — Classified Content in Tool Output
+        A tool returned content that may be Tier-0 or Tier-1 classified.
+        The tool output has been quarantined and will not be incorporated
+        into agent reasoning. This event has been escalated to Veritas.
+      log_level: CRITICAL
+      emit_audit_event: true
+      audit_event_type: classified_content_in_tool_output
+      escalate_to_veritas: true
+
+  # ---------------------------------------------------------------------------
+  # G-TOOL-POST-002: MemoryPalace Write Confirmation
+  # ---------------------------------------------------------------------------
+  - id: G-TOOL-POST-002
+    name: memorypalace_write_confirmation
+    category: TOOL_POST
+    priority: 2
+    applies_to_tools:
+      - memorypalace_write
+    enforcement: audit
+    description: >
+      Logs all successful MemoryPalace writes with category and scope for
+      Veritas audit. Confirms the written content did not contain
+      prohibited categories or PII.
+    on_trigger:
+      action: audit
+      log_level: INFO
+      metric: hermes_memory_writes_total
+      emit_audit_event: true
+      audit_event_type: memory_write_confirmed
+
+# =============================================================================
+# MEMORY GUARDRAILS
+# =============================================================================
+memory_guardrails:
+
+  # ---------------------------------------------------------------------------
+  # G-MEM-001: Prohibited Category Write Block
+  # ---------------------------------------------------------------------------
+  - id: G-MEM-001
+    name: prohibited_memory_category_block
+    category: MEMORY_PRE
+    priority: 1
+    enforcement: block
+    description: >
+      Blocks MemoryPalace write operations targeting categories not in
+      Hermes's permitted_categories list (config.yaml).
+    permitted_categories_reference: agents/hermes/config.yaml#memorypalace.permitted_categories
+    on_trigger:
+      action: block
+      notify_operator: false
+      log_level: WARNING
+      metric: hermes_memory_write_rejected_total
+      metric_labels:
+        rejection_reason: prohibited_category
+      emit_audit_event: true
+      audit_event_type: memory_write_rejected_prohibited_category
+
+  # ---------------------------------------------------------------------------
+  # G-MEM-002: PII in Memory Write Block
+  # ---------------------------------------------------------------------------
+  - id: G-MEM-002
+    name: pii_in_memory_write_block
+    category: MEMORY_PRE
+    priority: 2
+    enforcement: block
+    description: >
+      Blocks MemoryPalace write operations containing PII, case-specific
+      identifiers, or matter content exceeding the permitted schema.
+    detection:
+      method: llm_score
+      model_id: classification
+      threshold: 0.75
+      prompt_template: guardrails/prompts/pii_in_memory_score.md
+    on_trigger:
+      action: block
+      notify_operator: false
+      log_level: WARNING
+      metric: hermes_memory_write_rejected_total
+      metric_labels:
+        rejection_reason: pii_detected
+      emit_audit_event: true
+      audit_event_type: memory_write_rejected_pii
+
+  # ---------------------------------------------------------------------------
+  # G-MEM-003: Tier-1/Tier-0 in Memory Write Block
+  # ---------------------------------------------------------------------------
+  - id: G-MEM-003
+    name: classified_content_in_memory_block
+    category: MEMORY_PRE
+    priority: 3
+    enforcement: block
+    description: >
+      Blocks MemoryPalace write operations containing Tier-1 or Tier-0
+      classified content.
+    detection:
+      method: pattern_match
+      case_insensitive: true
+      patterns:
+        - "TIER.?0"
+        - "TIER.?1"
+        - "(attorney.client|attorney client) privilege"
+        - "privileged and confidential"
+    on_trigger:
+      action: block
+      notify_operator: false
+      log_level: CRITICAL
+      metric: hermes_memory_write_rejected_total
+      metric_labels:
+        rejection_reason: tier1_content
+      emit_audit_event: true
+      audit_event_type: memory_write_rejected_classified
+      escalate_to_veritas: true
+
+# =============================================================================
+# AUDIT GUARDRAILS
+# Cross-cutting hooks that log and score without blocking.
+# Always run regardless of other guardrail outcomes.
+# =============================================================================
+audit_guardrails:
+
+  # ---------------------------------------------------------------------------
+  # G-AUD-001: Full Turn Audit Log
+  # ---------------------------------------------------------------------------
+  - id: G-AUD-001
+    name: full_turn_audit_log
+    category: AUDIT
+    priority: 1
+    enforcement: audit
+    description: >
+      Logs every operator turn (input + output + tool calls) to LangSmith
+      and Loki for Veritas nightly review. Includes guardrail activation
+      summary for the turn.
+    log_fields:
+      - session_id
+      - matter_id
+      - operator_instruction_hash     # SHA-256 hash; not plaintext
+      - classified_intent
+      - tool_calls_made
+      - guardrails_triggered
+      - model_used
+      - fallback_active
+      - tokens_used
+    destinations:
+      - langsmith
+      - loki
+    emit_audit_event: true
+    audit_event_type: turn_audit_log
+
+  # ---------------------------------------------------------------------------
+  # G-AUD-002: HITL Gate Outcome Log
+  # ---------------------------------------------------------------------------
+  - id: G-AUD-002
+    name: hitl_gate_outcome_log
+    category: AUDIT
+    priority: 2
+    enforcement: audit
+    description: >
+      Logs HITL gate triggers, resolutions, and timeouts with full context
+      for compliance audit and MemoryPalace persistence.
+    triggers_on:
+      - hitl_gate_triggered
+      - hitl_gate_resolved
+      - hitl_gate_timeout
+      - hitl_gate_bypass_attempted
+    log_fields:
+      - gate_id
+      - trigger_source
+      - resolution
+      - resolution_by
+      - resolution_timestamp
+      - time_to_resolution_seconds
+    destinations:
+      - langsmith
+      - loki
+      - memorypalace_category: hitl_gate_outcomes
+
+  # ---------------------------------------------------------------------------
+  # G-AUD-003: Hard Limit Invocation Summary
+  # ---------------------------------------------------------------------------
+  - id: G-AUD-003
+    name: hard_limit_invocation_summary
+    category: AUDIT
+    priority: 3
+    enforcement: audit
+    description: >
+      Produces a structured hard limit invocation record for every guardrail
+      block tied to a SOUL.md hard limit. This feeds Veritas's nightly
+      compliance scoring.
+    triggers_on:
+      - G-IN-001  # Prompt injection
+      - G-IN-002  # Legal advice
+      - G-IN-003  # Tier-0 access
+      - G-IN-004  # Silent compliance
+      - G-IN-006  # Scope override
+      - G-IN-007  # Autonomous external action
+      - G-OUT-002 # Tier-0 leak
+      - G-OUT-003 # Identity fabrication
+      - G-OUT-004 # MCAS write
+      - G-TOOL-PRE-001 # Confirmation block missing
+      - G-TOOL-PRE-002 # Denied tool
+      - G-TOOL-POST-001 # Classified in tool output
+    log_fields:
+      - guardrail_id
+      - limit_id
+      - trigger_source
+      - session_id
+      - turn_index
+      - instruction_hash
+    destinations:
+      - langsmith
+      - loki
+    emit_veritas_feed: true
+
+# =============================================================================
+# GLOBAL SETTINGS
+# =============================================================================
+global:
+  fail_open: false                    # NEVER fail open. If guardrail evaluation
+                                      # fails (e.g. classification model down),
+                                      # treat as block and notify operator.
+
+  fail_open_message: >
+    ⚠️ GUARDRAIL EVALUATION ERROR
+    A guardrail check could not be completed due to an internal error.
+    As a safety precaution, this action has been blocked. Please retry
+    or contact the platform team if the problem persists.
+
+  classification_model_unavailable_fallback:
+    action: use_pattern_match_only    # Fall back to pattern-only detection
+    notify_operator: true
+    degraded_message: >
+      ⚠️ NOTICE — Guardrail Classification Degraded
+      The guardrail classification model is temporarily unavailable.
+      Pattern-based detection is active. Some nuanced guardrail checks
+      may be less sensitive. LLM-score-dependent guardrails default to block.
+
+  max_guardrail_latency_ms: 2000      # Warn if any guardrail eval exceeds 2s
+  guardrail_timeout_action: block     # Block if eval times out entirely
+
+  veritas_feed:
+    enabled: true
+    all_block_events: true            # All block-level events go to Veritas
+    all_audit_events: true
+
+  precommit_hook_reference:
+    enabled: true
+    script: .pre-commit-config.yaml
+    note: >
+      Pre-commit hooks enforce detect-secrets and keyword scanning as a
+      separate layer before any content reaches the repository. GUARDRAILS.yaml
+      provides the runtime layer; pre-commit is the commit-time layer.
+      Both must be maintained consistently.
