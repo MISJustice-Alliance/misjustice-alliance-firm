@@ -25,6 +25,7 @@
 12. [HITL Workflow Automation — n8n](#12-hitl-workflow-automation--n8n)
 13. [Search and Retrieval Architecture](#13-search-and-retrieval-architecture)
 14. [RAG Backend](#14-rag-backend)
+    - [14.3 Legal Source Gateway — Open Legal Data Access Layer](#143-legal-source-gateway--open-legal-data-access-layer)
 15. [Case Management Backend — MCAS](#15-case-management-backend--mcas)
 16. [Agent Roster and Role Contracts](#16-agent-roster-and-role-contracts)
 17. [Data Classification Model](#17-data-classification-model)
@@ -74,6 +75,7 @@ This SPEC does **not** cover:
 | **HITL Automation** | n8n (self-hosted) | Approval routing, escalation webhooks, scheduled workflows |
 | **Search Gateway** | SearXNG + LiteLLM Proxy | Private tiered search with role-scoped tokens |
 | **Legal RAG** | LawGlance (LangChain + ChromaDB) | Public legal information retrieval |
+| **Open Legal Data Gateway** | Legal Source Gateway (internal microservice) | Normalized agent-callable API abstracting CourtListener, CAP, GovInfo, eCFR, Federal Register, Open States, and LegiScan behind a single task-oriented interface; Elasticsearch full-text index, Qdrant vector store (Inception embeddings), Neo4j citation knowledge graph |
 | **Private RAG** | OpenRAG / OpenSearch | Internal case research vector store |
 | **Case Management** | MCAS (MISJustice Case & Advocacy Server) | Authoritative case system of record |
 | **LLM Routing** | LiteLLM | Unified LLM proxy, model routing, search normalization |
@@ -93,7 +95,7 @@ The platform is organized into seven distinct layers. Data and control flow stri
 
 ┌─────────────────────────────────────────────────────────────────┐
 │  LAYER 1 — Human Interface                                      │
-│  Hermes CLI/TUI · n8n UI · Telegram · Discord · Open Web UI    │
+│  Hermes CLI/TUI · n8n UI · Telegram · Discord · Open Web UI     │
 │  Vane AI Search · Open Notebook · iMessage                      │
 ├─────────────────────────────────────────────────────────────────┤
 │  LAYER 2 — Control Plane                                        │
@@ -104,19 +106,23 @@ The platform is organized into seven distinct layers. Data and control flow stri
 │  OpenClaw / NemoClaw (task dispatch, sandbox provisioning)      │
 ├─────────────────────────────────────────────────────────────────┤
 │  LAYER 4 — Agent Runtime                                        │
-│  LangChain agents · OpenShell sandboxes · MemoryPalace MCP     │
+│  LangChain agents · OpenShell sandboxes · MemoryPalace MCP      │
 ├─────────────────────────────────────────────────────────────────┤
-│  LAYER 5 — Research \& Retrieval                                 │
-│  AutoResearchClaw · researchclaw-skill · LiteLLM · SearXNG     │
+│  LAYER 5 — Research & Retrieval                                 │
+│  AutoResearchClaw / researchclaw-skill · LiteLLM · SearXNG      │
 │  OpenRAG · LawGlance · MCAS Document Search                     │
+│  Elasticsearch (legal index) · Qdrant (Inception vectors)       │
+│  Neo4j (citation graph)                                         │
 ├─────────────────────────────────────────────────────────────────┤
 │  LAYER 6 — Persistence                                          │
-│  MCAS (case data) · OpenRAG/OpenSearch (vectors) · MemoryPalace│
-│  Proton (Tier-0 comms) · Git (config/code only)                │
+│  MCAS (case data) · OpenRAG/OpenSearch (vectors) · MemoryPalace │
+│  Proton (Tier-0 comms) · Git (config/code only)                 │
 ├─────────────────────────────────────────────────────────────────┤
 │  LAYER 7 — External / Public                                    │
-│  misjusticealliance.org · YWCA GitBook · X · Bluesky · Reddit  │
-│  Nostr · CourtListener · CAP · DOJ Open Data                   │
+│  misjusticealliance.org · YWCA GitBook · X · Bluesky · Reddit   │
+│  Nostr · CourtListener / RECAP · DOJ Open Data                  │
+|  Caselaw Access Project (CAP) · GovInfo (GPO) · eCFR ·          │
+|  Federal Register · Open States · LegiScan · DOJ Open Data      │
 └─────────────────────────────────────────────────────────────────┘
 
 ```
@@ -854,6 +860,7 @@ A single self-hosted SearXNG instance serves all platform search traffic. Config
 | `public_legal` | CourtListener, Google Scholar, Caselaw Access Project, DOJ Open Data | T1-publicsafe+ |
 | `public_web_safe` | DuckDuckGo (curated), Wikipedia, news (filtered) | T1-publicsafe+ |
 | `internal_mcas` | MCAS Document Search (via SearXNG custom engine adapter) | T1-internal+ |
+| `legal_gateway` | Legal Source Gateway normalized results (CourtListener, CAP, GovInfo, eCFR, FR, Open States, LegiScan) | T1-internal (Rae, Lex, Citation Agent) |
 | `restricted_registry` | State bar lookup, court registry, government databases | T2-restricted+ |
 | `osint_public` | PACER (public), secretary of state filings, property records | T3-pi only |
 | `admin_all` | All above + diagnostic views | T4-admin only |
@@ -928,12 +935,205 @@ class LawGlanceRetrieverTool(BaseTool):
         ...
 ```
 
+---
+
+## 14.3 Legal Source Gateway — Open Legal Data Access Layer
+
+The **Legal Source Gateway** (`services/legal-source-gateway/`) is a normalized internal API and ingestion service that provides research agents with structured, policy-controlled access to all major open US legal data sources. Agents never call upstream legal APIs directly — all legal data access flows through this gateway, which enforces rate limits, data classification, provenance logging, and source-policy rules.
+
+### Design Principles
+
+- **Source abstraction**: Agents call task-oriented endpoints (`cases.search`, `statutes.lookup`, `regulations.current`, `bills.search`, `citations.resolve`). The gateway maps each request to the correct upstream source connector.
+- **Normalized schema**: All retrieved documents map to a common canonical legal document envelope with consistent fields: `document_id`, `source`, `type`, `citation`, `court`, `jurisdiction`, `decision_date`, `text`, `citations`, `related_entities`, and `provenance`.
+- **Provenance tracking**: Every response includes upstream URL, license, and retrieval timestamp — automatically included in agent citations and audit logs.
+- **Source policy enforcement**: Ingestible sources (CourtListener, CAP, GovInfo, eCFR, Federal Register, Open States, LegiScan) are available for full agent use. Link-only sources (LII, Google Scholar, Justia) are returned as reference links only — never ingested or indexed.
+- **Rate limit management**: Per-source, per-agent token pools managed by the gateway; agents never manage API credentials directly.
+
+### Source Registry
+
+| Source | Role | Scope | Agent Access Pattern | Policy |
+|---|---|---|---|---|
+| **CourtListener** | Primary live case law & dockets | 9M+ opinions, RECAP dockets, semantic search, judge DB, oral arguments | `cases.search`, `cases.citation_lookup`, `dockets.watch`, `graph.expand` | Ingest + index |
+| **Caselaw Access Project (CAP)** | Historical case law backbone | 6.7M cases, 1658–2020, 40M pages | `cases.search` (historical), bulk corpus load | Ingest + index |
+| **GovInfo (GPO)** | Authoritative federal statutes & regulations | US Code (USLM XML), CFR, Federal Register, SCOTUS, congressional bills | `statutes.lookup`, `regulations.lookup`, `graph.expand` | Ingest + index |
+| **eCFR** | Current regulations (live) | Continuously updated CFR, daily amendments | `regulations.current` | Ingest + index |
+| **Federal Register API** | Daily rulemaking stream | Proposed rules, final rules, notices, executive orders | `regulations.changes`, `regulations.monitor` | Ingest + index |
+| **Open States** | State legislative data (real-time) | All 50 states + DC, bills, legislators, committees, events | `bills.search`, `bills.track`, `legislators.lookup` | Ingest + index |
+| **LegiScan** | State legislative data (bulk + push) | All 50 states + Congress, full bill text, roll calls, sponsors | `bills.search` (bulk), `bills.history` | Ingest + index (CC BY 4.0) |
+| **LII (Cornell)** | Human-readable statutory reference | Annotated USC, CFR, Wex encyclopedia | Reference link only | Link-only — no ingest |
+| **Google Scholar** | Human-facing case law lookup | Federal + state opinions | Reference link only | Link-only — no bulk |
+| **Justia** | Human-facing case law & codes | Federal + state cases, US Code, CFR | Reference link only | Link-only — no bulk |
+
+### Agent-Facing Task API
+
+All requests follow a normalized envelope:
+
+```json
+{
+  "task": "<task_name>",
+  "query": "<natural language or citation string>",
+  "filters": {
+    "jurisdiction": ["federal", "montana", "washington"],
+    "date_from": "YYYY-MM-DD",
+    "date_to": "YYYY-MM-DD",
+    "court": ["ca9", "mont", "wash"],
+    "source": ["courtlistener", "cap"]
+  },
+  "mode": "hybrid",
+  "return": ["summary", "citations", "source_links", "graph_edges", "provenance"]
+}
+```
+
+#### Available Tasks
+
+| Task | Description | Primary Source(s) |
+|---|---|---|
+| `cases.search` | Full-text + semantic case law search | CourtListener (live), CAP (historical) |
+| `cases.citation_lookup` | Resolve a citation string to a canonical opinion | CourtListener Reporters DB |
+| `cases.get` | Fetch full opinion text and metadata by ID | CourtListener, CAP |
+| `dockets.search` | Search RECAP federal dockets | CourtListener / RECAP |
+| `dockets.watch` | Register a webhook alert on a docket | CourtListener Alert API |
+| `statutes.lookup` | Retrieve a specific US Code section by citation | GovInfo (USLM XML) |
+| `statutes.search` | Full-text search across US Code titles | GovInfo / Elasticsearch index |
+| `regulations.current` | Retrieve current eCFR text by title/part/section | eCFR API |
+| `regulations.lookup` | Retrieve annual CFR edition text | GovInfo CFR XML |
+| `regulations.changes` | Fetch Federal Register rulemaking by agency or CFR cite | Federal Register API |
+| `regulations.monitor` | Register a change-watch on a CFR section | Federal Register API + n8n webhook |
+| `bills.search` | Search state or federal bills by topic, keyword, state | Open States + LegiScan |
+| `bills.track` | Register a legislative alert on a bill or topic | Open States + LegiScan Push API |
+| `legislators.lookup` | Look up a legislator by name, district, or location | Open States |
+| `citations.resolve` | Parse and validate a legal citation string | CourtListener Reporters DB |
+| `graph.expand` | Traverse citation graph from a seed opinion or statute | Neo4j (Citation Knowledge Graph) |
+
+### Canonical Document Schema
+
+All gateway responses normalize upstream data to this envelope:
+
+```json
+{
+  "document_id": "cl:opinion:123456",
+  "source": "courtlistener",
+  "type": "opinion",
+  "title": "Example v. State",
+  "citation": "123 F.3d 456",
+  "court": "ca9",
+  "jurisdiction": "federal",
+  "decision_date": "2024-06-03",
+  "text": "...",
+  "citations": ["42 U.S.C. § 1983", "Pearson v. Callahan, 555 U.S. 223"],
+  "related_entities": {
+    "judges": ["judge:abc"],
+    "cluster_id": "cl:cluster:999",
+    "docket_id": "cl:docket:888"
+  },
+  "provenance": {
+    "upstream_url": "https://www.courtlistener.com/opinion/123456/",
+    "license": "public domain / no known copyright",
+    "retrieved_at": "2026-04-17T00:00:00Z"
+  }
+}
+```
+
+### LangChain Tool Interface
+
+Research agents (Rae, Lex, Citation/Authority Agent) call the gateway through a LangChain `BaseTool` wrapper:
+
+```python
+class LegalGatewayTool(BaseTool):
+    name = "legal_gateway"
+    description = """
+    Query the Legal Source Gateway for case law, statutes, regulations,
+    state legislation, docket data, and citation graph traversal.
+    Use for all primary legal source retrieval — do NOT call CourtListener,
+    GovInfo, eCFR, or Open States APIs directly.
+    Input: LegalGatewayInput (task, query, filters, mode, return_fields)
+    Output: list of normalized canonical legal documents with provenance
+    """
+    args_schema = LegalGatewayInput
+
+    def _run(self, task: str, query: str, filters: dict = None,
+             mode: str = "hybrid", return_fields: list = None) -> list[dict]:
+        # POST to http://legal-gateway.internal:8090/v1/query
+        # Returns list of canonical document envelopes
+        ...
+```
+
+### Three-Stage Retrieval Pipeline
+
+```
+Stage 1 — Semantic Retrieval
+  └─ CourtListener Semantic Search API (Inception / ModernBERT embeddings)
+     OR local Qdrant index (self-hosted Inception embeddings over CourtListener + CAP corpus)
+
+Stage 2 — Structured Lookup
+  └─ Elasticsearch full-text index over normalized CourtListener + CAP + GovInfo records
+     Direct eCFR / Federal Register / Open States API for current-text and legislative queries
+
+Stage 3 — Graph Traversal
+  └─ Neo4j citation and authority knowledge graph
+     Node types: Opinion, Statute, Regulation, Bill, Court, Judge, Agency
+     Relationships: CITES, INTERPRETED, APPLIED, IMPLEMENTS, ENACTED_AS, AUTHORED, ISSUED
+```
+
+### Knowledge Graph Schema (Neo4j)
+
+```cypher
+(Opinion)-[:CITES]->(Opinion)             // Citation graph — CourtListener + CAP
+(Opinion)-[:INTERPRETED]->(Statute)       // Case-to-statute links
+(Opinion)-[:APPLIED]->(Regulation)        // Case-to-CFR links
+(Statute)-[:CODIFIED_IN]->(USC_Section)   // Bill enacted as US Code section
+(Regulation)-[:IMPLEMENTS]->(Statute)     // CFR to enabling statute
+(Judge)-[:AUTHORED]->(Opinion)            // Judicial authorship
+(Court)-[:ISSUED]->(Opinion)              // Court-opinion relationship
+(Docket)-[:CONTAINS]->(Document)          // RECAP docket entries
+(Bill)-[:ENACTED_AS]->(Statute)           // Legislative history
+(Agency)-[:PUBLISHED]->(Regulation)       // Agency regulatory authorship
+```
+
+This structure enables multi-hop agent queries such as:
+*"Find all Ninth Circuit opinions that interpreted 42 U.S.C. § 1983 and were authored by judges confirmed after 2010, along with the CFR sections they applied."*
+
+### Ingestion Schedule
+
+| Source | Method | Cadence | Notes |
+|---|---|---|---|
+| CourtListener opinions | REST API delta sync | Daily | `/opinions/?date_filed__gte={yesterday}` |
+| CourtListener RECAP dockets | REST API delta sync | Daily | Targeted to monitored cases + general federal |
+| CourtListener bulk embeddings | Bulk S3 download | Monthly | Inception embedding vectors for Qdrant index |
+| CAP historical corpus | Bulk JSON download | One-time + annual check | Researcher registration required for restricted jurisdictions |
+| GovInfo US Code (USLM XML) | Bulk XML download | Annual | Aligned with GPO publication schedule |
+| GovInfo CFR (annual) | Bulk XML download | Quarterly | Per GPO quarterly title publication schedule |
+| eCFR (current) | API snapshot | Weekly | Current regulatory text; supplements annual CFR |
+| Federal Register | API stream | Daily | Filtered by relevant agencies and CFR cites |
+| Open States bills | REST API | Real-time / daily | Via `v3.openstates.org` with free API key |
+| LegiScan bulk datasets | JSON download or Push API | Weekly (standard) / 4-hour (premium) | CC BY 4.0; full bill text + roll calls |
+
+### Source Policy Rules
+
+| Policy Class | Sources | Rule |
+|---|---|---|
+| `ingest_and_index` | CourtListener, CAP, GovInfo, eCFR, Federal Register, Open States, LegiScan | Full ingestion, indexing, embedding, and agent retrieval permitted |
+| `link_only` | LII | Returned as outbound reference URL only; no text extracted or indexed |
+| `manual_reference_only` | Google Scholar, Justia, FindLaw | No automated access; human researchers only |
+
+### Operator Console
+
+The gateway ships an internal operator web UI (`apps/legal-research-console/`) with the following modules:
+
+| Module | Purpose |
+|---|---|
+| **Source Catalog** | Registry of all configured sources — auth status, freshness, allowed-use policy, last sync |
+| **Query Workbench** | Test normalized agent task queries against live connectors; inspect raw vs. normalized responses |
+| **Schema Explorer** | Browse canonical document schema and cross-source field mappings |
+| **Sync Monitor** | View ingestion workflow status, last run, backlog count, and failed jobs per source |
+| **Access Policy** | Define which agent roles may call which task endpoints; view per-agent rate limit pools |
+| **Provenance Viewer** | Inspect upstream URL, license, and retrieval timestamp for any retrieved document |
 
 ---
 
 ## 15. Case Management Backend — MCAS
 
-The **MISJustice Case \& Advocacy Server (MCAS)** is the authoritative system of record for all matter data.
+The **MISJustice Case & Advocacy Server (MCAS)** is the authoritative system of record for all matter data.
 
 ### Data Model
 
@@ -999,13 +1199,13 @@ MCAS emits webhooks to n8n on:
 | **Orchestrator** | All crews (manager) | gpt-4o | ollama/llama3 | Yes | None | None |
 | **Avery** | IntakeCrew | gpt-4o | ollama/llama3 | Yes | T1-internal | Per-matter |
 | **Mira** | IntakeCrew | gpt-4o-mini | ollama/llama3 | Yes | T1-publicsafe | Per-contact |
-| **Rae** | LegalResearchCrew | gpt-4o | claude-3-5-sonnet | Yes | T1-internal | Per-matter + cross |
-| **Lex** | LegalResearchCrew | gpt-4o | claude-3-5-sonnet | Yes | T2-restricted | Per-matter + cross |
+| **Rae** | LegalResearchCrew | gpt-4o | claude-3-5-sonnet | Yes | T1-internal | Per-matter + cross + Legal Source Gateway via `legal_gateway` tool |
+| **Lex** | LegalResearchCrew | gpt-4o | claude-3-5-sonnet | Yes | T2-restricted | Per-matter + cross + Legal Source Gateway via `legal_gateway |
 | **Iris** | LegalResearchCrew | gpt-4o | ollama/llama3 | Yes | T3-pi | Per-actor + per-matter |
 | **Atlas** | All crews (observer) | gpt-4o-mini | ollama/llama3 | Yes | None | Per-matter |
 | **Veritas** | All crews (auditor) | ollama/llama3 | — | Yes | None | None |
 | **Chronology Agent** | LegalResearchCrew | gpt-4o | claude-3-5-haiku | Yes | T1-internal | Per-matter |
-| **Citation Agent** | LegalResearchCrew | gpt-4o-mini | ollama/llama3 | Yes | T1-publicsafe | Cross-session |
+| **Citation Agent** | LegalResearchCrew | gpt-4o-mini | ollama/llama3 | Yes | T1-publicsafe | Cross-session + Legal Source Gateway — `citations.resolve`, `cases.search` |
 | **Casey** | ReferralCrew | gpt-4o | claude-3-5-sonnet | Yes | T2-restricted | Per-matter + cross |
 | **Ollie** | OutreachCrew | gpt-4o-mini | ollama/llama3 | Yes | T1-internal | None |
 | **Webmaster** | PublicationCrew | gpt-4o | claude-3-5-sonnet | Yes | T1-publicsafe | None |
@@ -1013,7 +1213,6 @@ MCAS emits webhooks to n8n on:
 | **Sol** | PublicationCrew | gpt-4o | ollama/llama3 | Yes | T1-publicsafe | None |
 | **Quill** | PublicationCrew | gpt-4o-mini | ollama/llama3 | Yes | T1-publicsafe | None |
 | **Vane** | — (human operator tool) | ollama/llama3 | — | No | T4-admin | None |
-
 
 ---
 
@@ -1065,6 +1264,10 @@ External services (MCAS, OpenRAG, LiteLLM, MemoryPalace)
 | OpenRAG indexes | OpenSearch node-to-node TLS + disk encryption |
 | MemoryPalace SQLite | AES-256 |
 | Git repository | No sensitive data in repo (enforced by pre-commit hooks) |
+| Legal Source Gateway | All upstream API calls over HTTPS with per-source API key managed by gateway only; agents never hold upstream credentials; per-agent rate-limit pools enforced at gateway layer |
+| Neo4j citation graph | Bolt+TLS; internal mTLS CA; no external access |
+| Elasticsearch legal index | Node-to-node TLS; role-scoped API keys per agent tier; no external access |
+| Qdrant vector store | Internal mTLS; no external access; Inception embeddings stored locally |
 
 | Data in transit | Mechanism |
 | :-- | :-- |
@@ -1088,32 +1291,32 @@ A `pre-commit` configuration in `.pre-commit-config.yaml` blocks commits contain
 ### Service Topology
 
 ```
-┌─────────────────────── Host Network (private VLAN) ──────────────────────┐
-│                                                                            │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐ │
-│  │   Hermes     │  │   OpenClaw   │  │   crewAI     │  │  Paperclip   │ │
-│  │  :7860 CLI   │  │  :8000 API   │  │  (embedded)  │  │  :9000 API   │ │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘ │
-│         │                 │                  │                  │          │
+┌─────────────────────── Host Network (private VLAN) ───────────────────────┐
+│                                                                           │
+│  ┌──────────────┐  ┌──────────────┐   ┌──────────────┐   ┌──────────────┐ │
+│  │   Hermes     │  │   OpenClaw   │   │   crewAI     │   │  Paperclip   │ │
+│  │  :7860 CLI   │  │  :8000 API   │   │  (embedded)  │   │  :9000 API   │ │
+│  └──────┬───────┘  └──────┬───────┘   └──────┬───────┘   └──────┬───────┘ │
+│         │                 │                  │                  │         │
 │  ┌──────▼─────────────────▼──────────────────▼──────────────────▼───────┐ │
-│  │                    Internal Service Mesh (mTLS)                       │ │
+│  │                    Internal Service Mesh (mTLS)                      │ │
 │  └──────────────────────────────────────────────────────────────────────┘ │
-│         │                 │                  │                  │          │
-│  ┌──────▼───────┐  ┌──────▼───────┐  ┌──────▼───────┐  ┌──────▼───────┐ │
-│  │    MCAS      │  │   OpenRAG    │  │   LiteLLM    │  │  SearXNG     │ │
-│  │  :8443 HTTPS │  │  :9200 HTTP  │  │  :4000 HTTP  │  │  :8080 HTTP  │ │
-│  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘ │
-│                                                                            │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐ │
-│  │ MemoryPalace │  │  OpenShell   │  │     n8n      │  │  LawGlance   │ │
-│  │  :7700 MCP   │  │  :5000 GW    │  │  :5678 HTTP  │  │  :8081 HTTP  │ │
-│  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘ │
-│                                                                            │
+│         │                 │                 │                 │           │
+│  ┌──────▼───────┐  ┌──────▼───────┐  ┌──────▼───────┐  ┌──────▼───────┐   │
+│  │    MCAS      │  │   OpenRAG    │  │   LiteLLM    │  │  SearXNG     │   │
+│  │  :8443 HTTPS │  │  :9200 HTTP  │  │  :4000 HTTP  │  │  :8080 HTTP  │   │
+│  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘   │
+│                                                                           │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐   │
+│  │ MemoryPalace │  │  OpenShell   │  │     n8n      │  │  LawGlance   │   │
+│  │  :7700 MCP   │  │  :5000 GW    │  │  :5678 HTTP  │  │  :8081 HTTP  │   │
+│  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘   │
+│                                                                           │
 │  ┌──────────────┐  ┌──────────────┐                                       │
 │  │  Open Web UI │  │    Vane      │                                       │
 │  │  :3000 HTTP  │  │  :3001 HTTP  │                                       │
 │  └──────────────┘  └──────────────┘                                       │
-└────────────────────────────────────────────────────────────────────────────┘
+└───────────────────────────────────────────────────────────────────────────┘
 ```
 
 
@@ -1237,6 +1440,27 @@ OPENRAG_API_KEY=
 # ── LawGlance ──────────────────────────────────────────────────
 LAWGLANCE_BASE_URL=http://lawglance.internal:8081
 
+# ── Legal Source Gateway ───────────────────────────────────────
+LEGAL_GATEWAY_BASE_URL=http://legal-gateway.internal:8090
+LEGAL_GATEWAY_API_KEY=<generated>
+
+# ── Legal Source Gateway — Upstream API credentials (held by gateway only; never passed to agents) ── 
+COURTLISTENER_TOKEN=<token>           # https://www.courtlistener.com/sign-in/
+GOVINFO_API_KEY=<key>                 # https://api.data.gov/signup/
+OPEN_STATES_API_KEY=<key>             # https://openstates.org/accounts/register/
+LEGISCAN_API_KEY=<key>                # https://legiscan.com/register
+# CAP: researcher registration + API key for non-public jurisdictions
+CAP_API_KEY=<key>                     # https://case.law/
+
+# ── Legal Source Gateway — Retrieval backends ──────────────────
+ELASTICSEARCH_URL=http://elasticsearch.internal:9200
+ELASTICSEARCH_LEGAL_INDEX_API_KEY=<key>
+QDRANT_URL=http://qdrant.internal:6333
+QDRANT_COLLECTION_NAME=legal_opinions_inception
+NEO4J_BOLT_URL=bolt://neo4j.internal:7687
+NEO4J_USERNAME=neo4j
+NEO4J_PASSWORD=<password>
+
 # ── n8n ────────────────────────────────────────────────────────
 N8N_BASE_URL=http://n8n.internal:5678
 N8N_WEBHOOK_SECRET=
@@ -1290,4 +1514,9 @@ SEARXNG_API_URL=${SEARXNG_BASE_URL}  # Vane uses T4-admin token directly
 | **crewAI ↔ OpenClaw bridge** | High | The dispatcher that maps OpenClaw task payloads to crewAI crew invocations needs implementation in `services/openclaw/crew_bridge.py`. |
 | **LangSmith tracing in production** | Medium | LangSmith cloud tracing is acceptable for dev/staging; production may require self-hosted LangSmith or alternative (Langfuse) for data sovereignty. |
 | **MemoryPalace classification enforcement** | Medium | MemoryPalace's native classification ceiling enforcement needs to be verified against the Paperclip policy model; may require a middleware |
+
+- **Legal Source Gateway v1 scope**: Initial release covers `cases.search` (CourtListener + CAP), `citations.resolve` (CourtListener), `statutes.lookup` (GovInfo), `regulations.current` (eCFR), and `bills.search` (Open States). Deferred to v1.1: LegiScan bulk sync, RECAP targeted docket monitoring, Federal Register change-watch webhooks (`regulations.monitor`), and full Neo4j citation graph traversal (`graph.expand`). CAP bulk historical load requires researcher registration — complete before first production research task.
+- **Inception embedding index**: CourtListener bulk embedding vectors (Inception / ModernBERT) require monthly S3 download and re-index. Initial Qdrant population is a one-time multi-hour job — schedule before enabling `cases.search` in semantic mode.
+- **LegiScan Push API**: Standard (free) tier is weekly bulk download. For real-time bill-tracking alerts required by Atlas and the Social Media Manager, LegiScan premium Push API (4-hour cadence) is needed. Evaluate cost vs. Open States real-time polling as alternative.
+- **LII link-only enforcement**: Gateway source-policy rule for LII is implemented at the connector layer. A separate middleware guard should be added to reject any agent request that attempts to pass LII document IDs as ingest targets.
 
