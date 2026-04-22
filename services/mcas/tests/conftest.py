@@ -1,4 +1,3 @@
-import asyncio
 import os
 import pytest
 import pytest_asyncio
@@ -15,14 +14,7 @@ TEST_DATABASE_URL = os.getenv(
 )
 
 
-@pytest_asyncio.fixture(scope="session")
-def event_loop():
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
-
-
-@pytest_asyncio.fixture(scope="session", autouse=True)
+@pytest_asyncio.fixture(scope="session", autouse=True, loop_scope="session")
 async def setup_database():
     # Create engine on the session event loop to avoid asyncpg loop mismatch
     engine = create_async_engine(TEST_DATABASE_URL, echo=False, future=True)
@@ -49,20 +41,20 @@ async def setup_database():
     await engine.dispose()
 
 
-@pytest_asyncio.fixture
+@pytest_asyncio.fixture(loop_scope="session")
 async def db_session() -> AsyncSession:
     async with get_session_maker()() as session:
         yield session
         await session.rollback()
 
 
-@pytest_asyncio.fixture
+@pytest_asyncio.fixture(loop_scope="session")
 async def client() -> AsyncClient:
     async with AsyncClient(app=app, base_url="http://test") as ac:
         yield ac
 
 
-@pytest_asyncio.fixture
+@pytest_asyncio.fixture(loop_scope="session")
 async def sample_matter(client: AsyncClient):
     payload = {
         "title": "Test Matter",
