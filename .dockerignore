@@ -1,0 +1,74 @@
+# MODULE: root .dockerignore
+# Used by the MCAS Dockerfile and docker compose builds.
+# Keep this tight to minimise build context and layer cache busts.
+# -----------------------------------------------------------------------------
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# CI / CD
+.github
+.gitlab-ci.yml
+
+# Documentation
+docs
+*.md
+!apps/mcas/README.md
+
+# Node modules (portal build artefacts are copied explicitly in compose)
+apps/portal/node_modules
+apps/portal/dist
+
+# Service virtualenvs
+services/*/.venv
+services/*/.pytest_cache
+
+# Python caches
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.venv
+venv
+env
+
+# IDE / OS
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Test artefacts
+coverage.xml
+htmlcov
+.coverage
+
+# Secrets (never copy into image)
+.env
+.env.*
+!.env.example
+secrets
+*.pem
+*.key
+
+# Service-specific local data
+services/mcas/data/storage
+
+# Terraform / infra state (if any)
+*.tfstate
+*.tfstate.*
+.terraform
+
+# Local data volumes (docker compose manages these externally)
+volumes
+data
