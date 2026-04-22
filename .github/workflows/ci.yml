@@ -1,0 +1,179 @@
+# PIPELINE: MISJustice Alliance Firm — CI/CD
+# -----------------------------------------------------------------------------
+# Jobs:
+#   1. lint     — ruff (format + import sort + lint)
+#   2. typecheck — mypy (strict where possible)
+#   3. test     — pytest (with coverage)
+#   4. build    — docker compose build (smoke test the stack)
+#
+# Triggers:
+#   - push to main
+#   - pull_request to main
+#   - manual workflow_dispatch
+# -----------------------------------------------------------------------------
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: "3.12"
+  UV_SYSTEM_PYTHON: "1"
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Job 1: Lint (ruff)
+  # ---------------------------------------------------------------------------
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install lint tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff==0.8.0
+
+      - name: Ruff check (lint + imports)
+        run: ruff check services/mcas src
+
+      - name: Ruff format check
+        run: ruff format --check services/mcas src
+
+  # ---------------------------------------------------------------------------
+  # Job 2: Typecheck (mypy)
+  # ---------------------------------------------------------------------------
+  typecheck:
+    name: Typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install mypy==1.13.0 types-redis types-requests
+          pip install -r services/mcas/requirements.txt
+
+      - name: mypy
+        run: mypy services/mcas src
+
+  # ---------------------------------------------------------------------------
+  # Job 3: Test (pytest)
+  # ---------------------------------------------------------------------------
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: mcas
+          POSTGRES_PASSWORD: mcas
+          POSTGRES_DB: mcas_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest==8.3.3 pytest-asyncio==0.24.0 pytest-cov==6.0.0 httpx
+          pip install -r services/mcas/requirements.txt
+
+      - name: Run pytest
+        working-directory: services/mcas
+        env:
+          MCAS_ENV: test
+          TEST_DATABASE_URL: postgresql+asyncpg://mcas:mcas@localhost:5432/mcas_test
+          MCAS_SECRET_KEY: ci-secret-key-not-for-production
+        run: |
+          pytest tests/ -v --cov=app --cov-report=xml --cov-report=term-missing
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        if: github.event_name == 'pull_request'
+        with:
+          files: ./coverage.xml
+          fail_ci_if_error: false
+
+  # ---------------------------------------------------------------------------
+  # Job 4: Build (docker compose smoke test)
+  # ---------------------------------------------------------------------------
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build MCAS image
+        uses: docker/build-push-action@v6
+        with:
+          context: services/mcas
+          file: services/mcas/Dockerfile
+          push: false
+          load: true
+          tags: misjustice/mcas:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build portal static assets
+        working-directory: apps/portal
+        run: |
+          npm ci
+          npm run build
+
+      - name: Smoke test — docker compose up
+        run: |
+          cp .env.example .env
+          # Pull pre-built images for dependencies; build mcas from cache
+          docker compose up -d --wait mcas postgres redis minio
+          # Give healthchecks time to stabilise
+          sleep 15
+          # Assert mcas health endpoint
+          curl -fsS http://localhost:8001/health | grep -q healthy
+          docker compose logs mcas
+          docker compose down -v

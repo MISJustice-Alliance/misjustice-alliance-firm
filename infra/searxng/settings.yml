@@ -1,0 +1,29 @@
+# MODULE: searxng
+# Minimal SearXNG settings for local development.
+# See: https://docs.searxng.org/admin/settings/settings.html
+# -----------------------------------------------------------------------------
+
+use_default_settings: true
+
+server:
+  secret_key: "{{ environ('SEARXNG_SECRET') }}"
+  limiter: false
+  image_proxy: false
+
+search:
+  safe_search: 2
+  autocomplete: duckduckgo
+
+ui:
+  static_use_hash: true
+
+# Disable engines that require API keys for local dev
+engines:
+  - name: google
+    disabled: false
+  - name: duckduckgo
+    disabled: false
+  - name: bing
+    disabled: true
+  - name: brave
+    disabled: true
