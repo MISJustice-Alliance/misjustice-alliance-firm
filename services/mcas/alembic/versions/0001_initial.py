@@ -19,6 +19,8 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    op.execute("CREATE SEQUENCE IF NOT EXISTS matter_display_id_seq START 1")
+
     op.create_table(
         "matters",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
@@ -93,3 +95,4 @@ def downgrade() -> None:
     op.drop_table("documents")
     op.drop_table("actors")
     op.drop_table("matters")
+    op.execute("DROP SEQUENCE IF EXISTS matter_display_id_seq")

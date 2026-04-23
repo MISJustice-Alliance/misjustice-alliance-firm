@@ -1,3 +1,4 @@
+import asyncio
 import hashlib
 import os
 import uuid as uuid_mod
@@ -5,7 +6,7 @@ from datetime import datetime, timezone
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Request, status
-from sqlalchemy import select, func
+from sqlalchemy import select, func, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -33,12 +34,13 @@ STORAGE_PATH = os.getenv("MCAS_STORAGE_PATH", "/tmp/mcas-storage")
 async def _generate_display_id(db: AsyncSession) -> str:
     year = datetime.now(timezone.utc).year
     prefix = f"MA-{year}-"
+    # Use a DB-level sequence to avoid race conditions across processes.
+    # The sequence is created in migration 0001_initial.
     result = await db.execute(
-        select(func.count(Matter.id)).where(Matter.display_id.like(f"{prefix}%"))
+        text("SELECT nextval('matter_display_id_seq')")
     )
-    count = result.scalar() or 0
-    # In production, use a proper serial counter or sequence to avoid races
-    display_id = f"{prefix}{count + 1:04d}"
+    seq = result.scalar()
+    display_id = f"{prefix}{seq:04d}"
     return display_id
 
 
@@ -59,7 +61,9 @@ async def _log_audit(
         diff=diff,
     )
     db.add(entry)
-    await db.commit()
+    # Flush so the entry is persisted in the caller's transaction;
+    # do NOT commit here — callers manage their own transaction boundaries.
+    await db.flush()
 
 
 @router.post("", response_model=MatterSummaryResponse, status_code=status.HTTP_201_CREATED)
@@ -82,6 +86,22 @@ async def create_matter(
     await db.refresh(matter)
     await _log_audit(db, matter.id, "CREATE_MATTER", "system", request)
     return {"matter_id": matter.id, "display_id": matter.display_id}
+
+
+@router.get("", response_model=List[MatterSummaryResponse])
+async def list_matters(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    # TODO: authenticate and authorize request
+    result = await db.execute(
+        select(Matter).order_by(Matter.created_at.desc())
+    )
+    matters = result.scalars().all()
+    # Only log audit if there are matters to associate with; otherwise skip.
+    if matters:
+        await _log_audit(db, matters[0].id, "LIST_MATTERS", "system", request)
+    return [{"matter_id": m.id, "display_id": m.display_id} for m in matters]
 
 
 @router.get("/{matter_id}", response_model=MatterResponse)
@@ -127,8 +147,8 @@ async def create_document(
     storage_key = f"matter_{matter_id}/{uuid_mod.uuid4()}_{file.filename}"
     storage_path = os.path.join(STORAGE_PATH, storage_key)
     os.makedirs(os.path.dirname(storage_path), exist_ok=True)
-    with open(storage_path, "wb") as f:
-        f.write(content)
+    # Offload sync file I/O to thread pool to avoid blocking the event loop
+    await asyncio.to_thread(lambda: open(storage_path, "wb").write(content))
 
     document = Document(
         matter_id=matter_id,
