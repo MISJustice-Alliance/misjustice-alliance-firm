@@ -1,0 +1,12 @@
+services:
+  hello:
+    build:
+      context: ./services/mcas
+      dockerfile: Dockerfile
+    networks:
+      - dokploy-network
+    command: ["python", "-c", "print('hello')"]
+
+networks:
+  dokploy-network:
+    external: true
