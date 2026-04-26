@@ -1,0 +1,31 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: mcas
+      POSTGRES_PASSWORD: testpass123
+      POSTGRES_DB: mcas
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - misjustice-net
+
+  redis:
+    image: redis:7-alpine
+    networks:
+      - misjustice-net
+
+  nginx:
+    image: nginx:alpine
+    networks:
+      - dokploy-network
+
+networks:
+  misjustice-net:
+    driver: bridge
+  dokploy-network:
+    external: true
+
+volumes:
+  postgres_data:
+    driver: local
