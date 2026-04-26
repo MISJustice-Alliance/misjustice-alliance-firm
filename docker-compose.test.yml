@@ -1,0 +1,9 @@
+services:
+  nginx:
+    image: nginx:alpine
+    networks:
+      - dokploy-network
+
+networks:
+  dokploy-network:
+    external: true
