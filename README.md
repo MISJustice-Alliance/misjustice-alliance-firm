@@ -1093,6 +1093,7 @@ MISJustice Alliance is building a lean, AI-first organization to implement this 
 **Key documents:**
 - **[`docs/ORG_STRATEGY.md`](./docs/ORG_STRATEGY.md)** — Organizational strategy, mission/outcomes/constraints, org chart, decision rights, and 12-month roadmap
 - **[`docs/HIRING_CTO.md`](./docs/HIRING_CTO.md)** — Detailed CTO / VP Engineering job posting; first engineering hire to lead platform implementation
+- **[`docs/ARCHITECTURE_REVIEW.md`](./docs/ARCHITECTURE_REVIEW.md)** — CTO onboarding reference: implementation status, critical blockers (MCAS/Paperclip/OpenClaw bridge), MVP scope, 90-day roadmap, and decision framework
 
 **Current hiring priority:** CTO / VP Engineering (target start June 2026)
 
