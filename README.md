@@ -30,9 +30,10 @@ MISJustice Alliance Firm is an advanced, AI-native legal research and advocacy e
 11. [Repository Structure](#11-repository-structure)
 12. [Getting Started](#12-getting-started)
 13. [Security and Privacy Model](#13-security-and-privacy-model)
-14. [Project Resources and Links](#14-project-resources-and-links)
-15. [Contributing](#15-contributing)
-16. [Disclaimer](#16-disclaimer)
+14. [Organizational Strategy & Hiring](#14-organizational-strategy--hiring)
+15. [Project Resources and Links](#15-project-resources-and-links)
+16. [Contributing](#16-contributing)
+17. [Disclaimer](#17-disclaimer)
 
 ---
 
@@ -1085,7 +1086,19 @@ Encryption at rest and in transit are baseline requirements for all services. Ke
 
 ***
 
-## 14. Project Resources and Links
+## 14. Organizational Strategy & Hiring
+
+MISJustice Alliance is building a lean, AI-first organization to implement this platform and conduct civil rights legal research and advocacy.
+
+**Key documents:**
+- **[`docs/ORG_STRATEGY.md`](./docs/ORG_STRATEGY.md)** — Organizational strategy, mission/outcomes/constraints, org chart, decision rights, and 12-month roadmap
+- **[`docs/HIRING_CTO.md`](./docs/HIRING_CTO.md)** — Detailed CTO / VP Engineering job posting; first engineering hire to lead platform implementation
+
+**Current hiring priority:** CTO / VP Engineering (target start June 2026)
+
+---
+
+## 15. Project Resources and Links
 
 | Resource | URL |
 | :-- | :-- |
@@ -1142,7 +1155,7 @@ Encryption at rest and in transit are baseline requirements for all services. Ke
 
 ***
 
-## 15. Contributing
+## 16. Contributing
 
 MISJustice Alliance Firm is a **private, mission-driven project**. Contributions are by invitation only. If you are a legal technologist, DevOps engineer, civil rights attorney, or researcher interested in contributing, please reach out through official MISJustice Alliance channels.
 
@@ -1154,7 +1167,7 @@ All contributors must:
 
 ***
 
-## 16. Disclaimer
+## 17. Disclaimer
 
 > MISJustice Alliance and this platform do not provide legal advice and do not constitute an attorney-client relationship. All research, analysis, and publications produced by this platform are for educational, research, and public advocacy purposes only. Nothing in this platform or its outputs should be construed as legal advice. Persons with legal matters should consult a licensed attorney in the relevant jurisdiction.
 
