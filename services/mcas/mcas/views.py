@@ -1,14 +1,44 @@
-from rest_framework import viewsets, permissions, status
-from rest_framework.decorators import action
-from rest_framework.response import Response
+
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-import json
-from .models import Person, Organization, Matter, Event, Document, Task, WebhookEvent, WebhookSubscription
-from .serializers import PersonSerializer, OrganizationSerializer, MatterSerializer, EventSerializer, DocumentSerializer, TaskSerializer, WebhookEventSerializer, WebhookSubscriptionSerializer
-from .permissions import TierBasedPermission, MatterApprovalPermission, DocumentReadOnlyForTier0, TaskAssignmentPermission
-from .webhook_utils import deliver_webhook
+from rest_framework import permissions, status, viewsets
+from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.response import Response
+
+from .models import (
+    Document,
+    Event,
+    Matter,
+    Organization,
+    Person,
+    Task,
+    WebhookEvent,
+    WebhookSubscription,
+)
+from .permissions import (
+    DocumentReadOnlyForTier0,
+    MatterApprovalPermission,
+    TaskAssignmentPermission,
+    TierBasedPermission,
+)
+from .serializers import (
+    DocumentSerializer,
+    EventSerializer,
+    MatterSerializer,
+    OrganizationSerializer,
+    PersonSerializer,
+    TaskSerializer,
+    WebhookEventSerializer,
+    WebhookSubscriptionSerializer,
+)
 from .storage_utils import get_storage_client
+from .webhook_utils import deliver_webhook
+
+
+@api_view(['GET'])
+@permission_classes([])
+def healthz(request):
+    return Response({'status': 'ok'})
 
 
 class PersonViewSet(viewsets.ModelViewSet):
@@ -53,7 +83,7 @@ class MatterViewSet(viewsets.ModelViewSet):
         """HITL gate: Approve matter for public publication."""
         matter = self.get_object()
         if matter.data_tier not in ['Tier-2', 'Tier-3']:
-            return Response({'error': f'Tier-1 matters cannot be published publicly'}, status=400)
+            return Response({'error': 'Tier-1 matters cannot be published publicly'}, status=400)
         matter.approved_for_publication = True
         matter.save()
         return Response({'status': 'approved for publication'})
