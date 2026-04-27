@@ -1,3 +1,6 @@
+import json
+import os
+import uuid
 
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
@@ -128,14 +131,43 @@ class DocumentViewSet(viewsets.ModelViewSet):
         matter_id = request.data.get('matter')
         data_tier = request.data.get('data_tier', 'Tier-2')
 
-        # Generate file path: matters/{matter_id}/filename
-        file_path = f"matters/{matter_id}/{file_obj.name}"
+        if not matter_id:
+            return Response(
+                {'error': 'matter is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            matter = Matter.objects.get(pk=matter_id)
+        except Matter.DoesNotExist:
+            return Response(
+                {'error': 'Matter not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        valid_tiers = [choice[0] for choice in Document.DATA_TIER_CHOICES]
+        if data_tier not in valid_tiers:
+            return Response(
+                {'error': 'Invalid data_tier'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        matter_tier_num = int(matter.data_tier.split('-')[1])
+        doc_tier_num = int(data_tier.split('-')[1])
+        if doc_tier_num > matter_tier_num:
+            return Response(
+                {'error': 'Document tier exceeds matter tier'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        original_name = os.path.basename(file_obj.name)
+        storage_key = f"matters/{matter_id}/{uuid.uuid4()}_{original_name}"
 
         # Upload to R2
         storage_client = get_storage_client()
         uploaded_path = storage_client.upload_file(
             file_obj,
-            file_path,
+            storage_key,
             mime_type=file_obj.content_type
         )
 
@@ -148,7 +180,7 @@ class DocumentViewSet(viewsets.ModelViewSet):
         # Create Document record
         document = Document.objects.create(
             matter_id=matter_id,
-            title=request.data.get('title', file_obj.name),
+            title=request.data.get('title', original_name),
             document_type=request.data.get('document_type', 'other'),
             data_tier=data_tier,
             file_path=uploaded_path,
