@@ -1,5 +1,5 @@
 
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
@@ -212,10 +212,23 @@ def handle_matter_created(sender, instance, created, **kwargs):
         deliver_webhook(webhook)
 
 
+@receiver(pre_save, sender=Event)
+def cache_event_pattern_flagged(sender, instance, **kwargs):
+    if instance.pk:
+        try:
+            old = Event.objects.get(pk=instance.pk)
+            instance._previous_pattern_flagged = old.pattern_flagged
+        except Event.DoesNotExist:
+            instance._previous_pattern_flagged = False
+    else:
+        instance._previous_pattern_flagged = False
+
+
 @receiver(post_save, sender=Event)
-def handle_event_pattern_flagged(sender, instance, **kwargs):
+def handle_event_pattern_flagged(sender, instance, created, **kwargs):
     """Fire webhook when pattern is flagged."""
-    if instance.pattern_flagged:
+    previous = getattr(instance, '_previous_pattern_flagged', False)
+    if instance.pattern_flagged and (created or not previous):
         webhook = WebhookEvent.objects.create(
             event_type='event.pattern_flagged',
             payload={
