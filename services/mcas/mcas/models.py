@@ -3,13 +3,19 @@ import os
 
 from cryptography.fernet import Fernet
 from django.contrib.auth.models import User
+from django.core.exceptions import ImproperlyConfigured
 from django.db import models
 
 logger = logging.getLogger(__name__)
 
 # Field-level encryption for Tier-0/1 data
-ENCRYPTION_KEY = os.environ.get('ENCRYPTION_KEY', '').encode() or Fernet.generate_key()
-cipher_suite = Fernet(ENCRYPTION_KEY)
+_encryption_key = os.environ.get('ENCRYPTION_KEY', '').encode()
+if not _encryption_key:
+    raise ImproperlyConfigured("ENCRYPTION_KEY environment variable is required.")
+try:
+    cipher_suite = Fernet(_encryption_key)
+except Exception as e:
+    raise ImproperlyConfigured(f"ENCRYPTION_KEY is invalid: {e}") from None
 
 def decrypt_value(encrypted_value):
     """Decrypt field value. Returns None if decryption fails or value is None."""
@@ -301,6 +307,15 @@ class WebhookSubscription(models.Model):
     class Meta:
         ordering = ['-created_at']
         unique_together = ('url', 'event_type')
+
+    def clean(self):
+        from django.conf import settings
+        if not settings.DEBUG and self.url and not self.url.startswith('https://'):
+            raise models.ValidationError({'url': 'Webhook URL must use HTTPS in non-DEBUG mode.'})
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.event_type} -> {self.url}"
