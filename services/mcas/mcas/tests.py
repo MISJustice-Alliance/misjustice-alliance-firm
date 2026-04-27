@@ -1,7 +1,8 @@
-from django.test import TestCase
 from django.contrib.auth.models import User
-from .models import Person, Organization, Matter
-from cryptography.fernet import Fernet
+from django.test import TestCase
+
+from .models import Matter, Organization, Person
+
 
 class EncryptionTests(TestCase):
     """Test field-level encryption and decryption."""

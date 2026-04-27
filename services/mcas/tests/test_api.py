@@ -1,16 +1,10 @@
 import pytest
 from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import (
     Matter,
-    MatterClassification,
     MatterStatus,
-    EventType,
-    ActorType,
-    DocumentClassification,
 )
-
 
 pytestmark = pytest.mark.asyncio
 

@@ -1,28 +1,29 @@
 import enum
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+
 from sqlalchemy import (
     Column,
-    String,
     DateTime,
     ForeignKey,
     LargeBinary,
+    String,
     Text,
-    Integer,
 )
-from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import relationship
+
 from app.database import Base
 
 
-class MatterClassification(str, enum.Enum):
+class MatterClassification(enum.StrEnum):
     T0_PUBLIC = "T0_PUBLIC"
     T1_PRIVILEGED = "T1_PRIVILEGED"
     T2_INTERNAL = "T2_INTERNAL"
     T3_ADMIN = "T3_ADMIN"
 
 
-class MatterStatus(str, enum.Enum):
+class MatterStatus(enum.StrEnum):
     INTAKE = "INTAKE"
     RESEARCH = "RESEARCH"
     DRAFTING = "DRAFTING"
@@ -31,7 +32,7 @@ class MatterStatus(str, enum.Enum):
     CLOSED = "CLOSED"
 
 
-class ActorType(str, enum.Enum):
+class ActorType(enum.StrEnum):
     CLIENT = "CLIENT"
     ATTORNEY = "ATTORNEY"
     WITNESS = "WITNESS"
@@ -40,14 +41,14 @@ class ActorType(str, enum.Enum):
     ORGANIZATION = "ORGANIZATION"
 
 
-class DocumentClassification(str, enum.Enum):
+class DocumentClassification(enum.StrEnum):
     T0 = "T0"
     T1 = "T1"
     T2 = "T2"
     T3 = "T3"
 
 
-class EventType(str, enum.Enum):
+class EventType(enum.StrEnum):
     INTAKE = "INTAKE"
     RESEARCH = "RESEARCH"
     DRAFT = "DRAFT"
@@ -65,11 +66,11 @@ class Matter(Base):
     classification = Column(String, nullable=False)
     status = Column(String, nullable=False, default=MatterStatus.INTAKE.value)
     jurisdiction = Column(String, nullable=False)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     updated_at = Column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
     )
 
     actors = relationship("Actor", back_populates="matter", cascade="all, delete-orphan")
@@ -105,7 +106,7 @@ class Document(Base):
     extracted_entities = Column(JSONB, default=dict)
     redacted_version_key = Column(String, nullable=True)
     uploaded_by = Column(UUID(as_uuid=True), nullable=False)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
     matter = relationship("Matter", back_populates="documents")
 
@@ -120,7 +121,7 @@ class Event(Base):
     agent_id = Column(String, nullable=True)
     description = Column(Text, nullable=False)
     metadata_ = Column("metadata", JSONB, default=dict)
-    timestamp = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    timestamp = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
     matter = relationship("Matter", back_populates="events")
 
@@ -134,7 +135,7 @@ class AuditEntry(Base):
     actor = Column(String, nullable=False)
     ip_address = Column(String, nullable=True)
     user_agent = Column(String, nullable=True)
-    timestamp = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    timestamp = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     diff = Column(JSONB, nullable=True)
 
     matter = relationship("Matter", back_populates="audit_log")

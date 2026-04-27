@@ -1,9 +1,9 @@
-from django.db import models
-from django.contrib.auth.models import User
-from django.contrib.postgres.fields import ArrayField
-from cryptography.fernet import Fernet
-import os
 import logging
+import os
+
+from cryptography.fernet import Fernet
+from django.contrib.auth.models import User
+from django.db import models
 
 logger = logging.getLogger(__name__)
 

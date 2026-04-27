@@ -1,11 +1,13 @@
-import requests
-import json
-import hmac
 import hashlib
+import hmac
+import json
 import logging
-from django.utils import timezone
+
+import requests
 from django.db.models import Q
-from .models import WebhookSubscription, WebhookEvent
+from django.utils import timezone
+
+from .models import WebhookSubscription
 
 logger = logging.getLogger(__name__)
 

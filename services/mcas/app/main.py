@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.config import settings
-from app.database import get_engine, Base
+from app.database import get_engine
 from app.routers import matters, search
 
 
@@ -11,7 +11,7 @@ from app.routers import matters, search
 async def lifespan(app: FastAPI):
     engine = get_engine()
     # Startup: in production use Alembic migrations instead of create_all
-    async with engine.begin() as conn:
+    async with engine.begin():
         # await conn.run_sync(Base.metadata.create_all)
         pass
     yield
