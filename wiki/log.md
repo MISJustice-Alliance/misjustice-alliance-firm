@@ -16,3 +16,13 @@
 - Created 13 entity pages (all agents)
 - Created 3 concept pages (ZHC, orchestration workflow, firm overview)
 - Updated index.md (16 total pages)
+
+## [2026-04-26] ingest | Core project docs
+- Source: README.md → raw/articles/readme-project-overview.md
+- Source: SPEC.md → raw/articles/spec-architecture-spec.md
+- Source: CLAUDE.md → raw/articles/claude-ai-policy-router.md
+- Source: docker-compose.yml → raw/articles/docker-compose-main.md
+
+## [2026-04-26] create | Additional concept pages
+- Created 8 concept pages: MCAS, Legal Source Gateway, Search Tier Model, HITL Governance, MemoryPalace, OpenShell, Data Classification, Paperclip
+- Updated index.md (29 total pages)
