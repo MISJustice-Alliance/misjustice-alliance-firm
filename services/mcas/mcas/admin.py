@@ -1,5 +1,7 @@
 from django.contrib import admin
-from .models import Person, Organization, Matter, Event, Document, Task, WebhookEvent
+
+from .models import Document, Event, Matter, Organization, Person, Task, WebhookEvent
+
 
 @admin.register(Person)
 class PersonAdmin(admin.ModelAdmin):

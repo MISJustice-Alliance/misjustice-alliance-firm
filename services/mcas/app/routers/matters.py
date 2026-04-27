@@ -2,28 +2,25 @@ import asyncio
 import hashlib
 import os
 import uuid as uuid_mod
-from datetime import datetime, timezone
-from typing import List
+from datetime import UTC, datetime
+from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Request, status
-from sqlalchemy import select, func, text
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.database import get_db
-from app.models import Matter, Actor, Document, Event, AuditEntry, MatterStatus
+from app.models import AuditEntry, Document, Event, Matter, MatterStatus
 from app.schemas import (
-    MatterCreate,
-    MatterResponse,
-    MatterSummaryResponse,
-    ActorCreate,
-    ActorResponse,
-    DocumentCreate,
+    AuditEntryResponse,
+    DocumentClassification,
     DocumentResponse,
     EventCreate,
     EventResponse,
-    AuditEntryResponse,
-    DocumentClassification,
+    MatterCreate,
+    MatterResponse,
+    MatterSummaryResponse,
 )
 
 router = APIRouter(prefix="/matters", tags=["matters"])
@@ -31,8 +28,14 @@ router = APIRouter(prefix="/matters", tags=["matters"])
 STORAGE_PATH = os.getenv("MCAS_STORAGE_PATH", "/tmp/mcas-storage")
 
 
+def _write_file_sync(path: str, data: bytes) -> None:
+    """Synchronous helper for writing files via asyncio.to_thread."""
+    with open(path, "wb") as f:
+        f.write(data)
+
+
 async def _generate_display_id(db: AsyncSession) -> str:
-    year = datetime.now(timezone.utc).year
+    year = datetime.now(UTC).year
     prefix = f"MA-{year}-"
     # Use a DB-level sequence to avoid race conditions across processes.
     # The sequence is created in migration 0001_initial.
@@ -70,7 +73,7 @@ async def _log_audit(
 async def create_matter(
     request: Request,
     payload: MatterCreate,
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     # TODO: authenticate and authorize request
     display_id = await _generate_display_id(db)
@@ -88,10 +91,10 @@ async def create_matter(
     return {"matter_id": matter.id, "display_id": matter.display_id}
 
 
-@router.get("", response_model=List[MatterSummaryResponse])
+@router.get("", response_model=list[MatterSummaryResponse])
 async def list_matters(
     request: Request,
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     # TODO: authenticate and authorize request
     result = await db.execute(
@@ -108,7 +111,7 @@ async def list_matters(
 async def get_matter(
     request: Request,
     matter_id: uuid_mod.UUID,
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     # TODO: authenticate and authorize request
     result = await db.execute(
@@ -132,9 +135,9 @@ async def get_matter(
 async def create_document(
     request: Request,
     matter_id: uuid_mod.UUID,
-    classification: DocumentClassification = Form(...),
-    file: UploadFile = File(...),
-    db: AsyncSession = Depends(get_db),
+    classification: Annotated[DocumentClassification, Form(...)],
+    file: Annotated[UploadFile, File(...)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     # TODO: authenticate and authorize request
     matter_result = await db.execute(select(Matter).where(Matter.id == matter_id))
@@ -148,7 +151,7 @@ async def create_document(
     storage_path = os.path.join(STORAGE_PATH, storage_key)
     os.makedirs(os.path.dirname(storage_path), exist_ok=True)
     # Offload sync file I/O to thread pool to avoid blocking the event loop
-    await asyncio.to_thread(lambda: open(storage_path, "wb").write(content))
+    await asyncio.to_thread(_write_file_sync, storage_path, content)
 
     document = Document(
         matter_id=matter_id,
@@ -170,7 +173,7 @@ async def create_event(
     request: Request,
     matter_id: uuid_mod.UUID,
     payload: EventCreate,
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     # TODO: authenticate and authorize request
     matter_result = await db.execute(select(Matter).where(Matter.id == matter_id))
@@ -193,11 +196,11 @@ async def create_event(
     return event
 
 
-@router.get("/{matter_id}/audit", response_model=List[AuditEntryResponse])
+@router.get("/{matter_id}/audit", response_model=list[AuditEntryResponse])
 async def get_audit_log(
     request: Request,
     matter_id: uuid_mod.UUID,
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     # TODO: authenticate and authorize request
     matter_result = await db.execute(select(Matter).where(Matter.id == matter_id))

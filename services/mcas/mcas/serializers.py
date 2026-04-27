@@ -1,5 +1,16 @@
 from rest_framework import serializers
-from .models import Person, Organization, Matter, Event, Document, Task, WebhookEvent, WebhookSubscription
+
+from .models import (
+    Document,
+    Event,
+    Matter,
+    Organization,
+    Person,
+    Task,
+    WebhookEvent,
+    WebhookSubscription,
+)
+
 
 class PersonSerializer(serializers.ModelSerializer):
     class Meta:

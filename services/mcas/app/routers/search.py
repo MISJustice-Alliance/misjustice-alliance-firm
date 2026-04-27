@@ -1,9 +1,11 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, Request, status
-from sqlalchemy import select, or_, func
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import Matter, Document, Event
+from app.models import Document, Event, Matter
 from app.schemas import SearchRequest, SearchResponse, SearchResultItem
 
 router = APIRouter(prefix="/search", tags=["search"])
@@ -13,7 +15,7 @@ router = APIRouter(prefix="/search", tags=["search"])
 async def search(
     request: Request,
     payload: SearchRequest,
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     # TODO: authenticate and authorize request
     # TODO: integrate with Elasticsearch / Qdrant / Neo4j for advanced search
