@@ -1,0 +1,63 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: mcas-postgres
+    environment:
+      POSTGRES_DB: ${DB_NAME:-mcas_db}
+      POSTGRES_USER: ${DB_USER:-mcas_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-mcas_password}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - /dev/shm:/run/postgresql  # tmpfs for postgres runtime
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-mcas_user}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mcas:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mcas-api
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py collectstatic --noinput &&
+             gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 4"
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=${DEBUG:-False}
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1}
+      - DB_NAME=${DB_NAME:-mcas_db}
+      - DB_USER=${DB_USER:-mcas_user}
+      - DB_PASSWORD=${DB_PASSWORD:-mcas_password}
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - .:/app
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/token/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  postgres_data:
+
+networks:
+  default:
+    name: mcas-network
