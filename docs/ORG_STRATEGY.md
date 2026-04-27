@@ -30,35 +30,50 @@ Build an autonomous AI-first legal research and advocacy platform to investigate
 
 ---
 
-## 2. Lean AI-First Org Chart
+## 2. Hybrid AI-First Org Chart (Year 1)
 
 ```
-CEO (Human)
-├── CTO / VP Engineering (Hire #1)
-│   ├── Backend Engineer (Hire #2, Q3)
-│   ├── Platform/Infra Engineer (Hire #3, Q4)
-│   └── Agent/LLM Engineer (Hire #4, Q4)
-├── Legal & Operations (Contract/Part-time)
-│   └── Civil rights attorney (advisor, case triage, governance)
-└── Operations & Fundraising (Contract/Part-time)
-    └── Operations lead (financial, governance, board liaison)
+CEO/Founder
+├── CTO/VP Engineering (Hire #1, June 2026)
+│   ├── Backend Engineer (Hire #2, August 2026)
+│   ├── Platform/Infra Engineer (Hire #3, September 2026)
+│   └── Agent/LLM Engineer (Hire #4, December 2026)
+├── Executive Director, Civil Rights Programs (Hire #5, July 2026)
+│   ├── Research Lead (Hire #6, October 2026)
+│   └── Investigative Lead (Hire #7, November 2026)
+├── Communications & Advocacy Lead (Hire #8, January 2027)
+└── Legal Advisor (Contract/Part-time, February 2027)
 ```
 
-### Decision Rights
+**Rationale:** Civil rights cases require human judgment on ethical and legal questions. AI agents excel at fact-finding and pattern detection. This hybrid model separates: Agents own investigation/research; Humans own strategy and publication decisions.
 
-| Role | Owns | Authority | Reports To |
+### Decision Rights Matrix
+
+| Decision | Authority | Approval Required | Escalation |
 |---|---|---|---|
-| **CEO** | Strategy, mission, hiring, fundraising, board liaison | Unilateral on org decisions; consensus on product | Board |
-| **CTO** | Technical roadmap, architecture, code quality, tech hiring | Unilateral on eng decisions; consensus on platform scope | CEO |
-| **Backend Eng** | MCAS, API layer, data pipelines | Owns implementation decisions within architecture | CTO |
-| **Platform Eng** | Infra, OpenClaw/NemoClaw/Paperclip, deployments, security | Owns deployment strategy and infrastructure SLOs | CTO |
-| **Agent/LLM Eng** | Agent prompts, workflows, LangChain/crewAI integration | Owns agent quality and workflow optimization | CTO |
+| Publish case findings | Executive Director | CEO (final) | CEO → Board if politically sensitive |
+| Deploy new agent to production | Agent/LLM Eng | CTO + Executive Director | CTO if infrastructure risk |
+| Accept new case for research | Executive Director | CEO | CEO if outside core jurisdiction (MT/WA) |
+| Hire engineering team member | CTO | CEO | CEO (budget approval) |
+| Change data classification tier | CTO | CEO + Legal Advisor | Legal if compliance risk |
+| Release public statement | Comms Lead | CEO | CEO + Executive Director if case-related |
+| Modify MCAS schema | Backend Engineer | CTO + Executive Director | CTO if access control impact |
+| Approve agent findings for publication | Research Lead | Executive Director | Executive Director if novel pattern |
 
-### Autonomy Levels
+### Role Definitions & Autonomy
 
-- **CTO**: Can make all technical decisions up to $50K spend without approval. Escalate > $50K to CEO.
-- **Engineers**: Own implementation within assigned component; escalate architectural questions to CTO.
-- **CEO**: Signs off on any hiring, fundraising, or strategic pivots.
+| Role | Reports To | Decision Rights | Autonomy Level | Success Metrics (Y1) |
+|---|---|---|---|---|
+| **CEO/Founder** | Board | Case selection, publication, org hiring, fundraising, board updates | Unilateral on strategy; consensus on cases | 3-5 published cases; $2M+ follow-on funding; 3-4 attorney partnerships |
+| **CTO** | CEO | Technical roadmap, architecture, engineering hiring, <$50K spend | Full within quarterly OKRs | MCAS MVP by M3; zero breaches; <2h incident resolution |
+| **Executive Director** | CEO | Case strategy, research priorities, agent requirements, case approval | Sets priorities with CEO oversight | 3-5 published cases; 100% attorney validation; 5+ org partnerships |
+| **Backend Engineer** | CTO | API design, database optimization, REST endpoints | Owns API within schema; escalates data model changes | >85% test coverage; <100ms 95th percentile response time; zero downtime deploys |
+| **Platform Engineer** | CTO | Infrastructure, K8s, CI/CD, monitoring, security | Owns deployment strategy and SLOs | 99.9% uptime; <5min MTTR; quarterly secret rotation |
+| **Agent/LLM Engineer** | CTO | Agent prompts, LangChain workflows, orchestration | Owns agent development; Executive Director owns requirements | 5+ agents deployed; <30s completion time; <5% hallucination rate |
+| **Research Lead** | Executive Director | Testing agents, defining workflows, quality gates, attorney training | Owns methodology and validation | Documented workflows for 5+ case types; 90% attorney confidence |
+| **Investigative Lead** | Executive Director | FOIA requests, case intake triage, preliminary assessments | Owns case triage; escalates novel patterns | 50+ active FOIA requests; <2 week triage; 80%+ escalation rate |
+| **Comms Lead** | CEO | Public messaging, social media, press strategy, case narratives | Owns comms within CEO-approved cases | 10+ press mentions per case; 5k+ followers; 3+ org citations |
+| **Legal Advisor** | CEO | Governance, compliance, § 1983 framework, risk assessment | Advisory only; recommendations to CEO | Quarterly governance review; zero compliance issues |
 
 ---
 
@@ -118,14 +133,129 @@ A strong CTO will:
 
 ---
 
-## 4. Hiring Timeline
+## 3. AI Agent Assignments & Ownership
 
-| Quarter | Hires | Focus |
-|---|---|---|
-| **Q2 2026** | CTO | Begin recruitment in early May; target close by June 1 |
-| **Q3 2026** | Backend Eng + 1 other | Platform foundation, MCAS MVP, demo-able features |
-| **Q4 2026** | Platform Eng + Agent/LLM Eng | Scale infrastructure, agent workflows, first case research |
-| **Q1 2027** | (Re-evaluate) | Extend or pivot based on traction and funding |
+The platform deploys 17+ agents for autonomous investigation and research. Each agent is owned by the Agent/LLM Engineer but reports findings through human decision gates.
+
+| Agent | Function | Owned By | Human Review Gate | Final Approval |
+|---|---|---|---|---|
+| **Iris** | Case investigation automation | Agent/LLM Eng | Research Lead validates findings | Executive Director |
+| **Rae** | Legal research & precedent synthesis | Agent/LLM Eng | Research Lead validates citations | Executive Director |
+| **Mira** | Witness/victim story synthesis | Agent/LLM Eng | Research Lead validates narrative | Executive Director + CEO |
+| **Lex** | Legal document analysis | Agent/LLM Eng | Research Lead validates legal interpretation | Executive Director |
+| **Chronology** | Timeline construction from documents | Agent/LLM Eng | Investigative Lead validates accuracy | Executive Director |
+| **Citation** | Legal precedent retrieval & ranking | Agent/LLM Eng | Research Lead confirms relevance | Executive Director |
+| **Casey** | Case law similarity matching | Agent/LLM Eng | Research Lead validates matches | Executive Director |
+| **Ollie** | Outreach & referral automation | Agent/LLM Eng | Comms Lead approves messaging | CEO |
+| **Sol**, **Quill**, **Vane**, **Webmaster**, **Social** | Supporting/auxiliary agents | Agent/LLM Eng | Executive Director/Comms as needed | Case-dependent |
+
+**Key principle:** Agents are never autonomous on publication decisions. All agent outputs undergo human review before any public release.
+
+---
+
+## 3A. Escalation Paths & Edge Cases
+
+### Case-Related Escalations
+
+**Scenario: Agent finds evidence of active/ongoing abuse**
+- Path: Agent → Research Lead → Executive Director → CEO → External law enforcement
+- Decision maker: CEO in consultation with Legal Advisor
+- Action: Determine reporting obligation under mandatory reporter laws (MT/WA specific)
+- Logging: Full audit trail in MCAS with timestamps and decision rationale
+
+**Scenario: Agent detects pattern affecting 100+ individuals**
+- Path: Agent → Research Lead → Executive Director → CEO
+- Decision maker: Executive Director (with CEO visibility)
+- Action: Scope follow-up research; determine if new case tier/priority
+- Logging: Document as "systemic pattern" with geographic and temporal bounds
+
+**Scenario: Agent output contradicts previous case finding**
+- Path: Agent → Research Lead → Investigative Lead → Executive Director
+- Decision maker: Research Lead (technical accuracy) + Executive Director (case strategy)
+- Action: Determine if prior finding was incomplete or if new data invalidates
+- Logging: Version control findings; audit trail of changes
+
+**Scenario: Disagreement between Research Lead and Executive Director on case viability**
+- Path: Executive Director → CEO (tiebreaker)
+- Decision maker: CEO (final)
+- Action: Document rationale for go/no-go decision
+- Logging: Board visibility if case is significant
+
+### Technical Escalations
+
+**Scenario: Agent hallucinating on legal precedent**
+- Path: Research Lead → Agent/LLM Eng → CTO
+- Decision maker: Agent/LLM Eng (retrain or remove) + CTO (infrastructure support)
+- Action: Validate all prior published findings with agent; retrain or retire agent
+- Logging: Post-incident review; update agent prompt bank
+
+**Scenario: MCAS schema change impacts agent data flow**
+- Path: Backend Eng → CTO → Executive Director (if research workflow affected)
+- Decision maker: CTO (architecture) + Executive Director (research workflow)
+- Action: Coordinate schema migration with agent workflow testing
+- Logging: Migration plan in version control; test results in MCAS
+
+**Scenario: Infrastructure incident affecting MCAS availability**
+- Path: Platform Eng → CTO → CEO (if case publication blocked)
+- Decision maker: CTO (technical triage) + CEO (if publication delay)
+- Action: MTTR <5 minutes; post-incident review within 48 hours
+- Logging: Incident report in oncall system; board notification if >1 hour downtime
+
+---
+
+## 4. Testing & Validation of Organizational Structure
+
+This org chart is validated through:
+
+1. **Organizational clarity test:** Each role has explicit decision rights and reporting line. Sample test: "Who decides whether to publish a case?" → Answer: "Executive Director proposes, CEO approves."
+
+2. **Hiring readiness test:** Each role has a job description and required background. An external recruiter should execute this plan with zero context calls.
+
+3. **Autonomy test:** Agents own fact-finding (Iris, Rae research autonomously); humans own strategy and publication (Executive Director + CEO).
+
+4. **Escalation test:** Decision thresholds are defined. Novel patterns, disagreements, and incidents have explicit escalation paths.
+
+5. **Capability gap test:** What the team cannot do in Month 1 is explicitly planned (e.g., "Investigative Lead hire deferred to Month 6 because case volume is low").
+
+---
+
+## 5. Key Questions Requiring Clarity
+
+Before finalizing hiring, clarify:
+
+1. **Publication authority:** Does CEO want final approval on all case publications, or can Executive Director approve with CEO visibility?
+
+2. **Board governance:** Should Civil Rights Executive Director have board seat, or advisory only?
+
+3. **Investigative Lead timing:** What's the trigger for hiring Investigative Lead—case volume threshold, months in operation, or specific milestone?
+
+4. **Legal Advisor model:** In-house hire by Q1 2027, or external ongoing? When does this transition to full-time?
+
+5. **Data governance:** Who owns data classification decisions for novel case patterns agents discover? (Currently: CTO + Legal + CEO)
+
+6. **Agent failure recovery:** If an agent is hallucinating on a deployed case, who owns the retraction decision? (Currently: CEO + Executive Director)
+
+---
+
+## 6. Detailed Hiring Timeline
+
+| Month | Hire | Role | Target Salary | Primary Focus | Success Criteria |
+|---|---|---|---|---|---|
+| **June 2026** | CTO/VP Engineering | Technical leadership | $140K | Architecture review, MCAS MVP scoping, engineering hiring | Hire Backend Eng by Aug 1; MCAS schema finalized |
+| **July 2026** | Executive Director, Civil Rights Programs | Program strategy & case selection | $100K | Define research workflows, establish attorney partnerships | Research Lead hired; workflow documentation started |
+| **August 2026** | Backend Engineer | MCAS & APIs | $110K | Case management system, access control, REST APIs | MCAS MVP deployed to staging |
+| **October 2026** | Research Lead | Methodology & testing | $85K | Test agents (Rae, Citation), define quality gates | 5+ workflows documented; 90% attorney confidence |
+| **November 2026** | Investigative Lead | Case intake & FOIA | $80K | Public records management, triage, preliminary assessment | 50+ FOIA requests tracked; <2 week triage |
+| **September 2026** | Platform/Infra Engineer | K8s & DevOps | $115K | CI/CD, monitoring, security, infrastructure SLOs | 99.9% uptime achieved; deployment time <10 min |
+| **December 2026** | Agent/LLM Engineer | Agent development | $120K | LangChain agents, prompt engineering, crewAI integration | 5+ agents deployed; <30s execution time |
+| **January 2027** | Communications & Advocacy Lead | Public messaging | $90K | Case narrative, press strategy, social media | 10+ press mentions; 5k+ followers |
+| **February 2027** | Legal Advisor | Governance & compliance (contract) | $50K/contract (~10 hrs/week) | Data protection, § 1983 framework, risk assessment | Quarterly governance review; zero compliance issues |
+
+**Hiring philosophy:**
+- Recruit Engineering first (CTO in June) to establish quality bar and technical direction
+- Recruit Civil Rights leadership in parallel (Executive Director in July) to establish case strategy
+- Bring Program Leads (Research, Investigative) after MVP is live (Oct-Nov) so they can test on real workflows
+- Hire specialized roles (Agent/LLM, Comms, Legal) once platform foundation is stable (Dec-Feb)
 
 ---
 
@@ -138,28 +268,66 @@ A strong CTO will:
 
 ---
 
-## 6. Success Metrics (First 6 Months)
+## 7. Success Metrics (Year 1 Milestones)
 
-### CTO/VP Engineering
-- [ ] Hired 1 backend engineer by Aug 1
-- [ ] Completed architecture review; prioritized MVP components
-- [ ] MCAS MVP deployed (basic case/matter/person schema) by Sept 1
-- [ ] First demo case research completed using research crew by Oct 1
-- [ ] 90% test coverage on critical path features
-- [ ] Zero security incidents; annual pen test passed
+### Engineering (CTO/VP Eng)
+- [ ] **Month 1:** Architecture review complete; MCAS schema finalized
+- [ ] **Month 2:** Backend Engineer hired; MCAS basic CRUD implemented
+- [ ] **Month 3:** MCAS MVP deployed to staging; first agent research workflow tested
+- [ ] **Month 4:** Platform/Infra Engineer hired; CI/CD pipeline live; 99.9% uptime SLA achieved
+- [ ] **Month 6:** Agent/LLM Engineer hired; 5+ agents deployed and tested with attorneys
+- [ ] **EOY:** <100ms API response time (95th percentile); >85% test coverage; zero security breaches
 
-### Org
-- [ ] 4-5 person technical team
-- [ ] Monthly board reports on roadmap progress
-- [ ] Seed funding pipeline established (if pursuing)
-- [ ] Legal and operations advisors engaged
+### Civil Rights Programs (Executive Director)
+- [ ] **Month 1:** Attorney partnerships identified; case selection criteria defined
+- [ ] **Month 2:** Research Lead hired; agent testing protocols established
+- [ ] **Month 4:** Investigative Lead hired; first case intake process live
+- [ ] **Month 6:** 5+ cases in research pipeline; 3+ cases ready for publication review
+- [ ] **EOY:** 2-3 published cases with 100% attorney validation; 5+ organization partnerships
+
+### Organization
+- [ ] **Month 2:** 6 total staff (CEO + CTO + 1 engineer + Exec Director + 1 lead + contract advisors)
+- [ ] **Month 6:** 8 total staff (add Research + Investigative leads)
+- [ ] **Month 9+:** 9-10 staff (add Agent/LLM + Comms + Legal)
+- [ ] **Quarterly:** Board reports on roadmap progress, case pipeline, security posture
+- [ ] **EOY:** Repeatable process for case intake → research → publication
+
+### Operational (CEO/Leadership)
+- [ ] **Month 3:** Fundraising pitch with technical architecture credibility
+- [ ] **Month 6:** Follow-on funding secured ($1M+ Series A discussions)
+- [ ] **Month 9:** Board governance procedures documented and operational
+- [ ] **EOY:** 3-5 published cases demonstrating platform capability
 
 ---
 
-## 7. Next Steps (CEO Immediate)
+## 8. Immediate Next Steps (CEO)
 
-1. **This week**: Finalize this hiring plan; get board/stakeholder sign-off
-2. **Next week**: Draft CTO job description; begin recruiting (LinkedIn, YC, networks)
-3. **By May 20**: First-round interviews with 5-8 candidates
-4. **By June 1**: Extend offer to top candidate; target June 15 start date
-5. **Post-hire**: CTO leads hiring of first two engineers (backend + 1)
+### Before Hiring Begins
+- [ ] **Week 1:** Clarify the 6 key questions (publication authority, board governance, etc.)
+- [ ] **Week 1:** Get board sign-off on org chart and compensation levels
+- [ ] **Week 1:** Finalize CTO job description (reference HIRING_CTO.md)
+- [ ] **Week 2:** Finalize Executive Director job description and civil rights competencies
+
+### CTO Recruitment (Target June 2026 Start)
+- [ ] **Week 2-3:** Begin CTO outreach (YC, legal tech communities, startup networks)
+- [ ] **By May 20:** 5-8 CTO candidates in pipeline; first-round interviews underway
+- [ ] **By June 1:** Final-round interviews; offer extension
+- [ ] **June 15:** Target offer acceptance; June 24-July 1 start date
+- [ ] **Post-offer:** CTO provides technical architecture review; begins engineering hiring
+
+### Executive Director Recruitment (Target July 2026 Start)
+- [ ] **Week 2:** Begin outreach (civil rights legal clinics, advocacy organizations, legal ops networks)
+- [ ] **By May 20:** 3-5 candidates in pipeline; interviews underway
+- [ ] **By June 15:** Offer extension; June 30-July 7 start date
+- [ ] **Post-hire:** Define research workflows; establish attorney partnerships
+
+### First 30 Days (Post-CTO Start)
+- [ ] Onboarding: codebase, SPEC.md, AGENTS.md, legal context, board expectations
+- [ ] Architecture review: prioritize MCAS, Paperclip, crewAI components; identify MVPs
+- [ ] Technical roadmap: define Q3 and Q4 engineering targets
+- [ ] Engineering hiring: begin Backend Engineer pipeline
+
+### Ongoing (CEO/Board)
+- [ ] **Monthly:** Board updates on headcount, roadmap progress, case pipeline
+- [ ] **Quarterly:** Organizational health review; hiring plan adjustments
+- [ ] **Q3:** Evaluate Series A fundraising readiness (technical progress, case traction)

@@ -1,0 +1,398 @@
+---
+source_url: file:///home/elvis/projects/misjustice-alliance-firm/docker-compose.yml
+ingested: 2026-04-26
+sha256: f653936db7447d035a9e5b712d658a921888fba601e508a739a9fa1df4f5b8e1
+---
+
+# PIPELINE: MISJustice Alliance Firm — Local Development Stack
+# -----------------------------------------------------------------------------
+# Based on docs/greenfield/architect-design.md §6 (Technology Choices) and §7
+# (Phase 0 Foundation).
+#
+# Services:
+#   mcas          FastAPI matter case administration API
+#   postgres      PostgreSQL 16 — relational case data, audit logs
+#   neo4j         Neo4j 5 — citation graph, legal reasoning
+#   qdrant        Qdrant — vector store for OpenRAG
+#   elasticsearch Elasticsearch 8 — full-text legal document index
+#   searxng       SearXNG — privacy-respecting metasearch
+#   litellm-proxy LiteLLM — unified LLM routing, tier-based blocking
+#   redis         Redis 7 — task queue, caching, session store
+#   minio         MinIO — S3-compatible object store for documents
+#   n8n           n8n — HITL workflow orchestration
+#   nginx         nginx — TLS termination, rate limiting, static portal
+#
+# Usage:
+#   cp .env.example .env
+#   docker compose up -d
+#   docker compose logs -f mcas
+# -----------------------------------------------------------------------------
+
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-restart-policy: &restart-policy
+  restart: unless-stopped
+
+services:
+  # ---------------------------------------------------------------------------
+  # MCAS API (FastAPI)
+  # ---------------------------------------------------------------------------
+  mcas:
+    build:
+      context: services/mcas
+      dockerfile: Dockerfile
+    container_name: misjustice-mcas
+    <<: *restart-policy
+    logging: *default-logging
+    environment:
+      MCAS_ENV: ${MCAS_ENV:-development}
+      MCAS_DATABASE_URL: ${MCAS_DATABASE_URL:-postgresql+asyncpg://mcas:mcas@postgres:5432/mcas}
+      MCAS_REDIS_URL: ${MCAS_REDIS_URL:-redis://redis:6379/0}
+      MCAS_MINIO_ENDPOINT: ${MCAS_MINIO_ENDPOINT:-minio:9000}
+      MCAS_MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      MCAS_MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      MCAS_NEO4J_URI: ${MCAS_NEO4J_URI:-bolt://neo4j:7687}
+      MCAS_NEO4J_USER: ${NEO4J_AUTH_USER:-neo4j}
+      MCAS_NEO4J_PASSWORD: ${NEO4J_AUTH_PASSWORD:-neo4jpassword}
+      MCAS_ELASTICSEARCH_URL: ${MCAS_ELASTICSEARCH_URL:-http://elasticsearch:9200}
+      MCAS_QDRANT_URL: ${MCAS_QDRANT_URL:-http://qdrant:6333}
+      MCAS_SECRET_KEY: ${MCAS_SECRET_KEY:-dev-secret-change-me-in-production}
+    ports:
+      - "8001:8000"
+    networks:
+      - frontend
+      - backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL 16
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: misjustice-postgres
+    <<: *restart-policy
+    logging: *default-logging
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-mcas}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mcas}
+      POSTGRES_DB: ${POSTGRES_DB:-mcas}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mcas} -d ${POSTGRES_DB:-mcas}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ---------------------------------------------------------------------------
+  # Neo4j 5 — Citation Graph
+  # ---------------------------------------------------------------------------
+  neo4j:
+    image: neo4j:5-community
+    container_name: misjustice-neo4j
+    <<: *restart-policy
+    logging: *default-logging
+    environment:
+      NEO4J_AUTH: ${NEO4J_AUTH:-neo4j/neo4jpassword}
+      NEO4J_PLUGINS: '["apoc", "gds"]'
+      NEO4J_dbms_memory_heap_max__size: ${NEO4J_HEAP_MAX:-1G}
+      NEO4J_dbms_memory_pagecache_size: ${NEO4J_PAGECACHE:-512M}
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # ---------------------------------------------------------------------------
+  # Qdrant — Vector Database
+  # ---------------------------------------------------------------------------
+  qdrant:
+    image: qdrant/qdrant:v1.12.0
+    container_name: misjustice-qdrant
+    <<: *restart-policy
+    logging: *default-logging
+    environment:
+      QDRANT__SERVICE__HTTP_PORT: 6333
+      QDRANT__SERVICE__GRPC_PORT: 6334
+    volumes:
+      - qdrant_data:/qdrant/storage
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:6333/healthz || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ---------------------------------------------------------------------------
+  # Elasticsearch 8 — Full-Text Search
+  # ---------------------------------------------------------------------------
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.16.0
+    container_name: misjustice-elasticsearch
+    <<: *restart-policy
+    logging: *default-logging
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - bootstrap.memory_lock=true
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # ---------------------------------------------------------------------------
+  # SearXNG — Privacy Metasearch
+  # ---------------------------------------------------------------------------
+  searxng:
+    image: searxng/searxng:latest
+    container_name: misjustice-searxng
+    <<: *restart-policy
+    logging: *default-logging
+    environment:
+      SEARXNG_BASE_URL: ${SEARXNG_BASE_URL:-http://localhost/search}
+      SEARXNG_SECRET: ${SEARXNG_SECRET:-change-me-in-production}
+      UWSGI_WORKERS: ${SEARXNG_WORKERS:-4}
+      UWSGI_THREADS: ${SEARXNG_THREADS:-4}
+    volumes:
+      - ./infra/searxng:/etc/searxng:ro
+    ports:
+      - "8080:8080"
+    networks:
+      - backend
+      - frontend
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/healthz || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ---------------------------------------------------------------------------
+  # LiteLLM Proxy — LLM Routing & Tier Blocking
+  # ---------------------------------------------------------------------------
+  litellm-proxy:
+    image: ghcr.io/berriai/litellm:main-latest
+    container_name: misjustice-litellm
+    <<: *restart-policy
+    logging: *default-logging
+    environment:
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-sk-litellm-local}
+      LITELLM_SALT_KEY: ${LITELLM_SALT_KEY:-salt-local-change-me}
+      DATABASE_URL: ${LITELLM_DATABASE_URL:-postgresql://mcas:mcas@postgres:5432/litellm}
+      STORE_MODEL_IN_DB: "True"
+    command: >
+      --config /app/config.yaml
+      --port 4000
+    volumes:
+      - ./infra/litellm/config.yaml:/app/config.yaml:ro
+    ports:
+      - "4000:4000"
+    networks:
+      - backend
+      - frontend
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:4000/health/liveliness || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ---------------------------------------------------------------------------
+  # Redis 7 — Task Queue, Cache, Pub/Sub
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: misjustice-redis
+    <<: *restart-policy
+    logging: *default-logging
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  # ---------------------------------------------------------------------------
+  # MinIO — S3-Compatible Object Store
+  # ---------------------------------------------------------------------------
+  minio:
+    image: minio/minio:RELEASE.2024-11-07T00-52-20Z
+    container_name: misjustice-minio
+    <<: *restart-policy
+    logging: *default-logging
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ---------------------------------------------------------------------------
+  # n8n — HITL Workflow Orchestration
+  # ---------------------------------------------------------------------------
+  n8n:
+    image: n8nio/n8n:1.70.0
+    container_name: misjustice-n8n
+    <<: *restart-policy
+    logging: *default-logging
+    environment:
+      N8N_BASIC_AUTH_ACTIVE: "true"
+      N8N_BASIC_AUTH_USER: ${N8N_BASIC_AUTH_USER:-admin}
+      N8N_BASIC_AUTH_PASSWORD: ${N8N_BASIC_AUTH_PASSWORD:-admin}
+      N8N_HOST: ${N8N_HOST:-localhost}
+      N8N_PORT: 5678
+      N8N_PROTOCOL: http
+      WEBHOOK_URL: ${N8N_WEBHOOK_URL:-http://localhost/n8n/}
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: postgres
+      DB_POSTGRESDB_PORT: 5432
+      DB_POSTGRESDB_DATABASE: n8n
+      DB_POSTGRESDB_USER: ${POSTGRES_USER:-mcas}
+      DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD:-mcas}
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:-change-me-in-production}
+      N8N_RUNNERS_ENABLED: "true"
+    volumes:
+      - n8n_data:/home/node/.n8n
+    ports:
+      - "5678:5678"
+    networks:
+      - backend
+      - frontend
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:5678/healthz || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  # ---------------------------------------------------------------------------
+  # nginx — Reverse Proxy & Static File Server
+  # ---------------------------------------------------------------------------
+  nginx:
+    image: nginx:alpine
+    container_name: misjustice-nginx
+    <<: *restart-policy
+    logging: *default-logging
+    environment:
+      NGINX_ENVSUBST_OUTPUT_DIR: /etc/nginx
+    volumes:
+      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./apps/portal/dist:/usr/share/nginx/html:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - frontend
+    depends_on:
+      mcas:
+        condition: service_healthy
+      searxng:
+        condition: service_started
+      n8n:
+        condition: service_healthy
+
+# -----------------------------------------------------------------------------
+# Networks
+# -----------------------------------------------------------------------------
+networks:
+  frontend:
+    driver: bridge
+    name: misjustice-frontend
+  backend:
+    driver: bridge
+    internal: false
+    name: misjustice-backend
+
+# -----------------------------------------------------------------------------
+# Volumes
+# -----------------------------------------------------------------------------
+volumes:
+  postgres_data:
+    driver: local
+  neo4j_data:
+    driver: local
+  neo4j_logs:
+    driver: local
+  qdrant_data:
+    driver: local
+  elasticsearch_data:
+    driver: local
+  redis_data:
+    driver: local
+  minio_data:
+    driver: local
+  n8n_data:
+    driver: local
