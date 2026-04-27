@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Person, Organization, Matter, Event, Document, Task
+from .models import Person, Organization, Matter, Event, Document, Task, WebhookEvent, WebhookSubscription
 
 class PersonSerializer(serializers.ModelSerializer):
     class Meta:
@@ -44,3 +44,15 @@ class TaskSerializer(serializers.ModelSerializer):
         model = Task
         fields = ['id', 'matter', 'title', 'description', 'task_type', 'status', 'assigned_to', 'requires_approval', 'approved_by', 'due_date', 'created_at', 'completed_at']
         read_only_fields = ['id', 'created_at', 'completed_at']
+
+class WebhookEventSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = WebhookEvent
+        fields = ['id', 'event_type', 'payload', 'sent_at', 'delivery_status', 'delivery_response']
+        read_only_fields = ['id', 'sent_at']
+
+class WebhookSubscriptionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = WebhookSubscription
+        fields = ['id', 'url', 'event_type', 'active', 'secret', 'created_at', 'updated_at', 'last_delivery_at']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'last_delivery_at']

@@ -3,24 +3,43 @@ from django.contrib.auth.models import User
 from django.contrib.postgres.fields import ArrayField
 from cryptography.fernet import Fernet
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Field-level encryption for Tier-0/1 data
 ENCRYPTION_KEY = os.environ.get('ENCRYPTION_KEY', '').encode() or Fernet.generate_key()
 cipher_suite = Fernet(ENCRYPTION_KEY)
 
+def decrypt_value(encrypted_value):
+    """Decrypt field value. Returns None if decryption fails or value is None."""
+    if not encrypted_value:
+        return encrypted_value
+    try:
+        return cipher_suite.decrypt(encrypted_value.encode()).decode()
+    except Exception as e:
+        logger.warning(f"Decryption failed: {type(e).__name__}. This may indicate data corruption or wrong encryption key.")
+        return None
+
 class EncryptedCharField(models.CharField):
-    """Encrypts sensitive data (Tier-0/1) at field level."""
+    """Encrypts sensitive data (Tier-0/1) at field level. Transparent encryption/decryption."""
     def get_prep_value(self, value):
         if value:
             return cipher_suite.encrypt(value.encode()).decode()
         return value
 
+    def from_db_value(self, value, expression, connection):
+        return decrypt_value(value)
+
 class EncryptedTextField(models.TextField):
-    """Encrypts sensitive data (Tier-0/1) at field level."""
+    """Encrypts sensitive data (Tier-0/1) at field level. Transparent encryption/decryption."""
     def get_prep_value(self, value):
         if value:
             return cipher_suite.encrypt(value.encode()).decode()
         return value
+
+    def from_db_value(self, value, expression, connection):
+        return decrypt_value(value)
 
 
 class Person(models.Model):
@@ -59,7 +78,9 @@ class Person(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f"{self.role} - {self.organization}"
+        # Safe representation that doesn't expose PII in logs
+        org_name = self.organization.name if self.organization else "Unknown"
+        return f"Person(id={self.id}, role={self.role}, org={org_name})"
 
 
 class Organization(models.Model):
@@ -254,3 +275,32 @@ class WebhookEvent(models.Model):
 
     def __str__(self):
         return f"{self.event_type} - {self.delivery_status}"
+
+
+class WebhookSubscription(models.Model):
+    """Registered webhook subscriber endpoint."""
+    EVENT_TYPE_CHOICES = [
+        ('*', 'All Events'),
+        ('matter.created', 'Matter Created'),
+        ('matter.updated', 'Matter Updated'),
+        ('document.uploaded', 'Document Uploaded'),
+        ('event.pattern_flagged', 'Event Pattern Flagged'),
+        ('task.completed', 'Task Completed'),
+    ]
+
+    url = models.URLField(max_length=500)
+    event_type = models.CharField(max_length=100, choices=EVENT_TYPE_CHOICES, default='*')
+
+    active = models.BooleanField(default=True)
+    secret = models.CharField(max_length=255, blank=True, help_text="Optional secret for HMAC signature")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    last_delivery_at = models.DateTimeField(blank=True, null=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        unique_together = ('url', 'event_type')
+
+    def __str__(self):
+        return f"{self.event_type} -> {self.url}"

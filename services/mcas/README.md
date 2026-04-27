@@ -19,7 +19,9 @@ MCAS is the foundation of the MISJustice platform. It provides:
 - **Framework**: Django 4.2 + Django REST Framework
 - **Database**: PostgreSQL 15
 - **Authentication**: djangorestframework-simplejwt (JWT)
-- **Encryption**: cryptography library (AES-256-GCM)
+- **Encryption**: cryptography library (Fernet AES-128)
+- **Document Storage**: Cloudflare R2 (S3-compatible)
+- **Webhooks**: requests library + HMAC-SHA256 signatures
 - **Deployment**: Docker + Gunicorn
 
 ## Quick Start
@@ -151,14 +153,26 @@ Critical variables:
 - `DEBUG` — False in production
 - `ALLOWED_HOSTS` — Comma-separated domains
 
-## Next Steps
+## Completed Features (MVP)
 
-1. **Database Schema**: Run `python manage.py migrate` to create tables
-2. **Admin Interface**: Create superuser and access at `/admin/`
-3. **Tier-Based Access Control**: Implement per-request permission checks based on data tier
-4. **Webhook Delivery**: Implement HTTP webhook delivery to Paperclip control plane
-5. **S3/R2 Integration**: Connect document storage for file uploads
-6. **Integration Tests**: Test critical workflows (matter creation, HITL gates, webhook firing)
+✅ **Field-Level Encryption** — PII encrypted at database level using Fernet cipher; transparent encryption/decryption via Django ORM
+
+✅ **Webhook Delivery System** — WebhookSubscription model + deliver_webhook() function with HMAC-SHA256 signatures for event notification to external systems (Paperclip, n8n)
+
+✅ **Document Storage (R2)** — DocumentViewSet.upload() action integrates with Cloudflare R2; presigned URLs for time-limited file access
+
+✅ **Data Tier Classification** — Tier-0 through Tier-3 with TierBasedPermission access control
+
+✅ **HITL Gates** — approve_for_research and approve_for_publication endpoints
+
+## Next Steps (Post-MVP)
+
+1. **Webhook Retry Logic** — Exponential backoff for failed webhook deliveries
+2. **Large File Support** — Multipart uploads to R2 for files >5GB
+3. **Document Versioning** — Track change history and maintain previous versions
+4. **Virus Scanning** — Integrate ClamAV or similar for uploaded documents
+5. **Encryption Key Rotation** — Implement transparent re-encryption of all PII
+6. **Advanced Integration Tests** — Full test coverage for webhook delivery, encryption/decryption roundtrips
 
 ## Deployment
 
