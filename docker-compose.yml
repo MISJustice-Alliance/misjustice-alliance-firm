@@ -188,7 +188,7 @@ services:
   # SearXNG — Privacy Metasearch
   # ---------------------------------------------------------------------------
   searxng:
-    image: searxng/searxng:latest
+    image: searxng/searxng:2024.11.15-94a3ff695
     container_name: misjustice-searxng
     <<: *restart-policy
     logging: *default-logging
@@ -215,7 +215,7 @@ services:
   # LiteLLM Proxy — LLM Routing & Tier Blocking
   # ---------------------------------------------------------------------------
   litellm-proxy:
-    image: ghcr.io/berriai/litellm:main-latest
+    image: ghcr.io/berriai/litellm:main-v1.52.0
     container_name: misjustice-litellm
     <<: *restart-policy
     logging: *default-logging
