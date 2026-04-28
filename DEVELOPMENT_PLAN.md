@@ -116,6 +116,76 @@ All components are modular, run in Docker containers, and are deployable via Ans
 
 ---
 
+## Greenfield Assessment Update — Direct Analysis
+
+> **Date:** 2026-04-28
+> **Assessor:** NoesisPraxis (direct codebase inspection)
+> **Reports:** `analysis/reports/architect-assessment.md`, `backend-assessment.md`, `research-assessment.md`
+
+### Verified Implementation Status
+
+| Component | Status | Maturity | Verification Method |
+|---|---|---|---|
+| **Website (misjusticealliance.org)** | Migrated | L3 — Defined | Source confirmed in `apps/website/`; README added; `node_modules` excluded |
+| **MCAS API** | Scaffolded | L2 — Managed | 35 Python files; Alembic migrations; Dockerfile; `venv/` committed (issue) |
+| **Docker Compose Stack** | Valid | L3 — Defined | `docker compose config` parses; 10+ services; default credentials present (issue) |
+| **CrewAI Orchestrator** | Scaffolded | L2 — Managed | 5 crews + CLI; pyproject.toml; no README; needs tool bindings |
+| **Agent Configs (OpenClaw)** | 14/16 Complete | L3 — Defined | `atlas` and `veritas` missing `config.yaml`; all have SOUL.md |
+| **Agent Configs (Kimi)** | 16/16 Complete | L3 — Defined | All `kimi-agent.yaml` present and valid |
+| **Paperclip Org Structure** | Template | L2 — Managed | Config + registry exist; `deploy.sh` is incomplete template |
+| **CrewAI MCP Docs** | Complete | L3 — Defined | `docs/crewai-mcp-integration.md` links to official docs |
+| **LawGlance** | MOCK | L1 — Initial | Returns hardcoded results; not a real RAG pipeline |
+| **Vane** | Minimal | L1 — Initial | `main.py` exists; basic health endpoint |
+| **Backend (Node.js/TS)** | Functional | L2 — Managed | 61 TS files; Bitwarden secrets; RBAC; 19 tests |
+| **Frontend (React/Vite)** | Functional | L2 — Managed | 52 files; Vite + Tailwind; hardcoded API fallback |
+| **CI/CD** | Configured | L2 — Managed | ruff + mypy + pytest + docker build; smoke test may fail |
+| **NemoClaw** | Unintegrated | L1 — Initial | Dockerfiles exist; not in compose stack |
+
+### New Critical Findings (from direct analysis)
+
+1. **Hardcoded Default Credentials (CRITICAL)** — `docker-compose.yml` contains `minioadmin`, `neo4jpassword`, `admin/admin`, and `dev-secret-change-me-in-production` as fallbacks. These must be removed.
+
+2. **Python venv Committed (CRITICAL)** — `services/mcas/venv/` contains thousands of installed packages. Massive repo bloat and supply-chain risk.
+
+3. **LawGlance is Non-Functional (HIGH)** — Returns the same 3 mock results for every query. No vector DB integration.
+
+4. **Paperclip Deploy Script Incomplete (HIGH)** — `deploy.sh` has a TODO and exits before registering any agents.
+
+5. **Missing Agent Configs (MEDIUM)** — `atlas` and `veritas` lack OpenClaw `config.yaml`.
+
+6. **No E2E Tests (MEDIUM)** — No Playwright/Cypress coverage for critical user flows.
+
+7. **Missing API Documentation (MEDIUM)** — No OpenAPI/Swagger spec generated.
+
+8. **Elasticsearch Security Disabled (MEDIUM)** — `xpack.security.enabled: false` in compose.
+
+### Updated Recommended Next Steps
+
+**Immediate (Week 1):**
+1. Remove default credentials from `docker-compose.yml`; fail fast on missing env vars
+2. `git rm -rf services/mcas/venv/` and update `.gitignore`
+3. Add `config.yaml` for `atlas` and `veritas`
+4. Fix CI smoke test assertion
+
+**Short-term (Weeks 2–3):**
+5. Implement real RAG pipeline in LawGlance (Qdrant + embeddings + ingestion)
+6. Complete `paperclip/deploy.sh` with actual API calls
+7. Add NemoClaw to compose stack
+8. Add E2E tests with Playwright
+
+**Medium-term (Weeks 4–6):**
+9. Generate OpenAPI spec from backend and publish to docs/
+10. Add secrets scanner (`gitleaks`/`trufflehog`) to CI
+11. Implement tier-based LLM routing in LiteLLM proxy
+12. Add MemoryPalace classification enforcement
+
+**Long-term (Weeks 7–12):**
+13. Ansible playbook for production deployment
+14. Tailscale ACLs and secret rotation automation
+15. Production cutover with monitoring and backup verification
+
+---
+
 ## Table of Contents
 
 - [Section 1 — System Architecture](docs/plan-sections/01-architecture.md)
