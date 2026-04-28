@@ -1,0 +1,52 @@
+# config.yaml — Avery
+# Runtime configuration for the Avery agent.
+# MISJustice Alliance Firm
+
+meta:
+  agent: avery
+  version: "1.0.0"
+  maintainer: MISJustice Alliance Platform Team
+
+runtime:
+  verbose: false
+  debug: false
+  max_iterations: 10
+  delegation_enabled: false
+  self_correction_enabled: true
+  human_in_the_loop: true
+  require_explicit_approval: true
+
+tiers:
+  data_tier: T1
+  tier_floor: T1
+  permitted_tiers: [T1, T2, T3]
+  excluded_tiers: [T0]
+
+memory:
+  session:
+    enabled: true
+    max_tokens: 32000
+    backend: langchain_buffer
+  cross_session:
+    enabled: true
+    scope: matter_created_by_avery
+    backend: openrag
+    index: avery-matter-context
+    tier_floor: T1
+
+features:
+  intake_workflow: true
+  document_upload_workflow: true
+  matter_update_workflow: true
+  ocr_preprocessing: true
+  duplicate_detection: true
+  tier_classification_proposal: true
+  chain_of_custody: true
+  safety_escalation: true
+
+limits:
+  max_concurrent_sessions: 5
+  max_documents_per_session: 50
+  max_records_per_session: 100
+  max_ocr_file_size_mb: 50
+  output_max_tokens: 4096

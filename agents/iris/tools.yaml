@@ -1,0 +1,95 @@
+# tools.yaml — Iris (Document Analyst)
+# Tool inventory and bindings
+
+mcas_tools:
+  - name: DocumentReadTool
+    description: Retrieve document metadata and content from MCAS within T1–T2 scope.
+    endpoint: /documents
+    methods: [GET]
+    auth: MCAS_API_TOKEN_IRIS
+    scope: read_only
+    tier_ceiling: T2
+    denied_endpoints:
+      - /documents/dereference
+      - /classification/*
+      - /admin/*
+
+  - name: DocumentAnalyzeTool
+    description: Extract entities, structure, dates, parties, and references from document content.
+    endpoint: /tools/document-analyze
+    methods: [POST]
+    auth: INTERNAL_TOOLS_API_KEY
+    capabilities:
+      - entity_extraction
+      - structure_mapping
+      - date_normalization
+      - reference_linking
+      - section_classification
+
+  - name: OCRTool
+    description: Convert scanned PDFs, images, and non-machine-readable documents to structured text.
+    endpoint: /tools/ocr
+    methods: [POST]
+    auth: INTERNAL_TOOLS_API_KEY
+    options:
+      languages: [eng]
+      preprocessing: [deskew, denoise, contrast_enhance]
+      output_format: [text, hocr, structured_json]
+    retry_policy:
+      max_attempts: 2
+      on_failure: flag_for_manual_transcription
+
+  - name: AnomalyDetectionTool
+    description: Identify inconsistencies, irregularities, and data quality issues in documents.
+    endpoint: /tools/anomaly-detect
+    methods: [POST]
+    auth: INTERNAL_TOOLS_API_KEY
+    levels:
+      - basic:    metadata_checks, page_count_mismatch
+      - standard: + date_inconsistencies, signature_gaps, formatting_anomalies
+      - deep:     + alteration_detection, provenance_verification, cross_document_inconsistencies
+
+  - name: PIIRedactionTool
+    description: Detect and redact Tier 0 and Tier 1 personally identifiable information.
+    endpoint: /tools/pii-redact
+    methods: [POST]
+    auth: INTERNAL_TOOLS_API_KEY
+    redaction_levels:
+      - tier0_only:
+          patterns: [full_name, ssn, dob, contact_info, government_id, financial_account]
+      - tier0_and_tier1:
+          patterns: [tier0 + case_id_linked_pii, pseudonym_mappings, matter_specific_identifiers]
+    behavior: conservative_redact_and_flag
+
+open_notebook:
+  provider: open_notebook
+  endpoint_env: OPEN_NOTEBOOK_URL
+  token_env: OPEN_NOTEBOOK_TOKEN_IRIS
+  workspace: iris-documents
+  output_format: markdown
+
+openrag:
+  provider: openrag
+  endpoint_env: OPENRAG_URL
+  token_env: OPENRAG_TOKEN_IRIS
+  access:
+    query: true
+    ingest: true
+  scope: internal_restricted
+  ingest_index: iris-document-summaries
+  ingest_tier_floor: T2
+
+custom_tools:
+  - name: QualityScorer
+    description: Computes a composite quality score (0.0–1.0) based on OCR confidence, anomaly count, and redaction coverage.
+    type: internal
+    trigger: post_analysis
+
+  - name: BatchOrchestrator
+    description: Manages multi-document batch processing, parallelization, and result aggregation.
+    type: internal
+    trigger: batch_start
+
+---
+
+*MISJustice Alliance — Legal Research. Civil Rights. Public Record.*

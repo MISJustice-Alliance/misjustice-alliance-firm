@@ -1,0 +1,209 @@
+# MISJustice Alliance Firm — Agent Registry
+# Maps all agents to their Paperclip registration profiles.
+# Each entry corresponds to an agent directory under agents/.
+
+registry:
+  # ---------------------------------------------------------------------------
+  # Intake Crew
+  # ---------------------------------------------------------------------------
+  avery:
+    display_name: "Avery — Intake Coordinator"
+    role: intake_evidence
+    dispatch_priority: high
+    adapter_type: openclaw_gateway
+    capabilities: "intake and evidence ingestion agent"
+    crew: intake
+    gateway_endpoint: "${GATEWAY_URL}"
+    headers:
+      x-openclaw-token: "${AVERY_OPENCLAW_TOKEN}"
+    hitl_gates:
+      - intake_acceptance
+      - tier_classification
+    downstream:
+      - rae
+      - chronology
+      - iris
+
+  # ---------------------------------------------------------------------------
+  # Research Crew
+  # ---------------------------------------------------------------------------
+  mira:
+    display_name: "Mira — Legal Researcher"
+    role: legal_research
+    dispatch_priority: medium
+    adapter_type: openclaw_gateway
+    capabilities: "legal research and precedent analysis agent"
+    crew: research
+    gateway_endpoint: "${GATEWAY_URL}"
+    headers:
+      x-openclaw-token: "${MIRA_OPENCLAW_TOKEN}"
+
+  casey:
+    display_name: "Casey — Case Investigator"
+    role: case_investigation
+    dispatch_priority: medium
+    adapter_type: openclaw_gateway
+    capabilities: "case investigation and fact verification agent"
+    crew: research
+    gateway_endpoint: "${GATEWAY_URL}"
+    headers:
+      x-openclaw-token: "${CASEY_OPENCLAW_TOKEN}"
+
+  lex:
+    display_name: "Lex — Lead Counsel"
+    role: lead_counsel
+    dispatch_priority: high
+    adapter_type: openclaw_gateway
+    capabilities: "lead counsel and strategic oversight agent"
+    crew: research
+    gateway_endpoint: "${GATEWAY_URL}"
+    headers:
+      x-openclaw-token: "${LEX_OPENCLAW_TOKEN}"
+
+  # ---------------------------------------------------------------------------
+  # Drafting Crew
+  # ---------------------------------------------------------------------------
+  quill:
+    display_name: "Quill — Brief Writer"
+    role: brief_writer
+    dispatch_priority: medium
+    adapter_type: openclaw_gateway
+    capabilities: "brief and legal document drafting agent"
+    crew: drafting
+    gateway_endpoint: "${GATEWAY_URL}"
+    headers:
+      x-openclaw-token: "${QUILL_OPENCLAW_TOKEN}"
+
+  citation_authority:
+    display_name: "Citation — Citation Auditor"
+    role: citation_auditor
+    dispatch_priority: medium
+    adapter_type: openclaw_gateway
+    capabilities: "citation verification and Bluebook compliance agent"
+    crew: drafting
+    gateway_endpoint: "${GATEWAY_URL}"
+    headers:
+      x-openclaw-token: "${CITATION_OPENCLAW_TOKEN}"
+
+  chronology:
+    display_name: "Chronology — Timeline Agent"
+    role: timeline_builder
+    dispatch_priority: medium
+    adapter_type: openclaw_gateway
+    capabilities: "chronological event analysis and timeline construction agent"
+    crew: drafting
+    gateway_endpoint: "${GATEWAY_URL}"
+    headers:
+      x-openclaw-token: "${CHRONOLOGY_OPENCLAW_TOKEN}"
+
+  # ---------------------------------------------------------------------------
+  # Advocacy Crew
+  # ---------------------------------------------------------------------------
+  rae:
+    display_name: "Rae — Rights Advocate"
+    role: rights_advocacy
+    dispatch_priority: high
+    adapter_type: openclaw_gateway
+    capabilities: "constitutional rights advocacy and public campaigns agent"
+    crew: advocacy
+    gateway_endpoint: "${GATEWAY_URL}"
+    headers:
+      x-openclaw-token: "${RAE_OPENCLAW_TOKEN}"
+
+  social_media_manager:
+    display_name: "Social Media Manager — Public Advocate"
+    role: public_advocacy
+    dispatch_priority: low
+    adapter_type: openclaw_gateway
+    capabilities: "social media and public outreach agent"
+    crew: advocacy
+    gateway_endpoint: "${GATEWAY_URL}"
+    headers:
+      x-openclaw-token: "${SOCIAL_OPENCLAW_TOKEN}"
+
+  # ---------------------------------------------------------------------------
+  # Support Crew
+  # ---------------------------------------------------------------------------
+  ollie:
+    display_name: "Ollie — Paralegal"
+    role: paralegal_support
+    dispatch_priority: medium
+    adapter_type: openclaw_gateway
+    capabilities: "paralegal tasks and filing support agent"
+    crew: support
+    gateway_endpoint: "${GATEWAY_URL}"
+    headers:
+      x-openclaw-token: "${OLLIE_OPENCLAW_TOKEN}"
+
+  atlas:
+    display_name: "Atlas"
+    role: support
+    dispatch_priority: low
+    adapter_type: openclaw_gateway
+    capabilities: "general support and logistics agent"
+    crew: support
+    gateway_endpoint: "${GATEWAY_URL}"
+    headers:
+      x-openclaw-token: "${ATLAS_OPENCLAW_TOKEN}"
+
+  # ---------------------------------------------------------------------------
+  # Systems Crew
+  # ---------------------------------------------------------------------------
+  sol:
+    display_name: "Sol — Systems Liaison"
+    role: systems_liaison
+    dispatch_priority: high
+    adapter_type: openclaw_gateway
+    capabilities: "tool orchestration and MCP integration agent"
+    crew: systems
+    gateway_endpoint: "${GATEWAY_URL}"
+    headers:
+      x-openclaw-token: "${SOL_OPENCLAW_TOKEN}"
+
+  hermes:
+    display_name: "Hermes — Supervisor"
+    role: supervisor
+    dispatch_priority: critical
+    adapter_type: hermes_gateway
+    capabilities: "supervisor agent coordinating all crews and human operators"
+    crew: systems
+    gateway_endpoint: "${GATEWAY_URL}"
+    headers:
+      x-hermes-token: "${HERMES_TOKEN}"
+    scopes: [operator.admin, operator.write]
+
+  webmaster:
+    display_name: "Webmaster — Site Manager"
+    role: site_manager
+    dispatch_priority: medium
+    adapter_type: openclaw_gateway
+    capabilities: "website and digital asset management agent"
+    crew: systems
+    gateway_endpoint: "${GATEWAY_URL}"
+    headers:
+      x-openclaw-token: "${WEBMASTER_OPENCLAW_TOKEN}"
+
+  # ---------------------------------------------------------------------------
+  # Verification
+  # ---------------------------------------------------------------------------
+  iris:
+    display_name: "Iris — Document Analyst"
+    role: document_analysis
+    dispatch_priority: medium
+    adapter_type: openclaw_gateway
+    capabilities: "document analysis and metadata extraction agent"
+    crew: research
+    gateway_endpoint: "${GATEWAY_URL}"
+    headers:
+      x-openclaw-token: "${IRIS_OPENCLAW_TOKEN}"
+
+  veritas:
+    display_name: "Veritas"
+    role: verification
+    dispatch_priority: medium
+    adapter_type: openclaw_gateway
+    capabilities: "fact verification and truth-checking agent"
+    crew: research
+    gateway_endpoint: "${GATEWAY_URL}"
+    headers:
+      x-openclaw-token: "${VERITAS_OPENCLAW_TOKEN}"

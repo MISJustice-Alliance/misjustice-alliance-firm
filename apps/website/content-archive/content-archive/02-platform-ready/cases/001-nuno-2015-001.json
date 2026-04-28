@@ -1,0 +1,290 @@
+{
+  "case": {
+    "title": "Elvis Nuno v. E'Lise Chard, Danielle Chard, YWCA Missoula, et al.",
+    "description": "Multi-jurisdictional civil rights violation case involving false prosecution, RICO conspiracy, institutional corruption, witness intimidation, and malicious prosecution spanning 2015-2025. Case includes 20+ federal and state predicate acts, multi-victim pattern evidence, and interstate coordination by law enforcement and institutional actors.",
+    "status": "open",
+    "jurisdiction": "Montana, Washington (multi-jurisdictional)",
+    "case_type": "civil-rights, police-misconduct, rico-conspiracy, institutional-corruption",
+    "date_filed": "2015-11-15",
+    "plaintiff_name": "Elvis Nuno",
+    "defendant_name": "E'Lise Chard, Danielle Chard, YWCA Missoula, Detective Connie Brueckner, Officer Ethan Smith, et al.",
+    "outcome": "pending",
+    "notes": "RICO treble damages calculation: $6M base damages (lost career earnings + past damages) × 3 = $18M. Case involves multi-agency coordination (Seattle PD, Edmonds PD, Missoula PD) and institutional actors (YWCA Missoula). Evidence includes 10+ victims of similar institutional patterns."
+  },
+  "extended_metadata": {
+    "case_number": "NUNO-2015-001",
+    "damages_claimed": 18000000,
+    "tags": [
+      "civil-rights",
+      "rico-conspiracy",
+      "institutional-corruption",
+      "witness-intimidation",
+      "malicious-prosecution",
+      "false-prosecution",
+      "brady-violations",
+      "first-amendment-retaliation",
+      "fourth-amendment-violations",
+      "fifth-amendment-violations",
+      "eighth-amendment-violations",
+      "fourteenth-amendment-violations"
+    ],
+    "related_cases": [
+      "002-ywca-institutional-corruption"
+    ],
+    "jurisdictions_involved": [
+      "Montana",
+      "Washington"
+    ],
+    "counties": [
+      "Missoula County, MT",
+      "King County, WA",
+      "Snohomish County, WA"
+    ],
+    "agencies_notified": [
+      "FBI Civil Rights Division (Seattle)",
+      "FBI Civil Rights Division (Billings, MT)",
+      "Montana Attorney General",
+      "Washington Attorney General",
+      "USAO District of Montana",
+      "USAO Western District of Washington",
+      "DOJ Public Integrity Section"
+    ],
+    "perpetrators": {
+      "primary": [
+        "Danielle Chard (civilian)",
+        "E'Lise Chard (YWCA employee)",
+        "Detective Connie Brueckner (Missoula PD)",
+        "Officer Ethan Smith (Edmonds PD)",
+        "YWCA Missoula (institutional actor)"
+      ],
+      "institutional": [
+        "Seattle Police Department",
+        "Edmonds Police Department",
+        "Missoula Police Department",
+        "YWCA Missoula",
+        "Missoula County Prosecutors",
+        "King County Prosecutors"
+      ],
+      "count": 5
+    },
+    "victims": {
+      "primary": [
+        "Elvis Nuno"
+      ],
+      "pattern_evidence": [
+        "Arthur Brown",
+        "Jessica Waltz (Meadowlark eviction victim)",
+        "3 additional families (Meadowlark evictions, October 2021)",
+        "Multiple YWCA complainants (Reddit, Google Reviews)"
+      ],
+      "count": 10
+    },
+    "predicate_acts_count": 20,
+    "time_period": {
+      "start": "2015-11-15",
+      "end": "2025-01-01",
+      "duration_years": 10
+    },
+    "damages": {
+      "lost_career_earnings": {
+        "base": 6400000,
+        "description": "10 years of software engineering career (2015-2025) at $160k-$280k/year"
+      },
+      "past_damages": {
+        "base": 3400000,
+        "description": "Psychological trauma, reputation damage, legal fees, lost opportunities"
+      },
+      "base_total": 9800000,
+      "rico_multiplier": 3,
+      "rico_treble_total": 29400000,
+      "conservative_claim": 18000000,
+      "notes": "Conservative estimate uses lower career earnings projection. Full RICO treble could reach $29.4M."
+    },
+    "legal_violations": {
+      "constitutional": [
+        "First Amendment (retaliation for protected speech)",
+        "Fourth Amendment (unlawful search and seizure, warrantless arrest)",
+        "Fifth Amendment (due process violations)",
+        "Eighth Amendment (excessive bail, cruel punishment)",
+        "Fourteenth Amendment (equal protection, due process)"
+      ],
+      "federal_statutes": [
+        "18 U.S.C. § 1961-1968 (RICO)",
+        "18 U.S.C. § 241 (Conspiracy against rights)",
+        "18 U.S.C. § 242 (Deprivation of rights under color of law)",
+        "18 U.S.C. § 1512 (Witness tampering and intimidation)",
+        "42 U.S.C. § 1983 (Civil rights violations)"
+      ],
+      "state_statutes_montana": [
+        "MCA 45-7-201 (Perjury)",
+        "MCA 45-8-201 (Criminal defamation)",
+        "MCA 45-5-220 (Stalking)",
+        "MCA 45-5-203 (Assault)",
+        "MCA 7-1-101 (Official misconduct)"
+      ],
+      "state_statutes_washington": [
+        "RCW 9A.72.020 (Perjury)",
+        "RCW 9A.46.020 (Harassment)",
+        "RCW 9A.76.175 (Making false statement)",
+        "RCW 9.73.030 (Privacy violations)"
+      ]
+    },
+    "key_evidence_highlights": [
+      "November 2015 SWAT raid based on false armed/suicidal report by Danielle Chard",
+      "March 2016 coerced guilty plea under duress (no attorney present)",
+      "June 2018 YWCA complaint (protected First Amendment speech)",
+      "June 2018 E'Lise Chard perjury in protection order filing",
+      "August 2018 fraudulent search warrant (Detective Brueckner conflict not disclosed)",
+      "18-month Montana prosecution (2018-2020) with constitutional violations",
+      "Pattern evidence: 10+ YWCA victims documenting institutional dysfunction",
+      "Detective Brueckner serving on YWCA board (undisclosed conflict of interest)",
+      "Tyleen Root recruited as harassment proxy by E'Lise Chard",
+      "Witness intimidation of Partner A by Edmonds PD"
+    ]
+  },
+  "documents_manifest": [
+    {
+      "filename": "01_Case_Summary.pdf",
+      "file_type": "pdf",
+      "category": "case-summary",
+      "source_path": "narrative/pdfs/01_Case_Summary.pdf",
+      "description": "Executive summary - comprehensive overview of all crimes, perpetrators, victims, timeline (20+ pages)"
+    },
+    {
+      "filename": "02_FBI_Civil_Rights_Cover_Letter.pdf",
+      "file_type": "pdf",
+      "category": "cover-letter",
+      "source_path": "narrative/pdfs/02_FBI_Civil_Rights_Cover_Letter.pdf",
+      "description": "FBI Civil Rights Division cover letter - federal investigation request under RICO statutes (9 pages)"
+    },
+    {
+      "filename": "03_Montana_AG_Cover_Letter.pdf",
+      "file_type": "pdf",
+      "category": "cover-letter",
+      "source_path": "narrative/pdfs/03_Montana_AG_Cover_Letter.pdf",
+      "description": "Montana Attorney General cover letter - state criminal investigation request (4 pages)"
+    },
+    {
+      "filename": "04_Washington_AG_Cover_Letter.pdf",
+      "file_type": "pdf",
+      "category": "cover-letter",
+      "source_path": "narrative/pdfs/04_Washington_AG_Cover_Letter.pdf",
+      "description": "Washington Attorney General cover letter - interstate coordination request (6 pages)"
+    },
+    {
+      "filename": "05_USAO_Montana_Cover_Letter.pdf",
+      "file_type": "pdf",
+      "category": "cover-letter",
+      "source_path": "narrative/pdfs/05_USAO_Montana_Cover_Letter.pdf",
+      "description": "USAO Montana cover letter - federal grand jury and RICO prosecution request (5 pages)"
+    },
+    {
+      "filename": "06_Danielle_Chard_Criminal_Report.pdf",
+      "file_type": "pdf",
+      "category": "perpetrator-report",
+      "source_path": "narrative/pdfs/06_Danielle_Chard_Criminal_Report.pdf",
+      "description": "Danielle Chard criminal report - detailed analysis of individual perpetrator conduct (7 pages)"
+    },
+    {
+      "filename": "11.1_YWCA_Institutional_Corruption_Supplemental.pdf",
+      "file_type": "pdf",
+      "category": "institutional-analysis",
+      "source_path": "narrative/pdfs/11.1_YWCA_Institutional_Corruption_Supplemental.pdf",
+      "description": "YWCA institutional corruption analysis - multi-victim pattern evidence and corporate liability (29+ pages)"
+    },
+    {
+      "filename": "11.2_Elvis_Nuno_Sworn_Declaration.pdf",
+      "file_type": "pdf",
+      "category": "testimony",
+      "source_path": "narrative/pdfs/11.2_Elvis_Nuno_Sworn_Declaration.pdf",
+      "description": "Elvis Nuno sworn declaration - comprehensive victim testimony and damages calculation (80+ pages)"
+    },
+    {
+      "filename": "10_Comprehensive_Evidentiary_Documentation.pdf",
+      "file_type": "pdf",
+      "category": "evidence-index",
+      "source_path": "narrative/pdfs/10_Comprehensive_Evidentiary_Documentation.pdf",
+      "description": "Evidentiary documentation index - directory with detailed evidentiary value (29 pages)"
+    }
+  ],
+  "evidence_categories": [
+    {
+      "category": "court-documents",
+      "directory": "evidence/Court-Documents/",
+      "file_count": 8,
+      "description": "Dismissals, declarations, court orders, and attorney correspondence",
+      "key_files": [
+        "Edmonds_Trial-Nuno_Declaration_of_Ineffective_Assistance.pdf",
+        "Missoula-Case-66-Court-Order-Dismissal.pdf",
+        "Seattle-Case-613225-Dismissal.png"
+      ]
+    },
+    {
+      "category": "formal-complaints",
+      "directory": "evidence/Formal-Complaints/",
+      "file_count": 12,
+      "description": "POST complaints, OPA complaints, bar complaints, relationship diagrams",
+      "key_files": [
+        "MT_DOJ_POST-EMail.pdf",
+        "Office for Professional Accountability 2016OPA-1167.pdf",
+        "WA_State_Bar_Complaint_Patricia-Fulton_2016.pdf",
+        "Nuno-Case-Relationship-Diagram.jpeg"
+      ]
+    },
+    {
+      "category": "other-victims",
+      "directory": "evidence/Other-Victims/",
+      "file_count": 4,
+      "description": "Pattern evidence of institutional harm from other victims",
+      "key_files": [
+        "Arthur-Brown-Google-Review.jpeg",
+        "Facebook-HIPPA-Violation-Thread-1.jpeg",
+        "YWCA-Reddit-Complaints.jpeg"
+      ]
+    },
+    {
+      "category": "police-reports",
+      "directory": "evidence/Police Reports/",
+      "file_count": 1,
+      "description": "Seattle PD incident documentation",
+      "key_files": [
+        "Seattle PD Written statement regarding incident #2016-348587.pdf"
+      ]
+    },
+    {
+      "category": "harassment-evidence",
+      "directory": "evidence/Tyleen-Root-Harassment/",
+      "file_count": 19,
+      "description": "Screenshots of defamation and business sabotage by E'Lise Chard proxy",
+      "key_files": [
+        "Tyleen-Root-Harassment-1.jpeg through -10-6.jpeg",
+        "Tyleen-Root-Profile1.jpeg"
+      ]
+    },
+    {
+      "category": "financial-records",
+      "directory": "evidence/YWCA-Missoula/",
+      "file_count": 1,
+      "description": "YWCA financial records documenting Connie Brueckner as board member (conflict of interest)",
+      "key_files": [
+        "ywca-missoula-consolidated-financial-statements-years-2023-2024.pdf"
+      ]
+    }
+  ],
+  "arweave_archival": {
+    "archival_priority": "high",
+    "permanent_preservation_required": true,
+    "redaction_required": false,
+    "public_visibility": true,
+    "archival_bundle_size_estimate_mb": 150,
+    "notes": "All documents public record. No redaction needed for criminal referral materials."
+  },
+  "import_metadata": {
+    "version": "1.0.0",
+    "created_date": "2026-01-01",
+    "last_updated": "2026-01-01",
+    "created_by": "MISJustice Alliance Archive Migration",
+    "validation_status": "pending",
+    "import_ready": true
+  }
+}

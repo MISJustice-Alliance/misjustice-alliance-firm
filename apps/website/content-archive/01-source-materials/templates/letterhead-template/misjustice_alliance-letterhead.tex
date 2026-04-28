@@ -1,0 +1,195 @@
+% ============================================================================
+% MISJustice Alliance - Official Letterhead Template
+% ============================================================================
+%
+% INSTRUCTIONS:
+% 1. Place 'misjustice_logo_full.png' in the same directory as this .tex file
+% 2. Compile with: pdflatex misjustice_letterhead.tex
+% 3. For best results, use a LaTeX distribution with graphicx and fancyhdr
+%
+% ============================================================================
+
+\documentclass[11pt, letterpaper]{article}
+
+% ----- Package Imports -----
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{fancyhdr}
+\usepackage{lastpage}
+\usepackage{helvet}
+\usepackage{hyperref}
+\usepackage{tikz}
+\usepackage{parskip}
+
+% ----- Page Geometry -----
+\geometry{
+    letterpaper,
+    top=1.75in,
+    bottom=1.0in,
+    left=1.0in,
+    right=1.0in,
+    headheight=1.25in,
+    headsep=0.25in,
+    footskip=0.5in
+}
+
+% ----- Color Definitions (matching logo) -----
+\definecolor{NavyBlue}{HTML}{123262}
+\definecolor{Gold}{HTML}{B49650}
+\definecolor{DarkGray}{HTML}{333333}
+\definecolor{MediumGray}{HTML}{666666}
+
+% ----- Font Settings -----
+\renewcommand{\familydefault}{\sfdefault}
+
+% ----- Hyperlink Settings -----
+\hypersetup{
+    colorlinks=true,
+    linkcolor=NavyBlue,
+    urlcolor=NavyBlue,
+    pdfauthor={MISJustice Alliance},
+    pdftitle={Official Correspondence},
+    pdfsubject={Legal Correspondence}
+}
+
+% ----- Header and Footer Configuration -----
+\pagestyle{fancy}
+\fancyhf{}
+
+% Header - Logo on Left, Contact Info on Right (aligned at same height)
+\fancyhead[L]{%
+    \raisebox{-0.5in}[0pt][0pt]{%
+        \includegraphics[height=1.0in]{misjustice_logo_full.png}%
+    }%
+}
+
+\fancyhead[R]{%
+    \raisebox{-0.5in}[0pt][0pt]{%
+        \begin{minipage}[b]{2.5in}
+            \raggedleft
+            \textcolor{DarkGray}{\footnotesize\textbf{Signal:} MISJusticeAlliance64.86}\\[3pt]
+            \textcolor{DarkGray}{\footnotesize\textbf{Email:} \href{mailto:contact@misjusticealliance.org}{contact@misjusticealliance.org}}
+        \end{minipage}%
+    }%
+}
+
+% Gold accent line below header (positioned after header content)
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\headrule}{%
+    \vspace{0.6in}%
+    \textcolor{Gold}{\rule{\textwidth}{2pt}}%
+}
+
+% Footer
+\fancyfoot[L]{%
+    \textcolor{MediumGray}{\scriptsize\textit{Confidential Legal Correspondence}}%
+}
+\fancyfoot[R]{%
+    \textcolor{MediumGray}{\scriptsize Page \thepage\ of \pageref{LastPage}}%
+}
+\renewcommand{\footrulewidth}{0pt}
+
+% First page style (same as regular pages)
+\fancypagestyle{firstpage}{%
+    \fancyhf{}
+    \fancyhead[L]{%
+        \raisebox{-0.5in}[0pt][0pt]{%
+            \includegraphics[height=1.0in]{misjustice_logo_full.png}%
+        }%
+    }
+    \fancyhead[R]{%
+        \raisebox{-0.5in}[0pt][0pt]{%
+            \begin{minipage}[b]{2.5in}
+                \raggedleft
+                \textcolor{DarkGray}{\footnotesize\textbf{Signal:} MISJusticeAlliance64.86}\\[3pt]
+                \textcolor{DarkGray}{\footnotesize\textbf{Email:} \href{mailto:contact@misjusticealliance.org}{contact@misjusticealliance.org}}
+            \end{minipage}%
+        }%
+    }
+    \renewcommand{\headrule}{%
+        \vspace{0.6in}%
+        \textcolor{Gold}{\rule{\textwidth}{2pt}}%
+    }
+    \fancyfoot[L]{%
+        \textcolor{MediumGray}{\scriptsize\textit{Confidential Legal Correspondence}}%
+    }
+    \fancyfoot[R]{%
+        \textcolor{MediumGray}{\scriptsize Page \thepage\ of \pageref{LastPage}}%
+    }
+}
+
+% ============================================================================
+% DOCUMENT CONTENT
+% ============================================================================
+
+\begin{document}
+\thispagestyle{firstpage}
+
+% ----- Date -----
+\vspace{0.25in}
+\noindent
+\textcolor{DarkGray}{\today}
+
+\vspace{0.4in}
+
+% ----- Recipient Information -----
+\noindent
+\textbf{[Recipient Name]}\\
+\textit{[Title/Position]}\\
+{[Organization Name]}\\
+{[Address Line 1]}\\
+{[City, State ZIP]}
+
+\vspace{0.35in}
+
+% ----- Subject Line -----
+\noindent
+\textcolor{NavyBlue}{\textbf{Re: [Subject of Correspondence]}}
+
+\vspace{0.25in}
+
+% ----- Salutation -----
+\noindent
+Dear [Recipient Name],
+
+\vspace{0.15in}
+
+% ----- Body Content -----
+\noindent
+[Begin your letter content here. This template is designed for official correspondence from MISJustice Alliance. The letterhead includes the organization logo with shield and scales of justice imagery, along with secure contact methods via Signal messaging and email.]
+
+[Continue with additional paragraphs as needed. The layout automatically handles page breaks while maintaining consistent headers and footers throughout the document. Use professional language appropriate for legal and governmental communications.]
+
+[Conclude your correspondence with appropriate closing remarks, action items, or next steps as relevant to the matter at hand.]
+
+\vspace{0.4in}
+
+% ----- Closing -----
+\noindent
+Respectfully,
+
+\vspace{0.6in}
+
+% ----- Signature Block -----
+\noindent
+\textbf{[Your Name]}\\
+\textit{[Your Title]}\\
+MISJustice Alliance
+
+\vspace{0.25in}
+
+% ----- Optional: Enclosures/CC -----
+% Uncomment the following lines as needed:
+%
+% \noindent
+% \textit{Enclosures: [List of enclosed documents]}
+%
+% \vspace{0.1in}
+%
+% \noindent
+% \textit{cc: [Names of individuals receiving copies]}
+
+\end{document}

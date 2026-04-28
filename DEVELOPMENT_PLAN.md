@@ -31,7 +31,88 @@ All components are modular, run in Docker containers, and are deployable via Ans
 | **P4** — E2E Validation | 2 weeks | Integration test suite; staging deployment; operator runbooks | QA / All | P3 |
 | **P5** — Production | 1 week | Production cutover; monitoring; backup verification | DevOps | P4 |
 
-**Total Estimated Timeline:** 12 weeks
+|**Total Estimated Timeline:** 12 weeks
+
+---
+
+## Greenfield Assessment Update
+
+> **Date:** 2026-04-28
+> **Assessor:** Kimi Agent Team (NoesisPraxis orchestration)
+> **Basis:** Prior greenfield reports (2026-04-22), codebase inspection, agent config audit
+
+### Current Implementation Status
+
+| Component | Status | Maturity | Notes |
+|---|---|---|---|
+| **Website (misjusticealliance.org)** | ✅ Migrated | L3 — Defined | Source copied from `/opt/legal-advocacy-web/` to `apps/website/`; README added; `node_modules` excluded |
+| **MCAS API** | ✅ Scaffolded | L2 — Managed | FastAPI + PostgreSQL + Alembic; Dockerfile present; healthcheck configured; async race conditions noted in QA report |
+| **Docker Compose Stack** | ✅ Defined | L3 — Defined | 12 services in `docker-compose.yml`; three-bridge network design; named volumes; needs `docker compose up` validation |
+| **CrewAI Orchestrator** | ✅ Partial | L2 — Managed | 5 crews (intake, research, drafting, advocacy, support); MCP tools (`mcp_tools.py`); CLI entrypoint; needs full tool bindings |
+| **Agent Configs (OpenClaw)** | ✅ Defined | L3 — Defined | 16 agents with SOUL.md, agent.yaml, system_prompt.md, tools.yaml, guardrails, evals, memory |
+| **Agent Configs (Kimi)** | ✅ Created | L3 — Defined | 16 `kimi-agent.yaml` files created mirroring OpenClaw agents; references existing `system_prompt.md` |
+| **Paperclip Org Structure** | ✅ Created | L3 — Defined | `federation-config.yaml`, `agent-registry.yaml`, `deploy.sh`, `README.md` in `paperclip/` |
+| **CrewAI MCP Docs** | ✅ Referenced | L3 — Defined | `docs/crewai-mcp-integration.md` links to https://docs.crewai.com/mcp and https://skills.sh/crewaiinc/skills |
+| **Neo4j GraphRAG** | ✅ Partial | L2 — Managed | 537 LOC ingestion pipeline; needs integration with MCAS and OpenRAG |
+| **OpenClaw Ansible** | ✅ Partial | L2 — Managed | Hardened Debian/Ubuntu install playbook; firewall + Tailscale roles; needs service-specific roles |
+| **React Portal** | ⚠️ Mock-only | L1 — Initial | Frontend exists in `apps/portal/` but has no real backend integration per QA report |
+| **NemoClaw Sandbox** | ❌ Missing | L0 — Vapor | Submodule present but not integrated into compose stack |
+| **LiteLLM Proxy** | ✅ Configured | L3 — Defined | Config in `infra/litellm/`; not yet wired into compose |
+| **SearXNG** | ✅ Configured | L3 — Defined | Config in `infra/searxng/`; not yet wired into compose |
+| **nginx** | ✅ Configured | L3 — Defined | Config in `infra/nginx/`; ready for TLS termination |
+| **n8n Workflows** | ⚠️ Stubs | L1 — Initial | Workflow directory exists in `src/n8n/workflows/` but no executable definitions |
+| **LawGlance** | ⚠️ Partial | L2 — Managed | Dockerfile present; tests exist; needs integration testing |
+| **Legal Source Gateway** | ⚠️ Partial | L2 — Managed | Dockerfile + connectors; needs upstream data provider credentials |
+| **Vane** | ⚠️ Partial | L2 — Managed | Dockerfile present; needs search-tier token integration |
+| **CI/CD** | ⚠️ Broken | L1 — Initial | `.github/workflows/ci.yml` has failing smoke-test assertion per QA report |
+
+### Critical Gaps (from prior assessments + current inspection)
+
+1. **Cloud LLM Data Exposure (CRITICAL)** — Tier-0/1 content can reach OpenAI/Anthropic via LiteLLM proxy. Need tier-based model routing and on-prem Ollama fallback.
+2. **LangSmith Cloud Tracing (CRITICAL)** — Agent execution traces may leak case data. Need self-hosted LangSmith or trace scrubbing.
+3. **React Portal Backend Integration (CRITICAL)** — Portal is entirely mocked; no real MCAS API consumption.
+4. **NemoClaw Sandbox Integration (HIGH)** — Sandbox exists as submodule but is not wired into the compose stack or OpenClaw gateway.
+5. **n8n HITL Workflow Definitions (HIGH)** — Approval gates documented but no executable n8n workflow JSONs.
+6. **MemoryPalace Classification Enforcement (HIGH)** — SPEC.md lists as unimplemented; agents could write Tier-1 to cross-session memory.
+7. **CI Pipeline (MEDIUM)** — Smoke test assertion failing; blocks automated validation.
+8. **Network Isolation (MEDIUM)** — `agent-net` is internal-only but `frontend` and `backend` bridge isolation needs verification.
+
+### Session Deliverables (2026-04-28)
+
+1. `apps/website/README.md` — Migration documentation
+2. `apps/website/backups/` — Copied from `site-backup`
+3. `apps/website/frontend/` — Copied from `/opt/legal-advocacy-web/frontend/`
+4. `docs/crewai-mcp-integration.md` — CrewAI MCP + Skills reference docs
+5. `agents/*/kimi-agent.yaml` — 16 Kimi-compatible agent definitions
+6. `paperclip/federation-config.yaml` — Paperclip federation organization config
+7. `paperclip/agent-registry.yaml` — 16-agent Paperclip registration profiles
+8. `paperclip/deploy.sh` — Deployment script template
+9. `paperclip/README.md` — Paperclip org deployment guide
+
+### Recommended Next Steps
+
+**Immediate (Week 1):**
+1. Fix CI smoke test in `.github/workflows/ci.yml`
+2. Run `docker compose up` and validate the full stack boots
+3. Fix MCAS async race conditions identified in QA report
+4. Integrate React portal with real MCAS API endpoints
+
+**Short-term (Weeks 2–3):**
+5. Wire NemoClaw sandbox into compose stack with OpenClaw gateway
+6. Implement tier-based LLM routing in LiteLLM proxy config
+7. Build executable n8n workflow JSONs for HITL approval gates
+8. Add MemoryPalace classification middleware
+
+**Medium-term (Weeks 4–6):**
+9. Deploy Paperclip org structure to staging instance
+10. Register agents via invite flow and verify heartbeats
+11. Implement LangSmith self-hosting or trace scrubbing
+12. Add integration tests for CrewAI crews against mocked MCP server
+
+**Long-term (Weeks 7–12):**
+13. Ansible playbook for full stack deployment
+14. Tailscale ACLs and secret rotation automation
+15. Production cutover with monitoring and backup verification
 
 ---
 
@@ -1359,6 +1440,39 @@ crewai-orchestrator/
 - One Python module per crew under `crews/`. Each module exports a factory function `create_<crew_name>()` that returns a configured `Crew` instance.
 - Task modules under `tasks/` export `Task` objects with explicit `context` dependencies; they are wired into crews by the crew factory, not by global import side-effects.
 - All tool modules under `tools/` expose CrewAI `BaseTool` subclasses. MCP tools are dynamically wrapped via `MCPToolWrapper` at crew creation time, not at module import time.
+
+### 3.1.1 Agent Configuration Directory (`agents/`)
+
+In addition to the CrewAI runtime modules under `crewai-orchestrator/src/misjustice_crews/agents/`, every agent has a canonical configuration directory at the project root under `agents/<name>/`. These directories supply the declarative manifests consumed by Paperclip, OpenClaw, and the AgentFactory at runtime.
+
+**Required directory layout for every agent:**
+
+```
+agents/<name>/
+├── README.md              # Agent overview, responsibilities, and quick-start
+├── SPEC.md                # Agent-specific technical specification
+├── SOUL.md                # Agent identity constitution and values
+├── agent.yaml             # Paperclip agent manifest (canonical runtime definition)
+├── MEMORY.md              # Memory policy, scope, and retention rules
+├── tools.yaml             # Tool inventory, bindings, and tier scoping
+├── models.yaml            # LLM configuration (primary model, fallback, temperature, tokens)
+├── config.yaml            # Runtime configuration parameters
+├── POLICY.md              # Behavioral and security policy
+├── GUARDRAILS.yaml        # Safety guardrails, output constraints, and blocking rules
+├── EVALS.yaml             # Evaluation criteria, test cases, and acceptance thresholds
+├── RUNBOOK.md             # Operational runbook for deployment, debugging, and rollback
+├── METRICS.md             # Observability, performance, and SLA metrics
+├── system_prompt.md       # Runtime system prompt injected at agent initialization
+├── memory/                # Persistent memory storage (vector embeddings, session state)
+├── evals/                 # Evaluation outputs, datasets, and regression results
+└── logs/                  # Runtime log outputs and audit trails
+```
+
+**Design rules:**
+- `agent.yaml` is the single source of truth for Paperclip registration and OpenClaw dispatch. It MUST reference `tools.yaml`, `models.yaml`, and `config.yaml` by relative path.
+- `system_prompt.md` is loaded at runtime by the AgentFactory and injected as the agent's `backstory`.
+- `memory/`, `evals/`, and `logs/` are created at agent initialization if absent. Their contents are excluded from Git via `.gitignore`.
+- The CI pipeline enforces that all mandatory files exist before an agent is promoted to staging or production.
 
 ---
 

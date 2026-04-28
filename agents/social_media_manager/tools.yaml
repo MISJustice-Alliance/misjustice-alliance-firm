@@ -1,0 +1,20 @@
+tools:
+  - name: MatterReadTool
+    access: abstract_only
+    purpose: Read matter summaries without exposing tiered data
+    data_tier: T3
+
+  - name: CampaignDraftingTool
+    access: read_write
+    purpose: Draft and sequence multi-platform campaign content
+    approval_gate: human_required_before_post
+
+  - name: OutreachPostTool
+    access: write_gated
+    purpose: Stage platform posts for human review and approval
+    platforms: [x, bluesky, reddit, nostr]
+
+  - name: PublicNarrativeTool
+    access: read_write
+    purpose: Compose and refine public-facing narratives
+    constraints: [no_pii, no_restricted_data, t0_search_only]

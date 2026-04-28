@@ -1,0 +1,79 @@
+# MISJustice Alliance Firm — Paperclip Federation Configuration
+# Organization-level settings for deployment to a Paperclip control plane.
+
+federation:
+  name: misjustice-alliance-firm
+  display_name: "MISJustice Alliance Firm"
+  description: >
+    AI-native legal advocacy organization operating lightweight CrewAI teams
+    and heavy-weight OpenClaw agents for constitutional rights defense,
+    systemic reform research, and public advocacy.
+  deployment_mode: authenticated
+  timezone: America/Denver
+
+  # Board structure — human operators who approve agent join requests
+  board:
+    - role: managing_partner
+      human_required: true
+      approves_agents: all
+    - role: technical_director
+      human_required: true
+      approves_agents: [sol, hermes, webmaster, atlas]
+    - role: ethics_officer
+      human_required: true
+      approves_agents: [avery, rae, ollie]
+
+  # Organization-wide policy references
+  policies:
+    ethics: "https://raw.githubusercontent.com/enuno/zhc-firm/main/docs/legal/ethics_policy.md"
+    data_classification: "https://raw.githubusercontent.com/enuno/zhc-firm/main/policies/DATA_CLASSIFICATION.md"
+    search_tokens: "https://raw.githubusercontent.com/enuno/zhc-firm/main/policies/SEARCH_TOKEN_POLICY.md"
+
+  # Default agent settings applied to all registrations
+  agent_defaults:
+    adapter_type: openclaw_gateway
+    paperclip_api_url: "${PAPERCLIP_API_URL}"
+    wait_timeout_ms: 120000
+    session_key_strategy: issue
+    scopes: [operator.admin]
+    role: operator
+
+  # Gateway configuration — used by OpenClaw agents
+  gateway:
+    mode: local
+    port: 18789
+    bind: lan
+    protocol: ws
+
+  # Invite configuration for onboarding new agents
+  invites:
+    expiry_days: 7
+    auto_approve: false
+    require_human_approval: true
+
+  # Audit and compliance
+  audit:
+    log_level: full
+    retention_days: 90
+    log_destination_env: AUDIT_LOG_ENDPOINT
+
+  # Communication channels
+  channels:
+    - name: intake
+      description: "New matter intake and triage"
+      agents: [avery, sol]
+    - name: research
+      description: "Legal research and case analysis"
+      agents: [mira, casey, lex]
+    - name: drafting
+      description: "Document drafting and review"
+      agents: [quill, citation_authority, chronology]
+    - name: advocacy
+      description: "Public advocacy and outreach"
+      agents: [rae, social_media_manager]
+    - name: support
+      description: "Paralegal and filing support"
+      agents: [ollie, atlas]
+    - name: systems
+      description: "Infrastructure and tool orchestration"
+      agents: [sol, hermes, webmaster]

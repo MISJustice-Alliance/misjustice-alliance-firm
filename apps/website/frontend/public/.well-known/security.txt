@@ -1,0 +1,18 @@
+# MISJustice Alliance Security Policy
+# https://securitytxt.org/
+
+Contact: mailto:security@misjusticealliance.org
+Contact: https://misjusticealliance.org/contact
+Expires: 2027-01-01T00:00:00.000Z
+Preferred-Languages: en
+Canonical: https://misjusticealliance.org/.well-known/security.txt
+Policy: https://misjusticealliance.org/security-policy
+
+# Encryption: For sensitive security reports, use our PGP key
+# Available at: https://misjusticealliance.org/pgp-key.asc
+
+# We take security seriously. If you discover a vulnerability,
+# please report it responsibly. We commit to:
+# - Acknowledging receipt within 48 hours
+# - Providing updates on remediation progress
+# - Not pursuing legal action against good-faith researchers

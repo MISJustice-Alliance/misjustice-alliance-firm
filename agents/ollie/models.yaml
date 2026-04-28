@@ -1,0 +1,36 @@
+models:
+  primary:
+    id: gpt-4o-mini
+    provider: openai
+    temperature: 0.1
+    max_tokens: 4096
+    top_p: 1.0
+    frequency_penalty: 0.0
+    presence_penalty: 0.0
+    context_window: 128000
+    notes: >
+      Low temperature ensures precise, deterministic output for paralegal tasks.
+      Suitable for form completion, filing prep, and deadline calculations.
+
+  fallback:
+    id: gpt-4o-mini
+    provider: openai
+    temperature: 0.1
+    max_tokens: 4096
+    notes: >
+      Same model as primary for consistency. In production, consider gpt-4o
+      for complex multi-step reasoning if error rates rise.
+
+  embedding:
+    id: text-embedding-3-small
+    provider: openai
+    notes: >
+      Used for semantic memory retrieval and document similarity search.
+
+routing:
+  strategy: static
+  primary_threshold: 0.95
+  fallback_trigger:
+    - primary_unavailable
+    - rate_limit
+    - context_length_exceeded

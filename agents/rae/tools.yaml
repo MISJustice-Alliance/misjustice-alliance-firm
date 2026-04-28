@@ -1,0 +1,35 @@
+tools:
+  - name: MatterReadTool
+    enabled: true
+    scope: read
+    data_tiers: [T2, T3]
+    description: "Read matter records and metadata."
+    guardrails: [classify_output, no_pii_in_logs]
+
+  - name: DocumentReadTool
+    enabled: true
+    scope: read
+    data_tiers: [T2, T3]
+    description: "Read case documents and evidence files."
+    guardrails: [classify_output, no_pii_in_logs]
+
+  - name: VictimImpactTool
+    enabled: true
+    scope: generate
+    data_tiers: [T2, T3]
+    description: "Draft victim impact statements and narratives."
+    guardrails: [human_review_required, classify_output]
+
+  - name: CivilRightsFramingTool
+    enabled: true
+    scope: generate
+    data_tiers: [T2, T3]
+    description: "Frame civil rights violations and legal standards."
+    guardrails: [escalate_on_constitutional_flag, classify_output]
+
+  - name: PolicyContextTool
+    enabled: true
+    scope: read
+    data_tiers: [T2, T3]
+    description: "Retrieve policy and legislative context."
+    guardrails: [cite_public_sources_only, classify_output]

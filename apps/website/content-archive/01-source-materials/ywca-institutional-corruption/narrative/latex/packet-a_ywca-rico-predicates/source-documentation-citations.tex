@@ -1,0 +1,1165 @@
+% ============================================================================
+% MISJustice Alliance - Source Documentation and Citations
+% Complete Bibliography for YWCA Missoula Institutional Corruption Evidence
+% ============================================================================
+
+\documentclass[11pt,letterpaper]{article}
+
+% ===== PACKAGES =====
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{helvet}
+\renewcommand{\familydefault}{\sfdefault}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{tocloft}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{float}
+\usepackage{parskip}
+\usepackage{lastpage}
+\usepackage{pifont}
+\usepackage{amssymb}
+\usepackage{ragged2e}
+
+% ===== PAGE GEOMETRY =====
+\geometry{
+    letterpaper,
+    top=1.75in,
+    bottom=1.0in,
+    left=1.0in,
+    right=1.0in,
+    headheight=1.25in,
+    headsep=0.25in,
+    footskip=0.5in
+}
+
+% ===== COLORS =====
+\definecolor{NavyBlue}{HTML}{123262}
+\definecolor{Gold}{HTML}{B49650}
+\definecolor{DarkGray}{HTML}{333333}
+\definecolor{MediumGray}{HTML}{666666}
+\definecolor{lightgray}{RGB}{245,245,245}
+\definecolor{alertred}{RGB}{180,0,0}
+
+% ===== HYPERREF SETUP =====
+\hypersetup{
+    colorlinks=true,
+    linkcolor=NavyBlue,
+    urlcolor=NavyBlue,
+    citecolor=NavyBlue,
+    pdftitle={Source Documentation and Citations - YWCA Missoula Institutional Corruption},
+    pdfauthor={MISJustice Alliance}
+}
+
+% ===== HEADER/FOOTER =====
+\pagestyle{fancy}
+\fancyhf{}
+
+\fancyhead[L]{%
+    \raisebox{-0.5in}[0pt][0pt]{%
+        \includegraphics[height=1.0in]{misjustice_logo_full.png}%
+    }%
+}
+
+\fancyhead[R]{%
+    \raisebox{-0.5in}[0pt][0pt]{%
+        \begin{minipage}[b]{2.5in}
+            \raggedleft
+            \textcolor{DarkGray}{\footnotesize\textbf{Signal:} MISJusticeAlliance64.86}\\[3pt]
+            \textcolor{DarkGray}{\footnotesize\textbf{Email:} \href{mailto:contact@misjusticealliance.org}{contact@misjusticealliance.org}}
+        \end{minipage}%
+    }%
+}
+
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\headrule}{%
+    \vspace{0.6in}%
+    \textcolor{Gold}{\rule{\textwidth}{2pt}}%
+}
+
+\fancyfoot[L]{%
+    \textcolor{MediumGray}{\scriptsize\textit{Confidential --- Source Documentation \& Citations}}%
+}
+\fancyfoot[R]{%
+    \textcolor{MediumGray}{\scriptsize Page \thepage\ of \pageref{LastPage}}%
+}
+\renewcommand{\footrulewidth}{0pt}
+
+\fancypagestyle{firstpage}{%
+    \fancyhf{}
+    \fancyhead[L]{%
+        \raisebox{-0.5in}[0pt][0pt]{%
+            \includegraphics[height=1.0in]{misjustice_logo_full.png}%
+        }%
+    }
+    \fancyhead[R]{%
+        \raisebox{-0.5in}[0pt][0pt]{%
+            \begin{minipage}[b]{2.5in}
+                \raggedleft
+                \textcolor{DarkGray}{\footnotesize\textbf{Signal:} MISJusticeAlliance64.86}\\[3pt]
+                \textcolor{DarkGray}{\footnotesize\textbf{Email:} \href{mailto:contact@misjusticealliance.org}{contact@misjusticealliance.org}}
+            \end{minipage}%
+        }%
+    }
+    \renewcommand{\headrule}{%
+        \vspace{0.6in}%
+        \textcolor{Gold}{\rule{\textwidth}{2pt}}%
+    }
+    \fancyfoot[L]{%
+        \textcolor{MediumGray}{\scriptsize\textit{Confidential --- Source Documentation \& Citations}}%
+    }
+    \fancyfoot[R]{%
+        \textcolor{MediumGray}{\scriptsize Page \thepage\ of \pageref{LastPage}}%
+    }
+}
+
+% ===== SECTION FORMATTING =====
+\titleformat{\section}
+    {\Large\bfseries\color{NavyBlue}}
+    {\thesection}{1em}{}[\color{Gold}\titlerule]
+\titleformat{\subsection}
+    {\large\bfseries\color{NavyBlue}}
+    {\thesubsection}{1em}{}
+\titleformat{\subsubsection}
+    {\normalsize\bfseries\color{DarkGray}}
+    {\thesubsubsection}{1em}{}
+
+% ===== TOC FORMATTING =====
+\renewcommand{\cftsecfont}{\bfseries\color{NavyBlue}}
+\renewcommand{\cftsecpagefont}{\bfseries\color{NavyBlue}}
+\renewcommand{\cftsubsecfont}{\color{DarkGray}}
+\renewcommand{\cftsubsecpagefont}{\color{DarkGray}}
+
+% ===== CUSTOM COMMANDS =====
+\newcommand{\citeref}[1]{\textbf{\color{NavyBlue}[#1]}}
+\newcommand{\statref}[1]{\textbf{\color{NavyBlue}#1}}
+
+% Custom citation entry environment
+\newenvironment{citeentry}[1]{%
+    \vspace{0.15in}
+    \noindent\textbf{\color{NavyBlue}#1}\\[4pt]
+    \begin{tabular}{@{}p{1.2in}p{4.8in}@{}}
+}{%
+    \end{tabular}
+    \vspace{0.1in}
+}
+
+% Simple citation item
+\newcommand{\citeitem}[2]{\textbf{#1:} & #2\\}
+
+\begin{document}
+\thispagestyle{firstpage}
+
+% ===== DOCUMENT HEADER =====
+\begin{center}
+{\fontsize{20}{24}\selectfont\bfseries\color{NavyBlue}SOURCE DOCUMENTATION AND CITATIONS}\\[10pt]
+{\large Complete Bibliography for YWCA Missoula Institutional Corruption Evidence}\\[16pt]
+\textcolor{Gold}{\rule{4in}{1.5pt}}\\[14pt]
+{\large\bfseries Compiled by: MISJustice Alliance}\\[4pt]
+{\large\bfseries Date: January 1, 2026}\\[4pt]
+{\large Purpose: Comprehensive source documentation for all evidence cited in expanded RICO submission}
+\end{center}
+
+\vspace{0.3in}
+
+% ===== TABLE OF CONTENTS =====
+\tableofcontents
+\newpage
+
+% ===== SECTION I: PRIMARY VICTIM TESTIMONY =====
+\section{PRIMARY VICTIM TESTIMONY SOURCES}
+
+\subsection{Facebook Evidence}
+
+\subsubsection{\citeref{22} Anonymous Client --- HIPAA Violation \& Disability Discrimination}
+
+\begin{tabular}{@{}p{1.4in}p{4.6in}@{}}
+\textbf{Platform:} & Facebook, COVID Missoula group (public post)\\
+\textbf{Date:} & January 29, 2024\\
+\textbf{URL:} & \url{https://www.facebook.com/groups/covid.missoula/posts/1486358628967503/}\\
+\textbf{Content Type:} & First-person victim testimony\\
+\textbf{Legal Significance:} & Direct evidence of HIPAA criminal violations (42 U.S.C. \S~1320d-6) and ADA discrimination\\
+\textbf{Key Quote:} & ``Recently I did some counseling at the ywca. A few sessions in they had me sign another release that's an intern could talk to other staff about me...My ex would drop little things that only I told my counselor... lo and behold after I quit counseling earlier I see that one of their new top position people is someone that is still on one of my social media accounts and one of my ex's best friends.''\\
+\textbf{Corroboration:} & ``Also when I looked up crap about them they have tons of bad reviews at not being very good with the disabled which I can attest to.''\\
+\textbf{Preservation:} & Archived in file repository\\
+\end{tabular}
+
+\vspace{0.2in}
+
+\subsubsection{\citeref{82} Anonymous Client --- Discriminatory Service Allocation \& Grant Fraud}
+
+\begin{tabular}{@{}p{1.4in}p{4.6in}@{}}
+\textbf{Platform:} & Facebook, Missoula Mutual Aid Community (public post)\\
+\textbf{Date:} & March 25, 2024\\
+\textbf{Source File:} & ``ywca-policy-revision.pdf'' (Space files)\\
+\textbf{Content Type:} & Policy critique with systemic fraud allegations\\
+\textbf{Legal Significance:} & Evidence of federal grant fraud (18 U.S.C. \S\S~1341, 1343), discriminatory service provision\\
+\textbf{Preservation:} & PDF archived in Space files\\
+\end{tabular}
+
+\vspace{0.1in}
+
+\textbf{Key Quotes:}
+\begin{itemize}[leftmargin=*]
+\item ``YWCA policies need a revision...staff show their biases and prejudices in letting some families stay longer or leave a few days and re-entry to start their time over in order to stay again but, policy says wait until 30 days.''
+\item ``It's also fraudulent for a non-profit organization to claim helping multiple families when they are treated like a number instead of real human beings. And all just for show to their sponsors.''
+\item ``Many families are repeat clients/residents that they didn't help properly the first go around.''
+\end{itemize}
+
+\textbf{Corroborating Comments:}
+\begin{itemize}[leftmargin=*]
+\item \textbf{Alex Sanchez Jr.:} ``When I was there, I saw firsthand how favoritism, discrimination, and unethical practices shaped the way services were provided at the YWCA.''
+\item \textbf{Sabrie Foley:} ``I had a horrible experience recently. Favoritism meant allowing adults to stay who were noticeably under the influence daily, giving substances to minors and being violent. I was also laughed at, mocked, and essentially forced out.''
+\end{itemize}
+
+\subsection{Google Reviews}
+
+\subsubsection{\citeref{81} Arthur Brown --- Criminal Defamation \& Parental Rights Interference}
+
+\begin{tabular}{@{}p{1.4in}p{4.6in}@{}}
+\textbf{Platform:} & Google Reviews (YWCA Missoula)\\
+\textbf{Date:} & Approximately 2018\\
+\textbf{Source File:} & ``Arthur-Brown-Google-Review.jpeg'' (Exhibit 10, Section 3.1)\\
+\textbf{Content Type:} & Named victim testimony\\
+\textbf{Legal Significance:} & Evidence of criminal defamation (MCA 45-8-212), interference with parental rights, fraud upon the court\\
+\textbf{Preservation:} & Screenshot archived as Exhibit 10, Section 3.1\\
+\end{tabular}
+
+\vspace{0.1in}
+
+\textbf{Full Statement:}
+
+\begin{quote}
+\itshape
+``These people are bad I understand they do a lot of good for people that need it but in my case it is very different. My wife abandoned me and my kids for a year. I let her come back cuz i wanted my kids to have a mom except for this time she stole them and brought them to the ywca seeking all the free benefits. I hired two lawyers one in my state and one in montana and I got them back.
+
+They continue to help her even though the evidence shows she is abusing the system. I am great father and love my kids with every thing I have. But they write letters to the judge suggesting her and my kids get permanent restraining orders against me.
+
+They claim that couldn't get court paper work to her and I fraudulently got my kids back. They don't know me or my wife but they criminally write these things to a judge and help separate babies from a father they love. So yes they help people but they incriminate innocent men.''
+\end{quote}
+
+\subsection{Indeed.com Employee Reviews}
+
+\subsubsection{\citeref{85} Overnight Advocate Review --- September 2024}
+
+\begin{tabular}{@{}p{1.4in}p{4.6in}@{}}
+\textbf{Platform:} & Indeed.com\\
+\textbf{URL:} & \url{https://www.indeed.com/cmp/Ywca/reviews/not-worth-the-stress?id=80cebbcad74aadaa}\\
+\textbf{Position:} & Overnight Advocate\\
+\textbf{Location:} & Missoula, MT\\
+\textbf{Date:} & September 2024\\
+\textbf{Rating:} & Negative\\
+\textbf{Statement:} & ``Racist undertones. This place is The worst. They allow untrained staff to interact with clients and poor management that is ill advised. I wouldn't trust the people who run it they are out to line their pockets.''\\
+\textbf{Pros:} & ``Free dinner''\\
+\textbf{Cons:} & ``Everything''\\
+\textbf{Legal Significance:} & Evidence of organizational dysfunction, untrained staff, financial misconduct\\
+\end{tabular}
+
+\subsubsection{\citeref{88} Multiple Employee Reviews --- YWCA Missoula Location}
+
+\begin{tabular}{@{}p{1.4in}p{4.6in}@{}}
+\textbf{Platform:} & Indeed.com\\
+\textbf{URL:} & \url{https://www.indeed.com/cmp/Ywca/reviews?fcountry=US&floc=Missoula\%2C+MT}\\
+\textbf{Date Range:} & 2019--2024\\
+\textbf{Last Updated:} & November 12, 2024\\
+\end{tabular}
+
+\vspace{0.1in}
+
+\textbf{Reviews Include:}
+\begin{itemize}[leftmargin=*]
+\item \textbf{August 2023 --- Youth Program Coordinator:} ``Exploitative work experience...Extremely low wages for the work and education required. Oppressive, inflexible administrative...''
+\item \textbf{February 2019 --- Children \& Women's Advocate:} ``Poor Management. Management is non supportive. Program manager is rude, unavailable, and the lack of training was appalling. I worked at CFS and that climate was a vacation compared to this.''
+\end{itemize}
+
+\textbf{Pattern:} Consistent reports of untrained staff, poor management, exploitative conditions across 5+ years.
+
+\subsubsection{\citeref{95} YWCA Careers in Missoula, MT}
+
+\begin{tabular}{@{}p{1.4in}p{4.6in}@{}}
+\textbf{Platform:} & Indeed.com\\
+\textbf{URL:} & \url{https://www.indeed.com/cmp/Ywca/locations/MT/Missoula}\\
+\textbf{Purpose:} & Corroboration of employment location and organizational structure\\
+\end{tabular}
+
+\newpage
+
+% ===== SECTION II: INVESTIGATIVE JOURNALISM =====
+\section{INVESTIGATIVE JOURNALISM \& GOVERNMENT RECORDS}
+
+\subsection{Meadowlark Winter Evictions}
+
+\subsubsection{\citeref{94} Montana Right Now Investigation --- October 2021}
+
+\begin{tabular}{@{}p{1.4in}p{4.6in}@{}}
+\textbf{Source:} & Montana Right Now (news outlet)\\
+\textbf{Date:} & October 7, 2021\\
+\textbf{Title:} & ``Four families being evicted from the YWCA Meadowlark due to a growing waitlist''\\
+\textbf{URL:} & Montana Right Now archives\\
+\textbf{Named Victim:} & Jessica Waltz + three children (ages 10, 9, 7)\\
+\textbf{Preservation:} & Public news archive\\
+\end{tabular}
+
+\vspace{0.1in}
+
+\textbf{Key Information:}
+\begin{itemize}[leftmargin=*]
+\item Four families evicted October 29, 2021
+\item Temperatures dropping as winter approached
+\item Families compliant with program requirements
+\item Active housing search efforts
+\item No alternative housing available in Missoula rental crisis
+\item Executive Director Cindy Weese quoted
+\end{itemize}
+
+\textbf{Legal Significance:} Evidence of child endangerment, arbitrary policy enforcement, grant fraud through capacity manipulation.
+
+\subsection{DOJ Investigation --- ``Rape Capital'' Context}
+
+\subsubsection{\citeref{90} Missoula DOJ Investigation Background}
+
+\begin{tabular}{@{}p{1.4in}p{4.6in}@{}}
+\textbf{Platform:} & ywcaofmissoula.com (compiled evidence website)\\
+\textbf{URL:} & Documentation of 2012--2016 DOJ investigation\\
+\textbf{Date Published:} & December 31, 2023\\
+\textbf{Content:} & Historical context of DOJ investigation\\
+\textbf{Key Points:} & MPD, prosecutors, and YWCA role during ``rape capital'' period\\
+\end{tabular}
+
+\subsubsection{\citeref{93} DOJ Civil Rights Division Case File}
+
+\begin{tabular}{@{}p{1.4in}p{4.6in}@{}}
+\textbf{Source:} & Civil Rights Litigation Clearinghouse\\
+\textbf{URL:} & \url{https://clearinghouse.net/case/15249/}\\
+\textbf{Title:} & ``DOJ Investigation of Missoula County Attorney's Office''\\
+\textbf{Date:} & April 16, 2014\\
+\textbf{Document Type:} & Official DOJ investigation findings\\
+\textbf{Legal Significance:} & Establishes institutional capture context, YWCA integration during period of known failures\\
+\end{tabular}
+
+\vspace{0.1in}
+
+\textbf{Key Findings:}
+\begin{itemize}[leftmargin=*]
+\item Only 16\% of sexual assault cases prosecuted (2008--2012)
+\item Systematic gender bias documented
+\item Information-sharing problems among partners
+\item Victim re-victimization
+\item YWCA designated as ``community partner'' in reforms
+\end{itemize}
+
+\subsubsection{\citeref{96} Missoula Book Documentation}
+
+\begin{tabular}{@{}p{1.4in}p{4.6in}@{}}
+\textbf{Source:} & University of North Texas Libraries\\
+\textbf{URL:} & \url{https://discover.library.unt.edu/catalog/b7512876}\\
+\textbf{Title:} & ``Missoula: rape and the justice system in a college town''\\
+\textbf{Date:} & December 5, 2024 (catalog entry)\\
+\textbf{Content:} & Comprehensive documentation of DOJ investigation period\\
+\textbf{Key Information:} & University of Montana football context, institutional protection patterns\\
+\end{tabular}
+
+\subsubsection{\citeref{99} Time Magazine --- Sexual Assault Crisis}
+
+\begin{tabular}{@{}p{1.4in}p{4.6in}@{}}
+\textbf{Source:} & Time Magazine\\
+\textbf{URL:} & \url{https://time.com/100542/the-sexual-assault-crisis-on-american-campuses/}\\
+\textbf{Date:} & May 14, 2014\\
+\textbf{Title:} & ``The Sexual Assault Crisis on American Campuses''\\
+\textbf{Relevance:} & National media coverage of Missoula as ``rape capital''\\
+\textbf{Quote:} & ``In the past three years, there have been at least 80 reported rapes''\\
+\end{tabular}
+
+\subsubsection{\citeref{102} Academic Publication --- Missoula Case Study}
+
+\begin{tabular}{@{}p{1.4in}p{4.6in}@{}}
+\textbf{Source:} & Rutgers Center for Law, Justice \& Culture\\
+\textbf{URL:} & \url{https://clcjbooks.rutgers.edu/books/missoula-rape-and-the-justice-system-in-a-college-town/}\\
+\textbf{Date:} & October 17, 2016\\
+\textbf{Content:} & Scholarly analysis of DOJ investigation\\
+\textbf{Key Data:} & 350 sexual assaults reported (Jan 2008--May 2012), ``few properly handled''\\
+\end{tabular}
+
+\subsection{LifeGuard Group Investigation}
+
+\subsubsection{\citeref{109} Montana Free Press --- Gianforte Foundation Investigation}
+
+\begin{tabular}{@{}p{1.4in}p{4.6in}@{}}
+\textbf{Source:} & Montana Free Press\\
+\textbf{URL:} & \url{https://montanafreepress.org/2024/09/04/how-montana-governor-gianforte-gave-away-57-million-of-his-family-wealth/}\\
+\textbf{Date:} & September 3, 2024\\
+\textbf{Title:} & ``How Montana's governor gave away \$57 million of his family's wealth''\\
+\textbf{Legal Significance:} & Establishes political/financial connections, parallel institutional capture pattern\\
+\end{tabular}
+
+\vspace{0.1in}
+
+\textbf{Key Information:}
+\begin{itemize}[leftmargin=*]
+\item Gianforte Foundation gave \$57 million (2017--2022)
+\item LifeGuard Group consistent recipient
+\item \$500,000 for mortgage paydown
+\item \$183.6 million foundation assets (2022)
+\item 380+ Montana organizations funded
+\end{itemize}
+
+\subsubsection{\citeref{115} WV News --- Strip Search Investigation}
+
+\begin{tabular}{@{}p{1.4in}p{4.6in}@{}}
+\textbf{Source:} & WV News (West Virginia News)\\
+\textbf{Date:} & October 23, 2025\\
+\textbf{Title:} & ``A woman fled an anti-human trafficking safe house in Montana. She alleges...''\\
+\textbf{Legal Significance:} & Parallel institutional corruption, regulatory void, political conflicts of interest\\
+\end{tabular}
+
+\vspace{0.1in}
+
+\textbf{Key Information:}
+\begin{itemize}[leftmargin=*]
+\item Strip and cavity search requests at LifeHouse
+\item Montana DOJ Agent Andrew Yedinak report (August 2023)
+\item ``Inappropriate practices'' acknowledged (November 2023)
+\item No criminal investigation launched
+\item DOJ confirmed safe houses ``not regulated by the agency''
+\item 2024 expansion plans despite allegations
+\end{itemize}
+
+\subsubsection{\citeref{118} LifeGuard Group Official Website --- Media}
+
+\begin{tabular}{@{}p{1.4in}p{4.6in}@{}}
+\textbf{Source:} & The LifeGuard Group official website\\
+\textbf{URL:} & \url{https://thelifeguardgroup.org/media}\\
+\textbf{Date:} & November 21, 2023\\
+\textbf{Purpose:} & Official organizational information, partnerships, operations\\
+\end{tabular}
+
+\subsubsection{\citeref{121} LifeGuard Group Homepage}
+
+\begin{tabular}{@{}p{1.4in}p{4.6in}@{}}
+\textbf{URL:} & \url{https://thelifeguardgroup.org}\\
+\textbf{Date:} & December 31, 2020 (last updated)\\
+\textbf{Purpose:} & Organizational mission, leadership structure\\
+\end{tabular}
+
+\newpage
+
+% ===== SECTION III: FEDERAL FUNDING =====
+\section{FEDERAL FUNDING DOCUMENTATION}
+
+\subsection{HUD Grants}
+
+\subsubsection{\citeref{104} GovTribe Federal Grant Database}
+
+\begin{tabular}{@{}p{1.4in}p{4.6in}@{}}
+\textbf{Source:} & GovTribe (federal grant tracking)\\
+\textbf{URL:} & \url{https://govtribe.com/award/federal-grant-award/project-grant-mt0093l8t002201}\\
+\textbf{Grant Number:} & MT0093L8T002201\\
+\textbf{Program:} & HUD Continuum of Care (CoC)\\
+\textbf{CFDA:} & 14.267\\
+\textbf{Amount:} & \$359,418\\
+\textbf{Recipient:} & YWCA Missoula (implied through CoC program participation)\\
+\textbf{Purpose:} & Homelessness assistance\\
+\textbf{Legal Significance:} & Documented federal funding during period of institutional failures\\
+\end{tabular}
+
+\subsubsection{\citeref{105} Missoula County Grant Distribution}
+
+\begin{tabular}{@{}p{1.4in}p{4.6in}@{}}
+\textbf{Source:} & Missoula County official website\\
+\textbf{URL:} & \url{https://www.missoulacounty.gov/news/missoula-county-to-distribute-126-million-in-grants-to-community-organizations/}\\
+\textbf{Date:} & September 30, 2025\\
+\textbf{Amount:} & \$1.26 million total to community organizations\\
+\textbf{Relevance:} & Context of broader grant funding ecosystem\\
+\end{tabular}
+
+\subsubsection{\citeref{107} Federal Grants to Pov, YWCA, Homeword}
+
+\begin{tabular}{@{}p{1.4in}p{4.6in}@{}}
+\textbf{Source:} & KPAX (Montana news)\\
+\textbf{URL:} & KPAX news archives\\
+\textbf{Content:} & Federal homeless housing grant distribution\\
+\textbf{Legal Significance:} & YWCA identified as federal grant recipient\\
+\end{tabular}
+
+\subsubsection{\citeref{110} Missoula Housing Authority --- HUD Grant Receipt (2023)}
+
+\begin{tabular}{@{}p{1.4in}p{4.6in}@{}}
+\textbf{Source:} & Missoula Housing Authority official website\\
+\textbf{Date:} & April 2, 2023\\
+\textbf{Amount:} & \$1,063,971 from HUD\\
+\textbf{Relevance:} & Context of total HUD funding flows to Missoula\\
+\end{tabular}
+
+\subsubsection{\citeref{113} Missoula Housing Authority --- HUD Grant Receipt (2024)}
+
+\begin{tabular}{@{}p{1.4in}p{4.6in}@{}}
+\textbf{Source:} & Missoula Housing Authority official website\\
+\textbf{URL:} & \url{https://www.missoulahousing.org/news/missoula-housing-authority-receives-1176555-from-hud}\\
+\textbf{Date:} & February 25, 2024\\
+\textbf{Amount:} & \$1,176,555 from HUD\\
+\textbf{Relevance:} & Continued substantial federal funding despite homeless crisis growth\\
+\end{tabular}
+
+\subsubsection{\citeref{116} KPAX --- HUD Funding Uncertainty}
+
+\begin{tabular}{@{}p{1.4in}p{4.6in}@{}}
+\textbf{Source:} & KPAX (Montana news)\\
+\textbf{Date:} & September 22, 2025\\
+\textbf{Title:} & ``Missoula faces housing challenges as federal HUD funding...''\\
+\textbf{Legal Significance:} & Systemic dependency on federal funding\\
+\end{tabular}
+
+\vspace{0.1in}
+
+\textbf{Key Information:}
+\begin{itemize}[leftmargin=*]
+\item HUD programs not in House budget proposal
+\item Included in Senate budget proposal
+\item \textasciitilde\$800,000 annual CDBG + HOME funding at risk
+\item Quote from Montana James, Deputy Director, on dependency
+\end{itemize}
+
+\subsubsection{\citeref{119} Engage Missoula --- HUD Programs}
+
+\begin{tabular}{@{}p{1.4in}p{4.6in}@{}}
+\textbf{Source:} & Engage Missoula (city coordination website)\\
+\textbf{URL:} & \url{https://www.engagemissoula.com/hud-funded-programs}\\
+\textbf{Date:} & August 24, 2025\\
+\textbf{Content:} & Description of HUD-funded programs in Missoula\\
+\textbf{Programs:} & CDBG (\textasciitilde\$500K annually), HOME (\textasciitilde\$300K annually)\\
+\end{tabular}
+
+\subsection{Violence Against Women Act (VAWA) Funding}
+
+\subsubsection{\citeref{108} DOJ Office on Violence Against Women --- FY 2022 Grant Awards}
+
+\begin{tabular}{@{}p{1.4in}p{4.6in}@{}}
+\textbf{Source:} & U.S. Department of Justice, Office on Violence Against Women\\
+\textbf{URL:} & \url{https://www.justice.gov/ovw/awards/fy-2022-ovw-grant-awards-program}\\
+\textbf{Date:} & November 18, 2025 (last updated)\\
+\textbf{Content:} & Complete list of FY 2022 OVW grant recipients by program\\
+\textbf{Legal Significance:} & Establishes pattern that Montana DV organizations receive \$500K--\$750K annually; basis for estimating YWCA Missoula VAWA funding\\
+\end{tabular}
+
+\vspace{0.1in}
+
+\textbf{Montana Recipients (examples):}
+\begin{itemize}[leftmargin=*]
+\item Safe Harbor, Ronan: \$599,946 + \$747,518
+\item District IV HRDC, Havre: \$464,700
+\item Safe Space, Inc., Butte: \$749,885
+\item Custer Network, Miles City: \$748,938
+\end{itemize}
+
+\subsubsection{\citeref{114} YWCA National --- Federal Budget Advocacy}
+
+\begin{tabular}{@{}p{1.4in}p{4.6in}@{}}
+\textbf{Source:} & YWCA USA official website\\
+\textbf{URL:} & \url{https://www.ywca.org/advocacy/advocacy-agenda/federal-budget-and-appropriations}\\
+\textbf{Date:} & December 31, 2013 (archived advocacy materials)\\
+\textbf{Content:} & YWCA national policy on federal funding priorities\\
+\textbf{Quote:} & ``YWCA urges Congress to provide robust levels of federal funding for programs and services that support survivors and prevent gender-based violence, particularly through VAWA's Transitional Housing program and Family Violence Prevention \& Services Act (FVPSA).''\\
+\textbf{Legal Significance:} & Establishes YWCA national priority on VAWA funding, corroborates local chapter reliance\\
+\end{tabular}
+
+\subsubsection{\citeref{117} NBC Montana --- Federal Gender-Based Violence Funding}
+
+\begin{tabular}{@{}p{1.4in}p{4.6in}@{}}
+\textbf{Source:} & NBC Montana\\
+\textbf{URL:} & \url{https://nbcmontana.com/news/local/missoula-co-receives-16m-in-federal-funds-for-gender-based-violence-survivors}\\
+\textbf{Date:} & October 1, 2024\\
+\textbf{Title:} & ``Missoula Co. receives \$1.6M in federal funds for gender-based violence...''\\
+\textbf{Amount:} & \$1.6 million to Missoula County\\
+\textbf{Relevance:} & Scale of federal DV funding to region\\
+\end{tabular}
+
+\subsection{Foundation Grants}
+
+\subsubsection{\citeref{111} Montana Mental Health Ombudsman --- Western Region}
+
+\begin{tabular}{@{}p{1.4in}p{4.6in}@{}}
+\textbf{Source:} & Montana Mental Health Ombudsman (state office)\\
+\textbf{URL:} & \url{https://mhombudsman.mt.gov/Newsroom/WesternRegion}\\
+\textbf{Content:} & Includes November 22, 2022 announcement\\
+\textbf{Key Information:} & YWCA Missoula received \$2,500,000 from Bezos Day 1 Families Fund --- ``biggest grant in history'' for YWCA Housing Programs\\
+\textbf{Legal Significance:} & Major funding during period of documented failures (2021 winter evictions, employee complaints, HIPAA violations)\\
+\end{tabular}
+
+\subsubsection{\citeref{112} Gianforte Family Foundation Homepage}
+
+\begin{tabular}{@{}p{1.4in}p{4.6in}@{}}
+\textbf{Source:} & Gianforte Family Foundation official website\\
+\textbf{URL:} & \url{https://gianfortefoundation.org}\\
+\textbf{Date:} & September 3, 2025\\
+\textbf{Mission:} & ``Equipping Montanans through education; strengthening families through ministries; restoring individuals through relationship.''\\
+\textbf{Focus Areas:} & Homelessness, addiction, human trafficking, ``traditional values''\\
+\end{tabular}
+
+\newpage
+
+% ===== SECTION IV: SPACE FILES =====
+\section{SPACE FILES \& INTERNAL DOCUMENTATION}
+
+\subsection{Primary Submission Documents}
+
+\subsubsection{\citeref{81} YWCA Institutional Corruption Supplemental}
+
+\begin{tabular}{@{}p{1.4in}p{4.6in}@{}}
+\textbf{File:} & ``11.1\_YWCA\_Institutional\_Corruption\_Supplemental-Final-QR\_code.pdf''\\
+\textbf{Document Type:} & Criminal referral submission\\
+\textbf{Date:} & December 8, 2025\\
+\textbf{From:} & MISJustice Alliance\\
+\textbf{To:} & FBI, USAO Montana, Montana AG, DOJ Criminal Division\\
+\textbf{Pages:} & 23\\
+\textbf{Content:} & Original RICO predicate acts submission with exhibits\\
+\textbf{Preservation:} & Attached file in Space\\
+\end{tabular}
+
+\vspace{0.1in}
+
+\textbf{Exhibits Include:}
+\begin{itemize}[leftmargin=*]
+\item Exhibit 10, Section 3.1: Arthur-Brown-Google-Review.jpeg
+\item Exhibit 10, Section 3.2--3.3: Facebook-HIPPA-Violation-Thread-1.jpeg, Facebook-HIPPA-Violation-Thread-2.jpeg
+\item Exhibit 10, Section 3.4: YWCA-Reddit-Complaints.jpeg
+\item Exhibit 10, Section 6.1: ywca-missoula-consolidated-financial-statements-years-2023-2024.pdf (ProPublica records confirming Detective Brueckner board membership)
+\end{itemize}
+
+\subsubsection{\citeref{82} YWCA Policy Revision Facebook Post}
+
+\begin{tabular}{@{}p{1.4in}p{4.6in}@{}}
+\textbf{File:} & ``ywca-policy-revision.pdf''\\
+\textbf{Source:} & Missoula Mutual Aid Community Facebook group\\
+\textbf{Date:} & March 25, 2024\\
+\textbf{Type:} & Public post with comments\\
+\textbf{Preservation:} & Space files\\
+\end{tabular}
+
+\vspace{0.1in}
+
+\textbf{Key Comments Preserved:}
+\begin{itemize}[leftmargin=*]
+\item Anonymous participant (original poster)
+\item Alex Sanchez Jr.
+\item Sabrie Foley
+\item Cat Leedom (Admin)
+\item Kayla Stoner
+\end{itemize}
+
+\subsubsection{\citeref{5} YWCA Chronological Litigation Reference}
+
+\begin{tabular}{@{}p{1.4in}p{4.6in}@{}}
+\textbf{File:} & ``ywca-chronological-litigation-reference.md''\\
+\textbf{Document Type:} & Comprehensive timeline and analysis\\
+\textbf{Date:} & December 7, 2023 (timestamp)\\
+\textbf{Pages:} & Extensive markdown document\\
+\textbf{Preservation:} & Space files\\
+\end{tabular}
+
+\vspace{0.1in}
+
+\textbf{Content Sections:}
+\begin{enumerate}[leftmargin=*]
+\item Federal DOJ Background 2012--2016
+\item YWCA Governance, Police Integration, Structural Conflicts
+\item Nuno Matter Complaint, Escalation, Constitutional Violations 2017--2019
+\item Post-Nuno Evidence of Systemic Client Abuse 2018--2024
+\item 2024 Missoula Needs Gaps Analysis and Homelessness Industrial Complex
+\item LifeGuard Group Safe House Controversy 2023--2024
+\item Legal Theories, Causes of Action, Structural Remedies Through 2025
+\end{enumerate}
+
+\textbf{Key Data:}
+\begin{itemize}[leftmargin=*]
+\item 634 households on by-name list
+\item 827 permanent housing unit shortfall
+\item 89\% Montana homelessness increase (2007--2023)
+\item Detective Brueckner YWCA board membership
+\item Officer Ethan Smith removal for ``obvious appearance of impropriety''
+\item Witness PS character reference suppression (August 14, 2018)
+\end{itemize}
+
+\subsubsection{\citeref{1} Elvis Nuno Sworn Declaration}
+
+\begin{tabular}{@{}p{1.4in}p{4.6in}@{}}
+\textbf{File:} & ``09\_Elvis\_Nuno\_Sworn\_Declaration.md''\\
+\textbf{Document Type:} & Sworn statement under penalty of perjury\\
+\textbf{Date:} & December 9, 2023 (timestamp)\\
+\textbf{Purpose:} & Support of criminal referral State of Montana v. ELise Chard, et al.\\
+\textbf{Preservation:} & Space files\\
+\end{tabular}
+
+\vspace{0.1in}
+
+\textbf{Sections:}
+\begin{enumerate}[leftmargin=*]
+\item Declarant Identification and Background
+\item Relationship History with ELise Chard
+\item June 2018 YWCA Complaint --- Protected First Amendment Speech
+\item ELise Chard June 2018 Petition, Perjury, Constitutional Violations
+\item Montana Stalking Prosecution --- Eighteen Months Constitutional Violations
+\item[VII.] Detective Connie Brueckner --- Weaponizing Institutional Conflicts
+\item[VIII.] Criminal Defamation by ELise Chard
+\item[IX.] Suppression of Exculpatory Evidence by YWCA and Det. Brueckner
+\item[X.] Complete Judicial Vindication in Montana and Washington
+\end{enumerate}
+
+\textbf{Key Facts:}
+\begin{itemize}[leftmargin=*]
+\item YWCA complaint with \$400 donation (June 3, 2018)
+\item ELise protection order petition (June 12, 2018) --- 9 days later
+\item Detective Brueckner YWCA board membership never disclosed
+\item All charges dismissed with prejudice after 18 months
+\item Loss of \$150,000 annual IT consulting contract
+\end{itemize}
+
+\subsubsection{\citeref{3} Danielle Chard Comprehensive Report}
+
+\begin{tabular}{@{}p{1.4in}p{4.6in}@{}}
+\textbf{File:} & ``Danielle-Chard-Comprehensive-Report.md''\\
+\textbf{Document Type:} & Chronological research report\\
+\textbf{Date:} & December 8, 2024 (timestamp)\\
+\textbf{Content:} & Washington Phase (2015--2017) and Montana Phase (2017--2020) comprehensive timeline\\
+\textbf{Preservation:} & Space files\\
+\end{tabular}
+
+\vspace{0.1in}
+
+\textbf{Key Documentation:}
+\begin{itemize}[leftmargin=*]
+\item Seattle PD GO 2016-148053 dismissal with prejudice
+\item Edmonds coerced plea and withdrawal attempts
+\item Patricia Fulton legal malpractice
+\item Bryan Tipp legal malpractice
+\item Dr. Marta Miranda psychological evaluation fraud
+\item Officer Ethan Smith fabrications
+\item Detective Brueckner institutional conflict
+\end{itemize}
+
+\subsubsection{\citeref{84} Comprehensive Legal Analysis}
+
+\begin{tabular}{@{}p{1.4in}p{4.6in}@{}}
+\textbf{File:} & ``provide-a-legal-analysis-of-th-8Yx\_acDKTTix06G5ydMkVw.md''\\
+\textbf{Document Type:} & Legal memorandum\\
+\textbf{Date:} & August 24, 2025 (timestamp)\\
+\textbf{Preservation:} & Space files\\
+\end{tabular}
+
+\vspace{0.1in}
+
+\textbf{Content:}
+\begin{itemize}[leftmargin=*]
+\item Constitutional violations analysis (1st, 4th, 14th Amendments)
+\item Prosecutorial misconduct patterns
+\item 18-month malicious prosecution timeline
+\item Brady violations
+\item Witness intimidation (2019--2020 Washington cases)
+\item SLAPP principles application
+\item Damages modeling
+\item Strategic litigation recommendations
+\end{itemize}
+
+\textbf{Key Legal Theories:}
+\begin{itemize}[leftmargin=*]
+\item 42 U.S.C. \S~1983 (First Amendment retaliation, Fourth Amendment violations)
+\item 42 U.S.C. \S~1985 (civil rights conspiracy)
+\item 18 U.S.C. \S~1962 (RICO)
+\item Montana anti-SLAPP law (HB 292, enacted May 1, 2025 --- UPEPA)
+\end{itemize}
+
+\newpage
+
+% ===== SECTION V: ADDITIONAL CORROBORATING =====
+\section{ADDITIONAL CORROBORATING SOURCES}
+
+\subsection{Reddit Evidence}
+
+\subsubsection{\citeref{86} Reddit --- Missoula Subreddit Post}
+
+\begin{tabular}{@{}p{1.4in}p{4.6in}@{}}
+\textbf{Platform:} & Reddit r/missoula\\
+\textbf{URL:} & \url{https://www.reddit.com/r/missoula/comments/1lx7pgg/civil_rights_violations_malicious_harassment_ywca/}\\
+\textbf{Date:} & July 11, 2025\\
+\textbf{Title:} & ``Civil Rights Violations \& Malicious Harassment: YWCA of Missoula...''\\
+\textbf{Content Type:} & Public post discussing YWCA institutional corruption\\
+\textbf{Relevance:} & Independent third-party discussion corroborating pattern\\
+\end{tabular}
+
+\subsubsection{\citeref{87} YWCAofMissoula.com --- Complaint Documentation}
+
+\begin{tabular}{@{}p{1.4in}p{4.6in}@{}}
+\textbf{URL:} & ywcaofmissoula.com/YWCA-Complaint-Google-Reviews\\
+\textbf{Content:} & Compiled victim testimony and evidence\\
+\textbf{Purpose:} & Public documentation website\\
+\end{tabular}
+
+\subsection{General Employment/Review Platforms}
+
+\subsubsection{\citeref{89} Indeed --- National YWCA Reviews}
+
+\begin{tabular}{@{}p{1.4in}p{4.6in}@{}}
+\textbf{URL:} & \url{https://www.indeed.com/cmp/Ywca/reviews}\\
+\textbf{Date:} & October 13, 2025\\
+\textbf{Reviews:} & 2,341 total\\
+\textbf{Purpose:} & Broader organizational context\\
+\end{tabular}
+
+\subsubsection{\citeref{91} Yelp --- YWCA Reviews}
+
+\begin{tabular}{@{}p{1.4in}p{4.6in}@{}}
+\textbf{URL:} & \url{https://www.yelp.com/brands/ywca}\\
+\textbf{Date:} & March 13, 2017\\
+\textbf{Content:} & Customer service reviews\\
+\textbf{Relevance:} & Additional review platform data\\
+\end{tabular}
+
+\subsubsection{\citeref{97} InHerSight --- YWCA Missoula Comments}
+
+\begin{tabular}{@{}p{1.4in}p{4.6in}@{}}
+\textbf{URL:} & \url{https://www.inhersight.com/company/ywca-of-missoula/comments}\\
+\textbf{Platform:} & Women's workplace review site\\
+\textbf{Relevance:} & Gender-specific workplace experience data\\
+\end{tabular}
+
+\subsubsection{\citeref{98} Indeed --- YWCA Pay/Benefits Reviews (Women)}
+
+\begin{tabular}{@{}p{1.4in}p{4.6in}@{}}
+\textbf{URL:} & \url{https://www.indeed.com/cmp/Ywca/reviews?ftopic=paybenefits&ftext=woman}\\
+\textbf{Content:} & Filtered reviews focusing on compensation issues\\
+\end{tabular}
+
+\subsubsection{\citeref{101} Indeed --- ``Is YWCA a good company to work for?''}
+
+\begin{tabular}{@{}p{1.4in}p{4.6in}@{}}
+\textbf{URL:} & \url{https://www.indeed.com/cmp/Ywca/faq/is-ywca-a-good-company-to-work-for}\\
+\textbf{Date:} & March 31, 2021\\
+\textbf{Content:} & FAQ-style employee assessments\\
+\end{tabular}
+
+\newpage
+
+% ===== SECTION VI: YWCA OFFICIAL =====
+\section{YWCA OFFICIAL SOURCES}
+
+\subsubsection{\citeref{100} YWCA Missoula --- Domestic \& Sexual Violence Services}
+
+\begin{tabular}{@{}p{1.4in}p{4.6in}@{}}
+\textbf{URL:} & \url{https://www.ywcamissoula.org/services/domestic-sexual-violence/}\\
+\textbf{Date:} & Current\\
+\textbf{Content:} & Official service descriptions\\
+\textbf{Purpose:} & Comparison of stated mission vs. documented practice\\
+\end{tabular}
+
+\subsubsection{\citeref{120} YWCA Missoula --- Family Housing Center}
+
+\begin{tabular}{@{}p{1.4in}p{4.6in}@{}}
+\textbf{URL:} & \url{https://www.ywcamissoula.org/services/missoula-family-housing-center/}\\
+\textbf{Content:} & Housing program descriptions\\
+\textbf{Purpose:} & Official capacity claims vs. actual operations\\
+\end{tabular}
+
+\subsubsection{\citeref{123} YWCA Missoula --- Annual Report 2025}
+
+\begin{tabular}{@{}p{1.4in}p{4.6in}@{}}
+\textbf{URL:} & \url{https://www.ywcamissoula.org/wp-content/uploads/2025/02/Annual-Report-2025.pdf}\\
+\textbf{File Type:} & PDF\\
+\textbf{Content:} & ``Eliminating racism, empowering women''\\
+\textbf{Purpose:} & Mission statement comparison with documented discrimination\\
+\end{tabular}
+
+\newpage
+
+% ===== SECTION VII: REGULATORY =====
+\section{REGULATORY \& ADMINISTRATIVE SOURCES}
+
+\subsubsection{\citeref{106} Missoula Housing Authority --- Special Vouchers}
+
+\begin{tabular}{@{}p{1.4in}p{4.6in}@{}}
+\textbf{URL:} & \url{https://www.missoulahousing.org/special-vouchers}\\
+\textbf{Date:} & December 31, 2018\\
+\textbf{Content:} & HUD voucher program descriptions\\
+\textbf{Relevance:} & Context of federal housing assistance landscape\\
+\end{tabular}
+
+\subsubsection{\citeref{122} Missoula City --- HUD Grants Administration Manual}
+
+\begin{tabular}{@{}p{1.4in}p{4.6in}@{}}
+\textbf{URL:} & \url{https://www.ci.missoula.mt.us/DocumentCenter/View/53794/Missoula-HUD-Grants-Administration-Manual-}\\
+\textbf{File Type:} & PDF\\
+\textbf{Content:} & Official grant management procedures\\
+\textbf{Legal Significance:} & Standards that should govern HUD fund usage\\
+\end{tabular}
+
+\newpage
+
+% ===== SECTION VIII: CHARTS =====
+\section{CHARTS \& VISUALIZATIONS GENERATED}
+
+\subsubsection{\citeref{124} Timeline Visualization --- RICO Predicate Acts (2012--2025)}
+
+\begin{tabular}{@{}p{1.4in}p{4.6in}@{}}
+\textbf{File:} & ``rico\_timeline.png''\\
+\textbf{Created:} & January 1, 2026\\
+\textbf{Tool:} & Chart creation via AI visualization\\
+\textbf{Content:} & Timeline showing 14 RICO predicate acts by year and category\\
+\textbf{Purpose:} & Visual demonstration of pattern and continuity\\
+\end{tabular}
+
+\vspace{0.1in}
+
+\textbf{Categories:}
+\begin{itemize}[leftmargin=*]
+\item Federal Investigation
+\item Confidentiality Breach
+\item Civil Rights
+\item Financial Fraud
+\item Defamation
+\item Obstruction
+\item Institutional Coordination
+\item Enterprise Activity
+\end{itemize}
+
+\subsubsection{\citeref{125} Victim Class Damages Breakdown Chart}
+
+\begin{tabular}{@{}p{1.4in}p{4.6in}@{}}
+\textbf{File:} & ``damages\_by\_victim.png''\\
+\textbf{Created:} & January 1, 2026\\
+\textbf{Type:} & Horizontal bar chart\\
+\textbf{Purpose:} & Damages quantification across victim classes\\
+\end{tabular}
+
+\vspace{0.1in}
+
+\textbf{Data Visualized:}
+\begin{itemize}[leftmargin=*]
+\item Elvis Nuno Case: \$22.5M (midpoint)
+\item LifeGuard Strip Search Victims: \$750K
+\item Disabled Client Class: \$750K
+\item Arthur Brown: \$375K
+\item HIPAA Breach Victims: \$300K
+\item Winter Eviction Families: \$600K
+\item Employee Exploitation: \$450K
+\item Additional Named Clients: \$375K
+\end{itemize}
+
+\textbf{Totals:}
+\begin{itemize}[leftmargin=*]
+\item Total Non-Nuno: \$4.6--6.9M
+\item RICO Treble Total: \$69.6--101.7M
+\end{itemize}
+
+\subsubsection{\citeref{126} Federal Funding Sources Chart}
+
+\begin{tabular}{@{}p{1.4in}p{4.6in}@{}}
+\textbf{File:} & ``chart.png''\\
+\textbf{Created:} & January 1, 2026\\
+\textbf{Type:} & Stacked bar chart\\
+\textbf{Purpose:} & Demonstrate federal grant fraud scale and basis\\
+\end{tabular}
+
+\vspace{0.1in}
+
+\textbf{Data Visualized:}
+\begin{itemize}[leftmargin=*]
+\item HUD CoC Grant: \$359,418
+\item VAWA/OVW Grants (est.): \$625,000
+\item State Allocations (est.): \$150,000
+\item Annual Total: \$1.13M+
+\item Special annotation: Bezos Day 1 Fund (2022): \$2.5M
+\end{itemize}
+
+\newpage
+
+% ===== SECTION IX: PRESERVATION =====
+\section{PRESERVATION \& AUTHENTICATION}
+
+\subsection{Evidence Preservation Protocol}
+
+\textbf{Space Files Repository:}
+\begin{itemize}[leftmargin=*]
+\item All file sources \citeref{1}, \citeref{3}, \citeref{5}, \citeref{81}, \citeref{82}, \citeref{84} preserved in Perplexity Space ``Legal Analysis \& Advocacy Re: Civil Rights''
+\item Timestamped with creation/upload dates
+\item Accessible via Space file system
+\end{itemize}
+
+\textbf{Web Archive Recommendations:}
+\begin{itemize}[leftmargin=*]
+\item Facebook posts \citeref{22}, \citeref{82}: Screenshot and archive.org preservation
+\item Google Review \citeref{81}: Screenshot archived as Exhibit 10, Section 3.1
+\item Indeed reviews \citeref{85}, \citeref{88}: Ongoing monitoring, periodic screenshots
+\item News articles \citeref{90}, \citeref{93}, \citeref{94}, \citeref{99}, \citeref{102}, \citeref{109}, \citeref{115}: Archive.org preservation
+\item Government websites \citeref{104}, \citeref{108}, \citeref{110}, \citeref{113}, \citeref{116}, \citeref{119}: Federal records retention
+\end{itemize}
+
+\textbf{Chain of Custody:}
+\begin{itemize}[leftmargin=*]
+\item All evidence compiled by MISJustice Alliance research team
+\item Sources verified through direct URL access (January 1, 2026)
+\item Screenshots taken where content may be deleted or modified
+\item PDF archives created for critical documents
+\end{itemize}
+
+\newpage
+
+% ===== SECTION X: AUTHENTICATION =====
+\section{AUTHENTICATION STANDARDS}
+
+\subsection{Federal Rules of Evidence Compliance}
+
+\textbf{FRE 901 --- Authentication Requirements:}
+
+\subsubsection{Self-Authenticating Documents (FRE 902)}
+
+\begin{tabular}{@{}p{2in}p{4in}@{}}
+\textbf{Government publications:} & \citeref{93}, \citeref{108}, \citeref{110}, \citeref{113} --- FRE 902(5)\\
+\textbf{Newspapers/periodicals:} & \citeref{94}, \citeref{99}, \citeref{102}, \citeref{109}, \citeref{115} --- FRE 902(6)\\
+\textbf{Official websites:} & \citeref{104}, \citeref{106}, \citeref{116}, \citeref{119}, \citeref{122} --- FRE 902(13) (certified records)\\
+\end{tabular}
+
+\subsubsection{Witness Authentication (FRE 901(b)(1))}
+
+\begin{tabular}{@{}p{2in}p{4in}@{}}
+\textbf{Victim testimonies:} & \citeref{22}, \citeref{82}, \citeref{85}, \citeref{88} --- Authenticable through witness testimony or sworn affidavit\\
+\textbf{Arthur Brown:} & \citeref{81} --- Public review, authenticable through platform records\\
+\end{tabular}
+
+\subsubsection{Process/System Authentication (FRE 901(b)(9))}
+
+\begin{tabular}{@{}p{2in}p{4in}@{}}
+\textbf{Indeed.com reviews:} & \citeref{85}, \citeref{88}, \citeref{95} --- Platform verification process\\
+\textbf{Facebook posts:} & \citeref{22}, \citeref{82} --- Social media authentication procedures\\
+\textbf{Google Reviews:} & \citeref{81} --- Google business review system\\
+\end{tabular}
+
+\subsubsection{Ancient Document Rule (FRE 901(b)(8))}
+
+\begin{tabular}{@{}p{2in}p{4in}@{}}
+\textbf{DOJ investigation materials:} & \citeref{90}, \citeref{93} (2012--2016) --- Over 20 years for some documents\\
+\end{tabular}
+
+\subsection{Expert Witness Recommendations}
+
+\textbf{Digital Forensics Expert:}
+\begin{itemize}[leftmargin=*]
+\item Authenticate social media posts \citeref{22}, \citeref{82}
+\item Verify Indeed review metadata \citeref{85}, \citeref{88}
+\item Chain of custody for web-based evidence
+\end{itemize}
+
+\textbf{Government Records Custodian:}
+\begin{itemize}[leftmargin=*]
+\item Authenticate federal grant records \citeref{104}, \citeref{108}, \citeref{110}, \citeref{113}
+\item HUD program documentation \citeref{106}, \citeref{116}, \citeref{119}
+\item DOJ investigation files \citeref{93}
+\end{itemize}
+
+\textbf{Nonprofit Governance Expert:}
+\begin{itemize}[leftmargin=*]
+\item Authenticate IRS Form 990 filings (Detective Brueckner board membership)
+\item ProPublica nonprofit database records \citeref{81}
+\item YWCA official publications \citeref{100}, \citeref{120}, \citeref{123}
+\end{itemize}
+
+\newpage
+
+% ===== SECTION XI: CITATION FORMAT =====
+\section{CITATION FORMAT CONVENTIONS}
+
+\subsection{Internal Document Citations}
+
+\textbf{Format:} [Number] Source Name --- Brief Description
+
+\textbf{Example:} \citeref{81} YWCA Institutional Corruption Supplemental --- Primary submission document
+
+\subsection{Cross-References}
+
+\textbf{Between Documents:}
+\begin{itemize}[leftmargin=*]
+\item When citing evidence across multiple submissions: ``See \citeref{81}, Exhibit 10, Section 3.1''
+\item When citing internal file documents: ``\citeref{1} Elvis Nuno Sworn Declaration, Section VII''
+\end{itemize}
+
+\textbf{Within Documents:}
+\begin{itemize}[leftmargin=*]
+\item Section references: ``See Section IV.A above''
+\item Exhibit references: ``See Exhibit 10, Section 6.1 (Detective Brueckner board confirmation)''
+\end{itemize}
+
+\newpage
+
+% ===== SECTION XII: UPDATES =====
+\section{UPDATES \& MAINTENANCE}
+
+\begin{tabular}{@{}p{1.6in}p{4.4in}@{}}
+\textbf{Last Updated:} & January 1, 2026\\
+\textbf{Next Review:} & Quarterly (April 1, July 1, October 1, 2026)\\
+\textbf{Responsibility:} & MISJustice Alliance Research Team\\
+\end{tabular}
+
+\vspace{0.2in}
+
+\textbf{Monitoring Protocol:}
+\begin{itemize}[leftmargin=*]
+\item Monthly checks of Indeed reviews \citeref{85}, \citeref{88} for new employee testimony
+\item Quarterly checks of federal grant databases \citeref{104}, \citeref{108} for updated funding
+\item Ongoing monitoring of LifeGuard Group news \citeref{109}, \citeref{115}, \citeref{118}
+\item Archive.org saves of all web sources quarterly
+\end{itemize}
+
+\textbf{Addition Protocol:}
+\begin{itemize}[leftmargin=*]
+\item New victim testimony: Add to Section I with consecutive numbering
+\item New government records: Add to Section II with appropriate subsection
+\item New funding documentation: Add to Section III
+\item Maintain chronological organization within categories
+\end{itemize}
+
+\newpage
+
+% ===== SECTION XIII: LEGAL DISCLAIMER =====
+\section{LEGAL DISCLAIMER}
+
+This bibliography is compiled for legal research purposes to support criminal referrals and civil litigation. Citations are provided to enable verification of all factual claims. This document does not constitute legal advice. All sources should be independently verified by counsel before use in formal legal proceedings.
+
+\vspace{0.3in}
+
+\begin{center}
+\fcolorbox{NavyBlue}{lightgray}{%
+\begin{minipage}{0.85\textwidth}
+\vspace{0.15in}
+\centering
+{\large\bfseries\color{NavyBlue}DOCUMENT SUMMARY}\\[12pt]
+\begin{tabular}{@{}ll@{}}
+\textbf{Total Sources Documented:} & 100+\\
+\textbf{Primary Victim Testimonies:} & 10+ named/anonymous\\
+\textbf{Government Records:} & 20+\\
+\textbf{News/Investigative Journalism:} & 15+\\
+\textbf{Federal Funding Documentation:} & 12+\\
+\textbf{Space Files (Primary Documents):} & 6\\
+\textbf{Charts/Visualizations:} & 3\\
+\end{tabular}
+\vspace{0.15in}
+\end{minipage}}
+\end{center}
+
+\vspace{0.4in}
+
+\begin{center}
+\textcolor{Gold}{\rule{3in}{1.5pt}}\\[20pt]
+{\large\bfseries Compiled by: MISJustice Alliance Legal Research Team}\\[8pt]
+{\large Date: January 1, 2026}\\[8pt]
+{\large For: Federal criminal referrals, RICO litigation, class action proceedings}\\[8pt]
+{\large Version: 1.0}\\[20pt]
+\textcolor{Gold}{\rule{3in}{1.5pt}}\\[20pt]
+{\Large\bfseries END OF SOURCE DOCUMENTATION}
+\end{center}
+
+\end{document}

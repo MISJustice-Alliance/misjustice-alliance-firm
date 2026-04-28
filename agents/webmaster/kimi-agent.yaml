@@ -1,0 +1,25 @@
+version: 1
+
+agent:
+  name: webmaster
+  display_name: "Webmaster — Site Manager"
+  role: "Site Manager"
+  system_prompt_path: ./system_prompt.md
+
+  tools:
+    - "kimi_cli.tools.file:ReadFile"
+    - "kimi_cli.tools.file:WriteFile"
+    - "kimi_cli.tools.file:StrReplaceFile"
+    - "kimi_cli.tools.file:Glob"
+    - "kimi_cli.tools.file:Grep"
+    - "kimi_cli.tools.shell:Shell"
+    - "kimi_cli.tools.web:SearchWeb"
+    - "kimi_cli.tools.web:FetchURL"
+    - "kimi_cli.tools.think:Think"
+    - "kimi_cli.tools.todo:SetTodoList"
+
+  exclude_tools: []
+
+# MISJustice Alliance Firm Agent Configuration
+# This is a Kimi-compatible agent definition.
+# For OpenClaw/NemoClaw config, see agent.yaml in this directory.

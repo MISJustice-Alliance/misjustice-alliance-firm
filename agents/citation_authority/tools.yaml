@@ -1,0 +1,36 @@
+tools:
+  - name: MatterReadTool
+    type: read
+    allowed: true
+    scope: internal
+    description: Read matter context and associated documents.
+
+  - name: DocumentReadTool
+    type: read
+    allowed: true
+    scope: internal
+    description: Read document contents for citation extraction.
+
+  - name: MCP cases_get
+    type: mcp
+    allowed: true
+    scope: T1
+    description: Retrieve case metadata from primary sources.
+
+  - name: MCP citations_resolve
+    type: mcp
+    allowed: true
+    scope: T1
+    description: Resolve canonical citation forms and validate existence.
+
+  - name: SourceVerificationTool
+    type: verification
+    allowed: true
+    scope: T1-T3
+    description: Cross-check citation against primary sources.
+
+  - name: HallucinationCheckTool
+    type: verification
+    allowed: true
+    scope: T1-T3
+    description: Detect fabricated or inconsistent citations.

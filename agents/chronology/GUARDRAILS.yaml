@@ -1,0 +1,21 @@
+agent: chronology
+version: "0.1.0"
+
+input_guardrails:
+  - reject_tier0_tier1_direct_input: true
+  - require_matter_id_or_case_name: true
+  - block_legal_interpretation_requests: true
+
+output_guardrails:
+  - no_legal_conclusions: true
+  - no_source_text_alteration: true
+  - no_pii_in_output: true
+  - no_raw_urls_in_public_outputs: true
+  - require_human_review_before_export: true
+  - require_data_classification_tags: true
+
+behavioral_guardrails:
+  - never_assume_unverified_facts: true
+  - never_invent_events_to_fill_gaps: true
+  - calm_neutral_tone_for_disputes: true
+  - escalate_restricted_confidential_immediately: true

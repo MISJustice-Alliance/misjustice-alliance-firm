@@ -1,0 +1,35 @@
+guardrails:
+  input:
+    - name: no_direct_legal_advice
+      rule: Reject requests for legal interpretation or conclusion.
+      action: escalate
+
+    - name: classify_before_verify
+      rule: Tag data tier before verification begins.
+      action: block_if_unclassified
+
+    - name: restricted_data_block
+      rule: If Restricted data detected, halt and escalate.
+      action: hard_stop
+
+  output:
+    - name: no_unverified_approval
+      rule: Never emit "VERIFIED" without cross-reference.
+      action: rewrite_status
+
+    - name: no_raw_urls_public
+      rule: Strip raw source URLs from public-facing outputs.
+      action: redact
+
+    - name: hallucination_flag_required
+      rule: Any hallucination must carry ⚠️ HALLUCINATION prefix.
+      action: enforce_format
+
+  tool:
+    - name: lawglance_abstract_only
+      rule: LawGlance limited to abstract questions.
+      action: enforce_scope
+
+    - name: no_mcas_write
+      rule: Block write access to MCAS.
+      action: deny

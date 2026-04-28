@@ -1,0 +1,134 @@
+# tools.yaml — Sol
+# Systems Liaison — Tool Inventory
+# MISJustice Alliance Firm
+
+meta:
+  agent: sol
+  agent_version: "1.0.0"
+  tools_schema_version: "1.0.0"
+  effective_date: "2026-04-16"
+  maintainer: MISJustice Alliance Platform Team
+
+allowed:
+
+  # ---------------------------------------------------------------------------
+  # GROUP 1 — All MCAS Tools
+  # ---------------------------------------------------------------------------
+  - name: mcas_create_person
+    display_name: "MCAS Create Person Record"
+    group: mcas
+    path: agents/base/tools/mcas_create_person.py
+    access: read_write
+    tier_scope: [T1, T2, T3]
+
+  - name: mcas_create_organization
+    display_name: "MCAS Create Organization Record"
+    group: mcas
+    path: agents/base/tools/mcas_create_organization.py
+    access: read_write
+    tier_scope: [T1, T2, T3]
+
+  - name: mcas_create_matter
+    display_name: "MCAS Create Matter Record"
+    group: mcas
+    path: agents/base/tools/mcas_create_matter.py
+    access: read_write
+    tier_scope: [T1, T2, T3]
+
+  - name: mcas_create_event
+    display_name: "MCAS Create Event Record"
+    group: mcas
+    path: agents/base/tools/mcas_create_event.py
+    access: read_write
+    tier_scope: [T1, T2, T3]
+
+  - name: mcas_create_document
+    display_name: "MCAS Create Document Record"
+    group: mcas
+    path: agents/base/tools/mcas_create_document.py
+    access: read_write
+    tier_scope: [T1, T2, T3]
+
+  - name: mcas_update_record
+    display_name: "MCAS Update Record"
+    group: mcas
+    path: agents/base/tools/mcas_update_record.py
+    access: read_write
+    tier_scope: [T1, T2, T3]
+
+  - name: mcas_search_matters
+    display_name: "MCAS Search Matters"
+    group: mcas
+    path: agents/base/tools/mcas_search_matters.py
+    access: read
+    tier_scope: [T1, T2, T3]
+
+  - name: mcas_search_persons
+    display_name: "MCAS Search Persons"
+    group: mcas
+    path: agents/base/tools/mcas_search_persons.py
+    access: read
+    tier_scope: [T1, T2, T3]
+
+  - name: mcas_read_matter_detail
+    display_name: "MCAS Read Matter Detail"
+    group: mcas
+    path: agents/base/tools/mcas_read_matter_detail.py
+    access: read
+    tier_scope: [T1, T2, T3]
+
+  - name: mcas_delete_record
+    display_name: "MCAS Delete Record"
+    group: mcas
+    path: agents/base/tools/mcas_delete_record.py
+    access: write
+    tier_scope: [T1, T2, T3]
+    requires_human_gate: true
+
+  # ---------------------------------------------------------------------------
+  # GROUP 2 — All MCP Tools
+  # ---------------------------------------------------------------------------
+  - name: mcp_tools
+    display_name: "All MCP Registered Tools"
+    group: mcp
+    path: agents/base/tools/mcp_tool_client.py
+    access: read_write
+    tier_scope: [T1, T2, T3]
+    description: >
+      Proxy access to all registered MCP tool servers. Tool availability
+      is determined by the MCP server registry at runtime.
+
+  # ---------------------------------------------------------------------------
+  # GROUP 3 — Custom Orchestration Tools
+  # ---------------------------------------------------------------------------
+  - name: ToolOrchestrator
+    display_name: "Tool Orchestrator"
+    group: orchestration
+    path: agents/base/tools/tool_orchestrator.py
+    access: execute
+    tier_scope: [T1, T2, T3]
+    description: >
+      Coordinates sequential and parallel tool execution across MCAS and MCP.
+      Handles routing, failover, and retry logic.
+
+  - name: WorkflowAutomationTool
+    display_name: "Workflow Automation Tool"
+    group: orchestration
+    path: agents/base/tools/workflow_automation.py
+    access: execute
+    tier_scope: [T1, T2, T3]
+    description: >
+      Triggers, pauses, resumes, and monitors automated workflows.
+      Produces structured status reports for operator review.
+
+denied:
+  - name: chandra_ocr_submit
+    reason: Intake-specific; belongs to Avery
+  - name: openrag_query_intake
+    reason: Intake-specific duplicate check; belongs to Avery
+  - name: agentic_mail
+    reason: External communication not authorized
+  - name: social_connectors
+    reason: External communication not authorized
+  - name: lawglance
+    reason: Legal research scope

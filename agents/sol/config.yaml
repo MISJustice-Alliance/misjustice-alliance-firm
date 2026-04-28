@@ -1,0 +1,49 @@
+# config.yaml — Sol
+# Runtime configuration for the Sol agent.
+# MISJustice Alliance Firm
+
+meta:
+  agent: sol
+  version: "1.0.0"
+  maintainer: MISJustice Alliance Platform Team
+
+runtime:
+  verbose: false
+  debug: false
+  max_iterations: 15
+  delegation_enabled: true
+  self_correction_enabled: true
+  human_in_the_loop: true
+  require_explicit_approval: true
+
+tiers:
+  data_tier: T1_T3
+  tier_floor: T1
+  permitted_tiers: [T1, T2, T3]
+  excluded_tiers: [T0]
+
+memory:
+  session:
+    enabled: true
+    max_tokens: 32000
+    backend: langchain_buffer
+  cross_session:
+    enabled: true
+    scope: workflow_scoped
+    backend: openrag
+    index: sol-workflow-context
+    tier_floor: T1
+
+features:
+  workflow_automation: true
+  tool_orchestration: true
+  mcas_integration: true
+  mcp_integration: true
+  health_monitoring: true
+  status_reporting: true
+
+limits:
+  max_concurrent_workflows: 10
+  max_tools_per_orchestration: 50
+  max_workflow_depth: 5
+  output_max_tokens: 4096

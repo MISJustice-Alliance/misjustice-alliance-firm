@@ -1,0 +1,241 @@
+{
+  "case_id": "002",
+  "title": "YWCA Missoula - Institutional Corruption and RICO Enterprise Liability",
+  "case_number": "YWCA-RICO-2018-002",
+  "description": "Institutional corruption case documenting YWCA Missoula's role as a RICO enterprise, including governance fraud, conflicts of interest, federal grant fraud, multi-victim patterns of abuse, child endangerment, HIPAA violations, and systematic institutional dysfunction spanning 2018-2025.",
+  "status": "open",
+  "jurisdiction": "Montana (Missoula County)",
+  "case_type": "institutional-corruption, rico-enterprise, grant-fraud, governance-violations",
+  "date_filed": "2018-06-15",
+  "plaintiff_name": "Elvis Nuno (primary complainant), Jessica Waltz (named victim), Multiple YWCA victims",
+  "defendant_name": "YWCA Missoula, YWCA Board of Directors, Detective Connie Brueckner (board member), E'Lise Chard (employee)",
+  "outcome": "pending",
+  "damages_claimed": 5000000,
+  "notes": "Enterprise liability case under RICO statutes. Detective Brueckner's undisclosed YWCA board membership created conflict of interest in criminal investigation. Pattern evidence includes 10+ victims documenting systematic institutional failures, October 2021 Meadowlark winter evictions of 4 families with children, HIPAA violations, and federal grant fraud allegations.",
+  "tags": [
+    "institutional-corruption",
+    "rico-enterprise",
+    "grant-fraud",
+    "conflicts-of-interest",
+    "governance-violations",
+    "child-endangerment",
+    "hipaa-violations",
+    "pattern-evidence",
+    "multi-victim-harm",
+    "corporate-liability"
+  ],
+  "related_cases": [
+    "001-nuno-v-chard-et-al"
+  ],
+
+  "narrative_documents": [
+    {
+      "filename": "YWCA-Institutional-RICO-Dossier.pdf",
+      "file_type": "pdf",
+      "category": "institutional-analysis",
+      "source_path": "narrative/pdfs/YWCA-Institutional-RICO-Dossier.pdf",
+      "description": "Comprehensive YWCA institutional analysis documenting RICO enterprise patterns (30+ pages)"
+    },
+    {
+      "filename": "YWCA-Expanded-Evidence-Compilation.pdf",
+      "file_type": "pdf",
+      "category": "evidence-compilation",
+      "source_path": "narrative/pdfs/YWCA-Expanded-Evidence-Compilation.pdf",
+      "description": "Expanded evidence documentation with victim accounts and institutional failures"
+    }
+  ],
+
+  "evidence_documents": [
+    {
+      "category": "financial-records",
+      "directory": "../nuno-v-chard-et-al/evidence/YWCA-Missoula/",
+      "file_count": 1,
+      "description": "Consolidated financial statements documenting board governance and Connie Brueckner's board membership",
+      "key_files": [
+        "ywca-missoula-consolidated-financial-statements-years-2023-2024.pdf"
+      ],
+      "notes": "Shared with nuno-v-chard-et-al case evidence"
+    },
+    {
+      "category": "victim-accounts",
+      "directory": "../nuno-v-chard-et-al/evidence/Other-Victims/",
+      "file_count": 4,
+      "description": "Pattern evidence from multiple YWCA victims",
+      "key_files": [
+        "Arthur-Brown-Google-Review.jpeg",
+        "YWCA-Reddit-Complaints.jpeg",
+        "Facebook-HIPPA-Violation-Thread-1.jpeg"
+      ],
+      "notes": "Shared with nuno-v-chard-et-al case evidence"
+    },
+    {
+      "category": "complaints",
+      "directory": "../nuno-v-chard-et-al/evidence/Formal-Complaints/",
+      "file_count": 2,
+      "description": "Formal complaints to YWCA documenting institutional failures",
+      "key_files": [
+        "Nuno-PS-YWCA-Email-Complaint.pdf",
+        "Nuno-YWCA-Complaint.jpg"
+      ],
+      "notes": "Elvis Nuno's June 2018 YWCA complaint (protected First Amendment speech)"
+    }
+  ],
+
+  "metadata": {
+    "jurisdictions_involved": [
+      "Montana"
+    ],
+    "counties": [
+      "Missoula County, MT"
+    ],
+    "agencies_notified": [
+      "FBI Public Corruption Unit",
+      "Montana Attorney General",
+      "HUD Office of Inspector General (federal grant fraud)",
+      "Montana POST (Peace Officer Standards and Training)"
+    ],
+    "institutional_actors": [
+      "YWCA Missoula (nonprofit corporation)",
+      "YWCA Board of Directors",
+      "Missoula Police Department (Detective Brueckner conflict)",
+      "Missoula County Prosecutors"
+    ],
+    "key_individuals": [
+      "Detective Connie Brueckner (YWCA board member, investigator in Nuno case - conflict of interest)",
+      "E'Lise Chard (YWCA employee, perpetrator in related case)",
+      "YWCA Board Members (unnamed, governance failures)"
+    ],
+    "victims": {
+      "named": [
+        "Elvis Nuno (wrongful prosecution after YWCA complaint)",
+        "Jessica Waltz (Meadowlark eviction victim, October 2021)",
+        "Arthur Brown (documented in Google Review)"
+      ],
+      "unnamed": [
+        "3 additional families evicted from Meadowlark (October 2021, winter evictions with children)",
+        "Multiple YWCA complainants (Reddit, Google Reviews, Facebook)"
+      ],
+      "count": 10
+    },
+    "time_period": {
+      "start": "2018-06-15",
+      "end": "2025-01-01",
+      "duration_years": 7
+    },
+    "damages": {
+      "direct_victim_damages": 2000000,
+      "institutional_harm": 3000000,
+      "total_claimed": 5000000,
+      "notes": "Includes Elvis Nuno's damages from wrongful prosecution following YWCA complaint, Jessica Waltz and 3 families' eviction damages, and institutional harm to community"
+    },
+    "legal_violations": {
+      "federal_statutes": [
+        "18 U.S.C. § 1961-1968 (RICO - enterprise liability)",
+        "18 U.S.C. § 1341 (Mail fraud)",
+        "18 U.S.C. § 1343 (Wire fraud)",
+        "18 U.S.C. § 666 (Federal program fraud - HUD grants)",
+        "42 U.S.C. § 1320d-6 (HIPAA violations)",
+        "Fair Housing Act violations (discriminatory evictions)"
+      ],
+      "state_statutes_montana": [
+        "MCA 45-6-301 (Theft - misappropriation of grant funds)",
+        "MCA 45-7-201 (Perjury in grant applications)",
+        "MCA 7-1-101 (Official misconduct - Detective Brueckner)",
+        "MCA 35-1-216 (Nonprofit corporation governance violations)",
+        "MCA 45-5-625 (Child endangerment - winter evictions)"
+      ],
+      "regulatory_violations": [
+        "HUD grant compliance violations",
+        "Nonprofit governance standards violations",
+        "HIPAA Privacy Rule violations",
+        "Montana POST ethical standards violations (Detective Brueckner)"
+      ]
+    },
+    "key_evidence_highlights": [
+      "Detective Connie Brueckner served on YWCA board while investigating Elvis Nuno (undisclosed conflict)",
+      "Elvis Nuno filed YWCA complaint June 2018 (protected speech), arrested August 2018",
+      "Fraudulent search warrant August 2018 (Brueckner did not disclose YWCA conflict)",
+      "October 2021 Meadowlark evictions: 4 families with children evicted in winter",
+      "Jessica Waltz (named victim) documented eviction trauma",
+      "YWCA financial statements 2023-2024 confirm Brueckner as board member",
+      "10+ victim accounts via Google Reviews, Reddit, Facebook (pattern evidence)",
+      "Arthur Brown Google Review documents YWCA institutional dysfunction",
+      "HIPAA violations documented in Facebook threads",
+      "Federal grant fraud allegations (HUD funding misappropriation)",
+      "Systematic institutional failures spanning 7+ years"
+    ],
+    "rico_enterprise_elements": {
+      "enterprise": "YWCA Missoula (nonprofit corporation)",
+      "pattern_of_racketeering": [
+        "Mail/wire fraud (grant applications)",
+        "Obstruction of justice (Brueckner conflict suppression)",
+        "Witness intimidation (retaliation against Nuno complaint)",
+        "Federal program fraud (HUD grant misappropriation)"
+      ],
+      "continuity": "2018-2025 (7 years of ongoing institutional corruption)",
+      "enterprise_liability_theory": "YWCA Missoula operated as RICO enterprise through systematic pattern of fraud, conflicts of interest, and retaliation against complainants"
+    },
+    "meadowlark_evictions_details": {
+      "date": "October 2021",
+      "season": "Winter (approaching Montana winter)",
+      "victims": [
+        {
+          "name": "Jessica Waltz",
+          "status": "Named victim",
+          "family_size": "Unknown (documented with children)",
+          "harm": "Winter eviction with children, housing instability, trauma"
+        },
+        {
+          "description": "Family 2",
+          "status": "Unnamed",
+          "family_size": "With children",
+          "harm": "Winter eviction, child endangerment"
+        },
+        {
+          "description": "Family 3",
+          "status": "Unnamed",
+          "family_size": "With children",
+          "harm": "Winter eviction, child endangerment"
+        },
+        {
+          "description": "Family 4",
+          "status": "Unnamed",
+          "family_size": "With children",
+          "harm": "Winter eviction, child endangerment"
+        }
+      ],
+      "total_families": 4,
+      "children_affected": "Multiple (exact count unknown)",
+      "legal_issues": [
+        "Potential Fair Housing Act violations",
+        "Child endangerment (winter evictions with children)",
+        "Improper eviction procedures",
+        "YWCA mission violation (organization purportedly serves women and families)"
+      ]
+    }
+  },
+
+  "platform_import": {
+    "ready_for_import": false,
+    "phase_2_complete": false,
+    "platform_ready_json": "../../02-platform-ready/cases/002-ywca-institutional-corruption.json",
+    "migration_script": "../../02-platform-ready/migration-scripts/001-import-cases.sql",
+    "documents_copied": false,
+    "documents_directory": "../../02-platform-ready/documents/ywca-rico/"
+  },
+
+  "arweave_archival": {
+    "archival_priority": "high",
+    "permanent_preservation_required": true,
+    "redaction_required": false,
+    "public_visibility": true,
+    "archival_bundle_size_estimate_mb": 50,
+    "notes": "All documents public record. Institutional corruption documentation critical for public accountability."
+  },
+
+  "version": "1.0.0",
+  "created_date": "2026-01-01",
+  "last_updated": "2026-01-01",
+  "created_by": "MISJustice Alliance Archive Migration",
+  "validation_status": "pending"
+}
