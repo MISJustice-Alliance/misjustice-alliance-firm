@@ -142,6 +142,12 @@ class MatterSummaryResponse(BaseModel):
 
 class SearchRequest(BaseModel):
     query: str
+    backends: list[str] | None = Field(
+        default=None,
+        description="Backends to query: postgres, elasticsearch, qdrant, neo4j. Defaults to all configured.",
+    )
+    limit: int = Field(default=20, ge=1, le=100)
+    # Legacy fields retained for backward compatibility
     tier: str | None = None
     matter_id: UUID | None = None
     filters: dict | None = Field(default_factory=dict)
@@ -153,9 +159,20 @@ class SearchResultItem(BaseModel):
     title: str | None = None
     snippet: str | None = None
     score: float | None = None
+    backend: str | None = None
+
+
+class BackendMetadata(BaseModel):
+    backend: str
+    status: str  # ok, unavailable, error
+    count: int = 0
+    error: str | None = None
+    latency_ms: float | None = None
 
 
 class SearchResponse(BaseModel):
     results: list[SearchResultItem] = Field(default_factory=list)
     sources: list[str] = Field(default_factory=list)
     confidence: float | None = None
+    backends: list[BackendMetadata] = Field(default_factory=list)
+    total: int = 0

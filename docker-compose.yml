@@ -33,7 +33,7 @@ x-restart-policy: &restart-policy
 
 services:
   # ---------------------------------------------------------------------------
-  # MCAS API (FastAPI)
+  # MCAS API (Django + DRF)
   # ---------------------------------------------------------------------------
   mcas:
     build:
@@ -358,6 +358,100 @@ services:
         condition: service_started
       n8n:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ---------------------------------------------------------------------------
+  # LawGlance — Legal RAG Search Service
+  # ---------------------------------------------------------------------------
+  lawglance:
+    build:
+      context: services/lawglance
+      dockerfile: Dockerfile
+    container_name: misjustice-lawglance
+    <<: *restart-policy
+    logging: *default-logging
+    ports:
+      - "8501:8000"
+    networks:
+      - backend
+      - frontend
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ---------------------------------------------------------------------------
+  # Legal Research MCP — Model Context Protocol Tool Registry
+  # ---------------------------------------------------------------------------
+  legal-research-mcp:
+    build:
+      context: services/legal-research-mcp
+      dockerfile: Dockerfile
+    container_name: misjustice-legal-research-mcp
+    <<: *restart-policy
+    logging: *default-logging
+    ports:
+      - "8502:8000"
+    networks:
+      - backend
+      - frontend
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ---------------------------------------------------------------------------
+  # Legal Source Gateway — Upstream Legal Data Source Registry
+  # ---------------------------------------------------------------------------
+  legal-source-gateway:
+    build:
+      context: services/legal-source-gateway
+      dockerfile: Dockerfile
+    container_name: misjustice-legal-source-gateway
+    <<: *restart-policy
+    logging: *default-logging
+    ports:
+      - "8503:8000"
+    networks:
+      - backend
+      - frontend
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ---------------------------------------------------------------------------
+  # VANE — Vector-Assisted Navigation Engine
+  # ---------------------------------------------------------------------------
+  vane:
+    build:
+      context: services/vane
+      dockerfile: Dockerfile
+    container_name: misjustice-vane
+    <<: *restart-policy
+    logging: *default-logging
+    ports:
+      - "8504:8000"
+    networks:
+      - backend
+      - frontend
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
 # -----------------------------------------------------------------------------
 # Networks
