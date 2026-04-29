@@ -1,0 +1,28 @@
+# Sources: Legal Analysis of Civil Rights Violations and Related Claims - The Case of Mr Nuno (2015-2025)
+
+Owner: Elvis Nuno
+Tags: Civil Rights Violations, Sources
+
+1. [https://ilsr.org/articles/a-nonprofit-builds-community-and-connections-in-montana/](https://ilsr.org/articles/a-nonprofit-builds-community-and-connections-in-montana/)
+2. [https://www.semanticscholar.org/paper/cff5b87aada3519ae91d0b62788c8b0a64b77904](https://www.semanticscholar.org/paper/cff5b87aada3519ae91d0b62788c8b0a64b77904)
+3. [https://www.justice.gov/sites/default/files/crt/legacy/2014/06/10/missoula_settle_6-10-14.pdf](https://www.justice.gov/sites/default/files/crt/legacy/2014/06/10/missoula_settle_6-10-14.pdf)
+4. [https://profiles.superlawyers.com/montana/missoula/lawyer/bryan-charles-tipp/5c775981-fb2c-4bbc-99dc-c6083e13fbbf.html](https://profiles.superlawyers.com/montana/missoula/lawyer/bryan-charles-tipp/5c775981-fb2c-4bbc-99dc-c6083e13fbbf.html)
+5. [https://www.bsfblog.org/being-available-to-christ/](https://www.bsfblog.org/being-available-to-christ/)
+6. [https://www.nalc.org/news/the-postal-record/2023/body/November-2023-Postal-Record-1.pdf](https://www.nalc.org/news/the-postal-record/2023/body/November-2023-Postal-Record-1.pdf)
+7. [https://www.copyright.gov/1201/2012/comments/Andrew_Huang_2.pdf](https://www.copyright.gov/1201/2012/comments/Andrew_Huang_2.pdf)
+8. [https://p2infohouse.org/ref/15/14156.pdf](https://p2infohouse.org/ref/15/14156.pdf)
+9. [https://grey-slipper-363.notion.site/Legal-Analysis-of-all-Civil-Rights-Violations-and-Related-Claims-The-Case-of-Elvis-Nuno-2015-2025-223ca07db84980d398dec11282e997b5](https://www.notion.so/Legal-Analysis-of-all-Civil-Rights-Violations-and-Related-Claims-The-Case-of-Elvis-Nuno-2015-2025-223ca07db84980d398dec11282e997b5?pvs=21)
+10. [https://grey-slipper-363.notion.site/Updated-Comprehensive-Legal-Analysis-Civil-Rights-Violations-and-Related-Claims-The-Case-of-Elvis-22cca07db8498003a540c7e72b5ad1b7](https://www.notion.so/Updated-Comprehensive-Legal-Analysis-Civil-Rights-Violations-and-Related-Claims-The-Case-of-Elvis-22cca07db8498003a540c7e72b5ad1b7?pvs=21)
+11. [https://tippcoburn.com/attorney/tipp-bryan-charles/](https://tippcoburn.com/attorney/tipp-bryan-charles/)
+12. [https://archive.legmt.gov/bills/2009/Minutes/House/Exhibits/aph27a04.pdf](https://archive.legmt.gov/bills/2009/Minutes/House/Exhibits/aph27a04.pdf)
+13. [https://lawyers.findlaw.com/montana/missoula/bryan-charles-tipp-MTUxNTg1M18x/](https://lawyers.findlaw.com/montana/missoula/bryan-charles-tipp-MTUxNTg1M18x/)
+14. [https://newstalkkgvo.com/missoula-police-suspicious-van/](https://newstalkkgvo.com/missoula-police-suspicious-van/)
+15. [https://attorneys.lexinter.net/lawyers/bryan-charles-tipp](https://attorneys.lexinter.net/lawyers/bryan-charles-tipp)
+16. [https://www.ywcamissoula.org](https://www.ywcamissoula.org/)
+17. [https://www.avvo.com/attorneys/59806-mt-bryan-tipp-17192.html](https://www.avvo.com/attorneys/59806-mt-bryan-tipp-17192.html)
+18. [https://www.reddit.com/r/missoula/comments/19bw1fe/ywca_of_missoula_more_info_in_the_comments/](https://www.reddit.com/r/missoula/comments/19bw1fe/ywca_of_missoula_more_info_in_the_comments/)
+19. [https://www.attorneyatlaw.com/firms/tipp-coburn-schandelson-pc](https://www.attorneyatlaw.com/firms/tipp-coburn-schandelson-pc)
+20. [https://www.missoulacounty.us/government/civil-criminal-justice/crime-victim-advocate-program](https://www.missoulacounty.us/government/civil-criminal-justice/crime-victim-advocate-program)
+21. [https://tippcoburn.com](https://tippcoburn.com/)
+22. [https://www.umt.edu/police/information-resources/domestic-violence/domestic-violence.php](https://www.umt.edu/police/information-resources/domestic-violence/domestic-violence.php)
+23. [https://www.reddit.com/r/missoula/comments/1lx7pgg/civil_rights_violations_malicious_harassment_ywca/](https://www.reddit.com/r/missoula/comments/1lx7pgg/civil_rights_violations_malicious_harassment_ywca/)

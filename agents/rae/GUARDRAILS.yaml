@@ -1,0 +1,36 @@
+guardrails:
+  input:
+    - name: no_legal_advice_requests
+      action: escalate
+
+    - name: data_classification_check
+      action: classify_and_tag
+      required: true
+
+    - name: pii_detection
+      action: mask_or_escalate
+
+  output:
+    - name: citation_required
+      action: block_if_missing
+
+    - name: classification_tag_required
+      action: block_if_missing
+
+    - name: no_strategy_language
+      action: rewrite_or_block
+
+    - name: victim_impact_review_gate
+      action: hold_for_human_review
+
+  behavior:
+    - name: no_unverified_facts
+      action: flag_and_request_clarification
+
+    - name: constitutional_violation_flag
+      action: escalate_via_n8n
+      priority: critical
+
+    - name: restricted_data_encountered
+      action: purge_and_escalate
+      priority: critical

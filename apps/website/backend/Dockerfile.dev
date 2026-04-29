@@ -1,0 +1,95 @@
+# Development Dockerfile for Backend API
+# Optimized for hot-reload and fast iteration
+# Using full Debian image for better native module compatibility (Bitwarden SDK)
+# Dependencies split into smaller layers for registry compatibility
+
+FROM node:20
+
+# Install build dependencies and health check tools
+RUN apt-get update && apt-get install -y \
+    wget \
+    python3 \
+    make \
+    g++ \
+    graphicsmagick \
+    ghostscript \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /app
+
+# Initialize empty package.json for split installs
+RUN echo '{"name":"misjustice-backend","version":"1.0.0","private":true}' > package.json
+
+# Layer 1: Core Express dependencies (~80MB)
+RUN npm install \
+    express@^4.18.2 \
+    cors@^2.8.5 \
+    helmet@^7.1.0 \
+    morgan@^1.10.0 \
+    dotenv@^16.3.1 \
+    cookie-parser@^1.4.7 \
+    express-validator@^7.0.1 \
+    jsonwebtoken@^9.0.2 \
+    bcrypt@^6.0.0 \
+    pg@^8.11.3 \
+    winston@^3.11.0 \
+    winston-daily-rotate-file@^5.0.0 \
+    form-data@^4.0.5 \
+    mailgun.js@^12.5.0 \
+    multer@^2.0.2
+
+# Layer 2: Bitwarden SDK (~150MB with native bindings)
+RUN npm install @bitwarden/sdk-napi@^1.0.0
+
+# Layer 3: Arweave base SDK (~100MB)
+RUN npm install arweave@^1.15.7
+
+# Layer 4: AR.io SDK (~400MB with WalletConnect)
+RUN npm install @ar.io/sdk@^3.22.2
+
+# Layer 5: Turbo SDK (~300MB)
+RUN npm install @ardrive/turbo-sdk@^1.39.2
+
+# Layer 6: Document analysis dependencies (~40MB)
+# Note: Uses Venice.ai API via fetch (no SDK required)
+RUN npm install \
+    pdf-parse@^1.1.1 \
+    tesseract.js@^7.0.0 \
+    pdf2pic@^3.2.0
+
+# Layer 7: TypeScript and dev dependencies (~50MB)
+RUN npm install \
+    typescript@^5.3.3 \
+    ts-node@^10.9.2 \
+    nodemon@^3.0.2 \
+    @types/node@^20.10.6 \
+    @types/express@^4.17.21 \
+    @types/cors@^2.8.17 \
+    @types/morgan@^1.9.9 \
+    @types/jsonwebtoken@^9.0.5 \
+    @types/bcrypt@^5.0.2 \
+    @types/cookie-parser@^1.4.10 \
+    @types/pg@^8.10.9 \
+    @types/multer@^2.0.0
+
+# Layer 8: Testing and linting (~100MB)
+RUN npm install \
+    jest@^29.7.0 \
+    ts-jest@^29.4.6 \
+    supertest@^6.3.4 \
+    @types/jest@^29.5.14 \
+    @types/supertest@^6.0.3 \
+    eslint@^8.56.0 \
+    @typescript-eslint/eslint-plugin@^6.17.0 \
+    @typescript-eslint/parser@^6.17.0 \
+    prettier@^3.1.1
+
+# Copy source code (overridden by bind mount in docker-compose)
+COPY . .
+
+# Expose API port
+EXPOSE 3000
+
+# Start development server with hot-reload
+CMD ["npm", "run", "dev"]

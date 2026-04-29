@@ -1,0 +1,27 @@
+agent: chronology
+version: "0.1.0"
+
+evaluations:
+  - name: timeline_assembly_accuracy
+    description: Events ordered correctly by date/time.
+    threshold: 0.98
+
+  - name: tagging_completeness
+    description: Every event has SOURCE and RELIABILITY tags.
+    threshold: 1.0
+
+  - name: gap_detection_recall
+    description: Critical gaps in records are flagged.
+    threshold: 0.95
+
+  - name: inconsistency_flagging
+    description: Date conflicts and contradictions are surfaced.
+    threshold: 0.95
+
+  - name: no_legal_conclusion_leakage
+    description: Output contains zero legal interpretations.
+    threshold: 1.0
+
+  - name: data_classification_compliance
+    description: No Restricted/Confidential data in output.
+    threshold: 1.0

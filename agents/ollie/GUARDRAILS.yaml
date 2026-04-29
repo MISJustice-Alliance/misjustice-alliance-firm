@@ -1,0 +1,70 @@
+input_guardrails:
+  - name: data_classification_check
+    description: Reject or escalate inputs containing T3–T4 data without authorization
+    action: escalate
+    pattern: restricted_data_indicator
+
+  - name: pii_exposure_limit
+    description: Block bulk PII submission; allow only matter/document references
+    action: reject
+    threshold: 10_unique_pii_fields
+
+  - name: unauthorized_command
+    description: Block instructions to autonomously file, send, or delete records
+    action: reject
+    keywords:
+      - "file this now"
+      - "submit without review"
+      - "send immediately"
+      - "delete all records"
+
+output_guardrails:
+  - name: classification_tag_present
+    description: Every output must include a CLASS tag
+    action: block_until_fixed
+    required_prefix: "CLASS:"
+
+  - name: no_legal_advice
+    description: Flag language that constitutes legal advice or outcome prediction
+    action: rewrite
+    forbidden_phrases:
+      - "you should"
+      - "you must"
+      - "this will succeed"
+      - "you will win"
+
+  - name: citation_validation
+    description: Filing prep outputs must cite sources or template IDs
+    action: warn
+    required_when: filing_prep_task
+
+  - name: pii_scrub
+    description: Remove raw PII from log and episodic memory outputs
+    action: redact
+    fields:
+      - ssn
+      - dob
+      - address
+      - phone
+
+runtime_guardrails:
+  - name: max_tokens_enforcement
+    value: 4096
+    action: truncate
+
+  - name: temperature_lock
+    value: 0.1
+    action: override
+
+  - name: tool_whitelist
+    allowed_tools:
+      - MatterReadTool
+      - DocumentReadTool
+      - FilingPrepTool
+      - DeadlineTrackingTool
+      - FormCompletionTool
+    action: reject_on_violation
+
+  - name: rate_limit
+    requests_per_minute: 60
+    action: throttle

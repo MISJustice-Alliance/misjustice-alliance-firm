@@ -1,21 +1,23 @@
 """Initial migration for MCAS v0.1
 
 Revision ID: 0001_initial
-Revises: 
+Revises:
 Create Date: 2026-04-22 00:00:00.000000
 
 """
-from typing import Sequence, Union
 
-from alembic import op
+from collections.abc import Sequence
+
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
+from alembic import op
+
 # revision identifiers, used by Alembic.
 revision: str = "0001_initial"
-down_revision: Union[str, None] = None
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = None
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
@@ -23,7 +25,12 @@ def upgrade() -> None:
 
     op.create_table(
         "matters",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            primary_key=True,
+            server_default=sa.text("gen_random_uuid()"),
+        ),
         sa.Column("display_id", sa.String(), nullable=False, unique=True),
         sa.Column("title", sa.String(), nullable=False),
         sa.Column("classification", sa.String(), nullable=False),
@@ -36,8 +43,15 @@ def upgrade() -> None:
 
     op.create_table(
         "actors",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
-        sa.Column("matter_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("matters.id"), nullable=False),
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            primary_key=True,
+            server_default=sa.text("gen_random_uuid()"),
+        ),
+        sa.Column(
+            "matter_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("matters.id"), nullable=False
+        ),
         sa.Column("actor_type", sa.String(), nullable=False),
         sa.Column("pseudonym", sa.String(), nullable=False),
         sa.Column("real_name_encrypted", sa.LargeBinary(), nullable=False),
@@ -48,8 +62,15 @@ def upgrade() -> None:
 
     op.create_table(
         "documents",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
-        sa.Column("matter_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("matters.id"), nullable=False),
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            primary_key=True,
+            server_default=sa.text("gen_random_uuid()"),
+        ),
+        sa.Column(
+            "matter_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("matters.id"), nullable=False
+        ),
         sa.Column("filename", sa.String(), nullable=False),
         sa.Column("storage_key", sa.String(), nullable=False),
         sa.Column("checksum_sha256", sa.String(), nullable=False),
@@ -64,8 +85,15 @@ def upgrade() -> None:
 
     op.create_table(
         "events",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
-        sa.Column("matter_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("matters.id"), nullable=False),
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            primary_key=True,
+            server_default=sa.text("gen_random_uuid()"),
+        ),
+        sa.Column(
+            "matter_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("matters.id"), nullable=False
+        ),
         sa.Column("event_type", sa.String(), nullable=False),
         sa.Column("actor_id", postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column("agent_id", sa.String(), nullable=True),
@@ -77,8 +105,15 @@ def upgrade() -> None:
 
     op.create_table(
         "audit_entries",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
-        sa.Column("matter_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("matters.id"), nullable=False),
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            primary_key=True,
+            server_default=sa.text("gen_random_uuid()"),
+        ),
+        sa.Column(
+            "matter_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("matters.id"), nullable=False
+        ),
         sa.Column("action", sa.String(), nullable=False),
         sa.Column("actor", sa.String(), nullable=False),
         sa.Column("ip_address", sa.String(), nullable=True),

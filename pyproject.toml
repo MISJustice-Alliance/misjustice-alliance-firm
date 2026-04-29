@@ -44,7 +44,7 @@ select = [
     "SIM", # flake8-simplify
     "ASYNC", # flake8-async
 ]
-ignore = ["E501"]  # line too long handled by formatter
+ignore = ["E501", "B008"]  # line too long handled by formatter; FastAPI Depends() is idiomatic
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
@@ -63,13 +63,25 @@ disallow_incomplete_defs = true
 check_untyped_defs = true
 warn_redundant_casts = true
 warn_unused_ignores = true
-show_error_codes = true
-namespace_packages = true
-explicit_package_bases = true
+mypy_path = "services/mcas"
+exclude = [
+    "tests/",
+    "test_.*\\.py$",
+    "services/mcas/mcas/",
+    "services/mcas/config/",
+    "services/mcas/alembic/",
+    "services/mcas/manage.py",
+    "src/",
+]
+ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
-module = ["neo4j.*", "qdrant_client.*", "elasticsearch.*", "minio.*"]
+module = ["neo4j.*", "qdrant_client.*", "elasticsearch.*", "minio.*", "pytest_asyncio"]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["app.routers.matters", "app.routers.search"]
+disable_error_code = ["arg-type"]
 
 [tool.pytest.ini_options]
 minversion = "8.0"

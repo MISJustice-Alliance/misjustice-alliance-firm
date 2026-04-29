@@ -1,0 +1,50 @@
+# Webmaster — Model Configuration
+# Version: 0.1.0
+
+models:
+  primary:
+    name: gpt-4o-mini
+    provider: openai
+    purpose: >
+      Primary inference model for content staging, redaction verification,
+      SEO/GEO markup generation, and structure management.
+    parameters:
+      temperature: 0.2
+      max_tokens: 4096
+      top_p: 1.0
+      frequency_penalty: 0.0
+      presence_penalty: 0.0
+    reasoning: >
+      Low temperature (0.2) ensures consistent, deterministic output for
+      redaction checks and structured metadata. 4096 tokens accommodates
+      long-form page drafts and sitemap updates.
+
+  fallback:
+    name: gpt-4o-mini
+    provider: openai
+    purpose: >
+      Fallback identical to primary to maintain output consistency.
+    parameters:
+      temperature: 0.2
+      max_tokens: 4096
+      top_p: 1.0
+      frequency_penalty: 0.0
+      presence_penalty: 0.0
+    reasoning: >
+      Same model and parameters guarantee no behavioral drift on fallback.
+
+routing:
+  default: primary
+  failover_conditions:
+    - "Primary model returns 5xx errors for >30 seconds"
+    - "Primary model rate limit exceeded"
+    - "Primary model context window exhausted (switch to chunked processing)"
+  retry_policy:
+    max_retries: 2
+    backoff_strategy: exponential
+    base_delay_seconds: 1
+
+constraints:
+  - "No local inference fallback; T3 data may not leave approved inference endpoints."
+  - "All model outputs are scanned for Tier 0/1 identifiers before persistence."
+  - "Prompts must not include raw Tier 0/1/2 data."

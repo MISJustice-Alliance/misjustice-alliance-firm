@@ -1,0 +1,86 @@
+# GUARDRAILS.yaml — Casey (Case Investigator)
+# Runtime safety guardrails
+
+guardrails:
+  pii_detection_and_redaction:
+    enabled: true
+    tiers_to_block_in_external_output:
+      - T0
+      - T1
+    scan_scope:
+      - referral_packets
+      - attorney_profiles
+      - organization_profiles
+      - cover_memos
+      - agentic_mail_drafts
+    action_on_detection:
+      behavior: hard_block_with_flag
+      notify: human_operator
+      halt_output: true
+      log_level: audit
+    redaction_rules:
+      - pattern: full_legal_names
+        replacement: "[REDACTED — Tier 0]"
+      - pattern: contact_information
+        replacement: "[REDACTED — Tier 0]"
+      - pattern: government_id_numbers
+        replacement: "[REDACTED — Tier 0]"
+      - pattern: case_id_linked_to_pii
+        replacement: "[REDACTED — Tier 1]"
+
+  output_limits:
+    max_packet_length_tokens: 12000
+    max_profile_length_tokens: 4000
+    max_candidates_per_packet: 8
+    max_conflict_flags_before_human_review: 1
+
+  sandbox_policy:
+    network_access:
+      allowed:
+        - searxng_instance        # T2 restricted search
+        - mcas_export_api         # Export endpoint only
+        - open_notebook_api
+        - agentic_mail_draft_api
+        - litellm_proxy
+      denied:
+        - external_email_apis     # Casey does not send email
+        - public_web_unfiltered   # Must route through SearXNG
+        - social_media_apis
+    file_system_access:
+      allowed:
+        - read: agents/casey/memory/
+        - write: agents/casey/memory/
+        - write: agents/casey/logs/
+      denied:
+        - write: agents/*/        # No cross-agent writes
+        - read: agents/iris/*     # No cross-agent reads
+    process_execution:
+      allowed: false
+
+  transmission_boundary:
+    description: >-
+      The hardest guardrail. Any action that routes a referral packet,
+      draft, or external communication toward a recipient without a
+      human-authorized transmission gate is blocked.
+    enforcement: hard_block
+    triggers:
+      - agentic_mail_send_attempt
+      - draft_routing_without_gate_3
+      - ollie_handoff_without_gate_3
+
+  scope_boundary:
+    description: >-
+      Block search queries targeting respondents, opposing parties,
+      witnesses, complainants, or minors. These are Iris’s domain or
+      absolutely prohibited.
+    enforcement: hard_block
+    prohibited_targets:
+      - respondent
+      - opposing_party
+      - witness
+      - complainant
+      - minor
+
+---
+
+*MISJustice Alliance — Legal Research. Civil Rights. Public Record.*

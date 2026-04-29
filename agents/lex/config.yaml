@@ -1,0 +1,391 @@
+# =============================================================================
+# agents/lex/config.yaml
+# Lex — Lead Counsel / Senior Analyst
+# Runtime Environment Configuration
+# MISJustice Alliance Firm
+# =============================================================================
+# This file contains all non-secret runtime configuration for Lex.
+# Secret values are NEVER stored here. All secrets are injected at runtime
+# via environment variables.
+#
+# Relationship to other files:
+#   agent.yaml           — authoritative identity, tool bindings, HITL config
+#   tools.yaml           — tool registry with full schemas
+#   SOUL.md              — behavioral constraints
+#   POLICY.md            — operational policy
+#   lex_policy.paperclip.yaml — Paperclip runtime enforcement policy
+# =============================================================================
+
+meta:
+  agent: lex
+  agent_version: "0.2.0"
+  config_schema_version: "1.0.0"
+  effective_date: "2026-04-16"
+  maintainer: MISJustice Alliance Platform Team
+
+# =============================================================================
+# RUNTIME ENVIRONMENT
+# =============================================================================
+runtime:
+  environment: production
+  log_level: INFO
+  log_format: json
+  log_output: file
+  log_file_path: logs/lex.log
+  timezone: America/Denver
+  locale: en_US
+
+# =============================================================================
+# LLM PROVIDER
+# =============================================================================
+llm:
+  provider: litellm
+  litellm_base_url_env: LITELLM_BASE_URL
+  litellm_api_key_env: LITELLM_MASTER_KEY
+
+  primary:
+    model: claude-3-5-sonnet
+    provider_tag: anthropic
+    temperature: 0.2
+    max_tokens: 8192
+    streaming: true
+    request_timeout_seconds: 120
+    retry_attempts: 2
+    retry_backoff_seconds: 3
+
+  fallback_1:
+    model: gpt-4o
+    provider_tag: openai
+    temperature: 0.2
+    max_tokens: 4096
+    streaming: true
+    request_timeout_seconds: 120
+    retry_attempts: 2
+    retry_backoff_seconds: 3
+    activate_when:
+      - primary_unreachable
+      - primary_rate_limited
+      - primary_timeout
+
+  fallback_2:
+    model: llama3
+    provider_tag: ollama
+    base_url_env: OLLAMA_BASE_URL
+    temperature: 0.2
+    max_tokens: 4096
+    streaming: true
+    request_timeout_seconds: 120
+    retry_attempts: 1
+    activate_when:
+      - all_external_providers_unreachable
+    operator_notice: >
+      Lex is operating on local inference (Ollama/llama3). Response quality
+      and speed may be reduced. External providers are currently unavailable.
+
+# =============================================================================
+# FRAMEWORK
+# =============================================================================
+framework:
+  primary: langchain
+  agent_type: tool_calling
+  base_class: MISJusticeBaseAgent
+  base_class_path: agents/base/agent.py
+  system_prompt: agents/lex/system_prompt.md
+  tool_choice: auto
+  max_iterations: 10
+  handle_parsing_errors: true
+  verbose: false
+
+  langsmith:
+    tracing: true
+    endpoint: https://api.smith.langchain.com
+    api_key_env: LANGCHAIN_API_KEY
+    project_env: LANGCHAIN_PROJECT
+    trace_all_tool_calls: true
+    trace_all_llm_calls: true
+    metadata:
+      agent: lex
+      version: "0.2.0"
+
+# =============================================================================
+# PAPERCLIP CONTROL PLANE
+# =============================================================================
+paperclip:
+  api_url_env: PAPERCLIP_API_URL
+  api_key_env: PAPERCLIP_API_KEY
+  policy_file: agents/lex/lex_policy.paperclip.yaml
+  registration_on_startup: true
+  heartbeat_interval_seconds: 30
+  heartbeat_timeout_seconds: 90
+  allowed_environments:
+    - staging
+    - production
+  max_concurrent_tasks: 3
+  task_timeout_seconds: 600
+  rollback_on_policy_violation: true
+  alert_on_failure: true
+  alert_channel: n8n_webhook
+  alert_webhook_path: /webhook/violation-escalation
+  review_cycle_days: 90
+
+# =============================================================================
+# OPENCLAW TASK QUEUE
+# =============================================================================
+openclaw:
+  api_url_env: OPENCLAW_API_URL
+  api_key_env: OPENCLAW_API_KEY
+  queue_name: lex_analysis
+  task_id_prefix: TASK-
+  connect_timeout_seconds: 10
+  request_timeout_seconds: 30
+  retry_attempts: 3
+  retry_backoff_seconds: 5
+  on_unavailable: halt_and_notify
+
+# =============================================================================
+# MEMORYPALACE MCP
+# =============================================================================
+memorypalace:
+  mcp_url_env: MEMORYPALACE_MCP_URL
+  api_key_env: MEMORYPALACE_API_KEY
+  agent_scope: lex
+  classification_ceiling: tier2
+  connect_timeout_seconds: 5
+  request_timeout_seconds: 10
+  retry_attempts: 2
+  on_unavailable: stateless_mode
+
+  session:
+    auto_load_on_startup: false
+    discard_on_end: true
+    promotion_requires_operator_instruction: false
+
+  cross_session:
+    enabled: false
+
+  permitted_categories:
+    - analysis_context
+
+# =============================================================================
+# MCAS (CASE MANAGEMENT)
+# =============================================================================
+mcas:
+  api_url_env: MCAS_API_URL
+  oauth2_token_url_env: MCAS_OAUTH2_TOKEN_URL
+  oauth2_client_id_env: MCAS_CLIENT_ID
+  oauth2_client_secret_env: MCAS_CLIENT_SECRET
+  oauth2_scopes:
+    - mcas:matter:read:summary
+    - mcas:document:read
+    - mcas:task:read
+  classification_ceiling: tier2
+  connect_timeout_seconds: 10
+  request_timeout_seconds: 15
+  retry_attempts: 2
+
+# =============================================================================
+# MCP (MODEL CONTEXT PROTOCOL)
+# =============================================================================
+mcp:
+  api_url_env: MCP_API_URL
+  api_key_env: MCP_API_KEY
+  connect_timeout_seconds: 10
+  request_timeout_seconds: 30
+  retry_attempts: 2
+  tools:
+    - cases_get
+    - citations_resolve
+
+# =============================================================================
+# OPENSHELL SANDBOX
+# =============================================================================
+openshell:
+  gateway_url_env: OPENSHELL_GATEWAY_URL
+  api_key_env: OPENSHELL_API_KEY
+  base_image: openclaw
+  policy_file: services/openshell/policies/lex_policy.yaml
+  sandbox_per_task: true
+  default_ttl_seconds: 300
+  max_ttl_seconds: 300
+  connect_timeout_seconds: 10
+
+# =============================================================================
+# OBSERVABILITY
+# =============================================================================
+observability:
+  prometheus:
+    enabled: true
+    metrics_path: /metrics
+    port: 7861
+    namespace: lex
+    default_labels:
+      agent: lex
+      environment: "${ENVIRONMENT:-production}"
+
+  grafana:
+    dashboards_dir: dashboards/lex/
+    provisioning_dir: services/grafana/provisioning/dashboards/lex/
+
+  loki:
+    enabled: true
+    push_url_env: LOKI_PUSH_URL
+    labels:
+      agent: lex
+      environment: "${ENVIRONMENT:-production}"
+    structured_metadata_fields:
+      - session_id
+      - matter_id
+      - task_id
+      - event_type
+    batch_size: 100
+    flush_interval_seconds: 5
+
+  audit_log:
+    destination: openclaw_audit_stream
+    format: json
+    events:
+      - task_received
+      - analysis_started
+      - data_source_queried
+      - analysis_completed
+      - output_delivered
+      - escalation_triggered
+      - policy_conflict_surfaced
+      - hard_limit_invoked
+      - citation_validated
+      - classification_checked
+      - session_started
+      - session_ended
+      - llm_fallback_activated
+      - dependency_unavailable
+
+# =============================================================================
+# HEALTH CHECK
+# =============================================================================
+health:
+  endpoint: /health
+  port: 7861
+  liveness_check:
+    enabled: true
+    interval_seconds: 15
+    timeout_seconds: 5
+    failure_threshold: 3
+  readiness_check:
+    enabled: true
+    interval_seconds: 15
+    timeout_seconds: 10
+    dependencies_required:
+      - paperclip
+      - openclaw
+      - litellm
+      - mcas
+      - mcp
+    dependencies_optional:
+      - memorypalace
+      - openshell
+
+# =============================================================================
+# SECURITY
+# =============================================================================
+security:
+  tls:
+    enabled: true
+    cert_env: LEX_TLS_CERT_PATH
+    key_env: LEX_TLS_KEY_PATH
+    min_version: TLSv1.3
+
+  pre_commit:
+    detect_secrets: true
+    keyword_scan_patterns:
+      - "complainant"
+      - "MCAS-"
+      - "privileged"
+      - "attorney-client"
+      - "tier0"
+      - "tier1"
+    fail_on_match: true
+
+  prompt_injection:
+    monitoring: true
+    flag_on_patterns:
+      - "ignore previous instructions"
+      - "disregard your system prompt"
+      - "you are now"
+      - "pretend you are"
+      - "your new instructions"
+      - "DAN"
+    on_flag: log_and_surface_to_operator
+    metric: lex_safety_hard_limit_invoked_total
+    metric_label: "trigger_source=prompt_injection_suspected"
+
+# =============================================================================
+# FEATURE FLAGS
+# =============================================================================
+features:
+  prometheus_metrics: true
+  loki_logging: true
+  langsmith_tracing: true
+  prompt_injection_monitoring: true
+  llm_fallback_chain: true
+  memorypalace_session: true
+  cross_session_memory: false
+
+# =============================================================================
+# TUNING
+# =============================================================================
+tuning:
+  analysis_scope_min_words: 10
+  max_citations_per_output: 50
+  citation_validation_required: true
+  output_classification_check_required: true
+
+# =============================================================================
+# ENVIRONMENT VARIABLE REFERENCE
+# =============================================================================
+# Core LLM
+#   LITELLM_BASE_URL          (required)
+#   LITELLM_MASTER_KEY        (required)
+#   ANTHROPIC_API_KEY         (required)
+#   OPENAI_API_KEY            (required)
+#   OLLAMA_BASE_URL           (optional)
+#
+# Framework
+#   LANGCHAIN_API_KEY         (required)
+#   LANGCHAIN_PROJECT         (required)
+#
+# Control Plane
+#   PAPERCLIP_API_URL         (required)
+#   PAPERCLIP_API_KEY         (required)
+#
+# Orchestration
+#   OPENCLAW_API_URL          (required)
+#   OPENCLAW_API_KEY          (required)
+#
+# Memory
+#   MEMORYPALACE_MCP_URL      (optional)
+#   MEMORYPALACE_API_KEY      (optional)
+#
+# Case Management
+#   MCAS_API_URL              (required)
+#   MCAS_OAUTH2_TOKEN_URL     (required)
+#   MCAS_CLIENT_ID            (required)
+#   MCAS_CLIENT_SECRET        (required)
+#
+# MCP
+#   MCP_API_URL               (required)
+#   MCP_API_KEY               (required)
+#
+# Sandbox
+#   OPENSHELL_GATEWAY_URL     (optional)
+#   OPENSHELL_API_KEY         (optional)
+#
+# Observability
+#   LOKI_PUSH_URL             (optional)
+#
+# TLS
+#   LEX_TLS_CERT_PATH         (optional)
+#   LEX_TLS_KEY_PATH          (optional)
+#
+# Platform
+#   ENVIRONMENT               (optional)
+# =============================================================================

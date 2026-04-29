@@ -1,0 +1,89 @@
+# Webmaster — Tool Registry
+# Version: 0.1.0
+
+tools:
+  - name: MatterReadTool
+    description: Read matter summaries and case abstracts from MCAS.
+    access_level: read
+    data_tier: T3
+    scope: abstract_only
+    parameters:
+      - matter_id
+      - fields: ["abstract", "public_facts", "classification"]
+    constraints:
+      - "Never retrieve full Tier 0/1/2 records."
+      - "Only request abstract and public-approved exports."
+    enabled: true
+
+  - name: ContentUpdateTool
+    description: Stage, draft, and update content for public websites and GitBook.
+    access_level: write
+    data_tier: T3
+    scope: staging_and_draft
+    parameters:
+      - site_target
+      - page_id
+      - content_draft
+      - meta_tags
+      - classification_tag
+    constraints:
+      - "All writes go to staging; no direct production publish."
+      - "Must pass redaction check before write."
+      - "Must include data classification tag."
+    enabled: true
+
+  - name: PublicCasePortalTool
+    description: Publish approved content to the public case portal and live site.
+    access_level: write
+    data_tier: T3
+    scope: production_publish
+    parameters:
+      - page_id
+      - approval_token
+      - publish_target
+    constraints:
+      - "Requires explicit human approval token."
+      - "Only CLASS: PUBLIC content may be published."
+      - "Cannot publish if redaction check failed."
+      - "Logs all publish events to audit trail."
+    enabled: true
+
+  - name: SiteMaintenanceTool
+    description: Manage sitemap, robots.txt, canonical URLs, and crawl directives.
+    access_level: write
+    data_tier: T0
+    scope: site_infrastructure
+    parameters:
+      - action: ["update_sitemap", "update_robots", "set_canonical", "ping_search_engines"]
+      - url_list
+      - disallow_patterns
+    constraints:
+      - "Only modify public infrastructure metadata."
+      - "Never expose non-public URLs in sitemap."
+      - "Require approval for robots.txt changes that disallow major sections."
+    enabled: true
+
+  - name: n8nEscalationWebhook
+    description: Send escalation and approval requests to human staff.
+    access_level: event
+    data_tier: T3
+    scope: human_handoff
+    parameters:
+      - escalation_type
+      - summary
+      - risk_assessment
+      - recommendation
+    constraints:
+      - "Use only for critical violations, approvals, or ambiguous content."
+      - "Include full redaction status and classification."
+    enabled: true
+
+search_tools:
+  - name: SearXNG T0 PublicSafe
+    description: Public-safe context and reference lookups.
+    access_level: search
+    data_tier: T0
+    constraints:
+      - "Only use T0-publicsafe search tools."
+      - "Never use LawGlance, AutoResearchClaw, or unapproved search engines."
+    enabled: true

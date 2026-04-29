@@ -6,6 +6,7 @@ Run: python test_encryption_simple.py
 
 from cryptography.fernet import Fernet
 
+
 def test_fernet_encryption():
     """Test Fernet encryption roundtrip."""
     key = Fernet.generate_key()
@@ -23,6 +24,7 @@ def test_fernet_encryption():
 
     print("✓ Fernet encryption/decryption works correctly")
 
+
 def test_none_handling():
     """Test that None values are handled safely."""
     key = Fernet.generate_key()
@@ -30,13 +32,11 @@ def test_none_handling():
 
     # Simulate get_prep_value behavior with None
     plaintext = None
-    if plaintext:
-        ciphertext = cipher.encrypt(plaintext.encode()).decode()
-    else:
-        ciphertext = plaintext
+    ciphertext = cipher.encrypt(plaintext.encode()).decode() if plaintext else plaintext
 
     assert ciphertext is None, "None should pass through unchanged"
     print("✓ None values handled correctly")
+
 
 def test_empty_string_handling():
     """Test that empty strings are handled safely."""
@@ -44,13 +44,11 @@ def test_empty_string_handling():
     cipher = Fernet(key)
 
     plaintext = ""
-    if plaintext:
-        ciphertext = cipher.encrypt(plaintext.encode()).decode()
-    else:
-        ciphertext = plaintext
+    ciphertext = cipher.encrypt(plaintext.encode()).decode() if plaintext else plaintext
 
     assert ciphertext == "", "Empty string should pass through unchanged"
     print("✓ Empty string values handled correctly")
+
 
 def test_special_characters():
     """Test encryption with special characters and unicode."""
@@ -62,7 +60,7 @@ def test_special_characters():
         "555-1234-5678",
         "José García",
         "日本語テキスト",
-        "Привет мир"
+        "Привет мир",
     ]
 
     for plaintext in test_values:
@@ -71,6 +69,7 @@ def test_special_characters():
         assert decrypted == plaintext, f"Failed for: {plaintext}"
 
     print("✓ Special characters and unicode handled correctly")
+
 
 if __name__ == "__main__":
     test_fernet_encryption()

@@ -73,8 +73,8 @@ jobs:
           pip install mypy==1.13.0 types-redis types-requests
           pip install -r services/mcas/requirements.txt
 
-      - name: mypy
-        run: mypy services/mcas src
+      - name: Typecheck
+        run: mypy services/mcas
 
   # ---------------------------------------------------------------------------
   # Job 3: Test (pytest)

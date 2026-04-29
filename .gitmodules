@@ -1,0 +1,9 @@
+[submodule "NemoClaw"]
+	path = NemoClaw
+	url = https://github.com/NVIDIA/NemoClaw.git
+[submodule "crewAI"]
+	path = crewAI
+	url = https://github.com/crewAIInc/crewAI.git
+[submodule "openclaw-ansible"]
+	path = openclaw-ansible
+	url = https://github.com/openclaw/openclaw-ansible.git

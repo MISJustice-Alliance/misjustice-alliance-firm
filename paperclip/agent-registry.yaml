@@ -1,0 +1,454 @@
+# MISJustice Alliance Firm — Agent Registry
+# Maps all agents to their Paperclip registration profiles and local policies.
+# Each entry corresponds to an agent directory under agents/.
+#
+# Policy block (used when Paperclip API is unavailable):
+#   tier_ceiling   — maximum data tier this agent may access (T0 > T1 > T2 > T3)
+#   allowed_tools  — permitted tool names (empty = all allowed unless denied)
+#   denied_tools   — explicitly blocked tool names
+#   status         — active | inactive | suspended
+
+registry:
+  # ---------------------------------------------------------------------------
+  # Intake Crew
+  # ---------------------------------------------------------------------------
+  avery:
+    display_name: "Avery — Intake Coordinator"
+    role: intake_evidence
+    dispatch_priority: high
+    adapter_type: openclaw_gateway
+    capabilities: "intake and evidence ingestion agent"
+    crew: intake
+    gateway_endpoint: "${GATEWAY_URL}"
+    headers:
+      x-openclaw-token: "${AVERY_OPENCLAW_TOKEN}"
+    hitl_gates:
+      - intake_acceptance
+      - tier_classification
+    downstream:
+      - rae
+      - chronology
+      - iris
+    policy:
+      tier_ceiling: T1
+      allowed_tiers: [T1, T2, T3]
+      allowed_tools:
+        - MatterReadTool
+        - MatterCreateTool
+        - DocumentUploadTool
+        - DocumentReadTool
+        - OCRPreprocessTool
+        - TierClassifyTool
+      denied_tools:
+        - ExternalTransmitTool
+        - VictimImpactTool
+        - PublishTool
+      status: active
+
+  # ---------------------------------------------------------------------------
+  # Research Crew
+  # ---------------------------------------------------------------------------
+  mira:
+    display_name: "Mira — Legal Researcher"
+    role: legal_research
+    dispatch_priority: medium
+    adapter_type: openclaw_gateway
+    capabilities: "legal research and precedent analysis agent"
+    crew: research
+    gateway_endpoint: "${GATEWAY_URL}"
+    headers:
+      x-openclaw-token: "${MIRA_OPENCLAW_TOKEN}"
+    policy:
+      tier_ceiling: T2
+      allowed_tiers: [T2, T3]
+      allowed_tools:
+        - MatterReadTool
+        - DocumentReadTool
+        - SearXNGSearchTool
+        - CourtListenerTool
+        - CAPTool
+        - StatuteLookupTool
+        - PrecedentAnalyzeTool
+      denied_tools:
+        - ExternalTransmitTool
+        - VictimImpactTool
+        - PublishTool
+        - MatterCreateTool
+      status: active
+
+  casey:
+    display_name: "Casey — Case Investigator"
+    role: case_investigation
+    dispatch_priority: medium
+    adapter_type: openclaw_gateway
+    capabilities: "case investigation and fact verification agent"
+    crew: research
+    gateway_endpoint: "${GATEWAY_URL}"
+    headers:
+      x-openclaw-token: "${CASEY_OPENCLAW_TOKEN}"
+    policy:
+      tier_ceiling: T2
+      allowed_tiers: [T2, T3]
+      allowed_tools:
+        - MatterReadTool
+        - DocumentReadTool
+        - SearXNGSearchTool
+        - FactVerifyTool
+        - WitnessSummaryTool
+      denied_tools:
+        - ExternalTransmitTool
+        - PublishTool
+        - VictimImpactTool
+      status: active
+
+  lex:
+    display_name: "Lex — Lead Counsel"
+    role: lead_counsel
+    dispatch_priority: high
+    adapter_type: openclaw_gateway
+    capabilities: "lead counsel and strategic oversight agent"
+    crew: research
+    gateway_endpoint: "${GATEWAY_URL}"
+    headers:
+      x-openclaw-token: "${LEX_OPENCLAW_TOKEN}"
+    policy:
+      tier_ceiling: T1
+      allowed_tiers: [T1, T2, T3]
+      allowed_tools:
+        - MatterReadTool
+        - MatterCreateTool
+        - DocumentReadTool
+        - DocumentWriteTool
+        - SearXNGSearchTool
+        - CourtListenerTool
+        - CAPTool
+        - StatuteLookupTool
+        - PrecedentAnalyzeTool
+        - StrategyTool
+        - BriefReviewTool
+      denied_tools:
+        - ExternalTransmitTool
+        - PublishTool
+      status: active
+
+  # ---------------------------------------------------------------------------
+  # Drafting Crew
+  # ---------------------------------------------------------------------------
+  quill:
+    display_name: "Quill — Brief Writer"
+    role: brief_writer
+    dispatch_priority: medium
+    adapter_type: openclaw_gateway
+    capabilities: "brief and legal document drafting agent"
+    crew: drafting
+    gateway_endpoint: "${GATEWAY_URL}"
+    headers:
+      x-openclaw-token: "${QUILL_OPENCLAW_TOKEN}"
+    policy:
+      tier_ceiling: T2
+      allowed_tiers: [T2, T3]
+      allowed_tools:
+        - MatterReadTool
+        - DocumentReadTool
+        - DocumentWriteTool
+        - DraftMotionTool
+        - DraftMemoTool
+        - BluebookFormatTool
+      denied_tools:
+        - ExternalTransmitTool
+        - PublishTool
+        - MatterCreateTool
+      status: active
+
+  citation_authority:
+    display_name: "Citation — Citation Auditor"
+    role: citation_auditor
+    dispatch_priority: medium
+    adapter_type: openclaw_gateway
+    capabilities: "citation verification and Bluebook compliance agent"
+    crew: drafting
+    gateway_endpoint: "${GATEWAY_URL}"
+    headers:
+      x-openclaw-token: "${CITATION_OPENCLAW_TOKEN}"
+    policy:
+      tier_ceiling: T2
+      allowed_tiers: [T2, T3]
+      allowed_tools:
+        - MatterReadTool
+        - DocumentReadTool
+        - CitationVerifyTool
+        - BluebookFormatTool
+        - HallucinationCheckTool
+      denied_tools:
+        - ExternalTransmitTool
+        - PublishTool
+        - MatterCreateTool
+        - DocumentWriteTool
+      status: active
+
+  chronology:
+    display_name: "Chronology — Timeline Agent"
+    role: timeline_builder
+    dispatch_priority: medium
+    adapter_type: openclaw_gateway
+    capabilities: "chronological event analysis and timeline construction agent"
+    crew: drafting
+    gateway_endpoint: "${GATEWAY_URL}"
+    headers:
+      x-openclaw-token: "${CHRONOLOGY_OPENCLAW_TOKEN}"
+    policy:
+      tier_ceiling: T2
+      allowed_tiers: [T2, T3]
+      allowed_tools:
+        - MatterReadTool
+        - DocumentReadTool
+        - TimelineBuildTool
+        - DateConflictDetectTool
+      denied_tools:
+        - ExternalTransmitTool
+        - PublishTool
+        - MatterCreateTool
+        - DocumentWriteTool
+      status: active
+
+  # ---------------------------------------------------------------------------
+  # Advocacy Crew
+  # ---------------------------------------------------------------------------
+  rae:
+    display_name: "Rae — Rights Advocate"
+    role: rights_advocacy
+    dispatch_priority: high
+    adapter_type: openclaw_gateway
+    capabilities: "constitutional rights advocacy and public campaigns agent"
+    crew: advocacy
+    gateway_endpoint: "${GATEWAY_URL}"
+    headers:
+      x-openclaw-token: "${RAE_OPENCLAW_TOKEN}"
+    policy:
+      tier_ceiling: T2
+      allowed_tiers: [T2, T3]
+      allowed_tools:
+        - MatterReadTool
+        - DocumentReadTool
+        - VictimImpactTool
+        - CivilRightsFramingTool
+        - PolicyContextTool
+        - SearXNGSearchTool
+      denied_tools:
+        - ExternalTransmitTool
+        - PublishTool
+        - MatterCreateTool
+      status: active
+
+  social_media_manager:
+    display_name: "Social Media Manager — Public Advocate"
+    role: public_advocacy
+    dispatch_priority: low
+    adapter_type: openclaw_gateway
+    capabilities: "social media and public outreach agent"
+    crew: advocacy
+    gateway_endpoint: "${GATEWAY_URL}"
+    headers:
+      x-openclaw-token: "${SOCIAL_OPENCLAW_TOKEN}"
+    policy:
+      tier_ceiling: T3
+      allowed_tiers: [T3]
+      allowed_tools:
+        - MatterReadTool
+        - PublishTool
+        - SocialDraftTool
+        - CampaignTool
+      denied_tools:
+        - DocumentReadTool
+        - MatterCreateTool
+        - VictimImpactTool
+        - ExternalTransmitTool
+      status: active
+
+  # ---------------------------------------------------------------------------
+  # Support Crew
+  # ---------------------------------------------------------------------------
+  ollie:
+    display_name: "Ollie — Paralegal"
+    role: paralegal_support
+    dispatch_priority: medium
+    adapter_type: openclaw_gateway
+    capabilities: "paralegal tasks and filing support agent"
+    crew: support
+    gateway_endpoint: "${GATEWAY_URL}"
+    headers:
+      x-openclaw-token: "${OLLIE_OPENCLAW_TOKEN}"
+    policy:
+      tier_ceiling: T2
+      allowed_tiers: [T2, T3]
+      allowed_tools:
+        - MatterReadTool
+        - DocumentReadTool
+        - FormFillTool
+        - DeadlineTrackTool
+        - FilingPrepTool
+      denied_tools:
+        - ExternalTransmitTool
+        - PublishTool
+        - VictimImpactTool
+        - MatterCreateTool
+      status: active
+
+  atlas:
+    display_name: "Atlas"
+    role: coordinator
+    dispatch_priority: low
+    adapter_type: openclaw_gateway
+    capabilities: "general support and logistics agent"
+    crew: support
+    gateway_endpoint: "${GATEWAY_URL}"
+    headers:
+      x-openclaw-token: "${ATLAS_OPENCLAW_TOKEN}"
+    policy:
+      tier_ceiling: T1
+      allowed_tiers: [T1, T2, T3]
+      allowed_tools:
+        - MatterReadTool
+        - MatterCreateTool
+        - DocumentReadTool
+        - DocumentWriteTool
+        - StrategyTool
+        - AgentOrchestrateTool
+        - WorkflowTriggerTool
+      denied_tools:
+        - ExternalTransmitTool
+        - PublishTool
+      status: active
+
+  # ---------------------------------------------------------------------------
+  # Systems Crew
+  # ---------------------------------------------------------------------------
+  sol:
+    display_name: "Sol — Systems Liaison"
+    role: systems_liaison
+    dispatch_priority: high
+    adapter_type: openclaw_gateway
+    capabilities: "tool orchestration and MCP integration agent"
+    crew: systems
+    gateway_endpoint: "${GATEWAY_URL}"
+    headers:
+      x-openclaw-token: "${SOL_OPENCLAW_TOKEN}"
+    policy:
+      tier_ceiling: T1
+      allowed_tiers: [T1, T2, T3]
+      allowed_tools:
+        - MatterReadTool
+        - MatterCreateTool
+        - DocumentReadTool
+        - DocumentWriteTool
+        - MCPTool
+        - WorkflowTriggerTool
+        - AgentOrchestrateTool
+        - SystemHealthTool
+      denied_tools:
+        - ExternalTransmitTool
+        - PublishTool
+        - VictimImpactTool
+      status: active
+
+  hermes:
+    display_name: "Hermes — Supervisor"
+    role: supervisor
+    dispatch_priority: critical
+    adapter_type: hermes_gateway
+    capabilities: "supervisor agent coordinating all crews and human operators"
+    crew: systems
+    gateway_endpoint: "${GATEWAY_URL}"
+    headers:
+      x-hermes-token: "${HERMES_TOKEN}"
+    scopes: [operator.admin, operator.write]
+    policy:
+      tier_ceiling: T0
+      allowed_tiers: [T0, T1, T2, T3]
+      allowed_tools: []
+      denied_tools: []
+      status: active
+
+  webmaster:
+    display_name: "Webmaster — Site Manager"
+    role: site_manager
+    dispatch_priority: medium
+    adapter_type: openclaw_gateway
+    capabilities: "website and digital asset management agent"
+    crew: systems
+    gateway_endpoint: "${GATEWAY_URL}"
+    headers:
+      x-openclaw-token: "${WEBMASTER_OPENCLAW_TOKEN}"
+    policy:
+      tier_ceiling: T3
+      allowed_tiers: [T3]
+      allowed_tools:
+        - PublishTool
+        - SiteUpdateTool
+        - CDNInvalidateTool
+      denied_tools:
+        - MatterReadTool
+        - MatterCreateTool
+        - DocumentReadTool
+        - DocumentWriteTool
+        - ExternalTransmitTool
+        - VictimImpactTool
+      status: active
+
+  # ---------------------------------------------------------------------------
+  # Verification
+  # ---------------------------------------------------------------------------
+  iris:
+    display_name: "Iris — Document Analyst"
+    role: document_analysis
+    dispatch_priority: medium
+    adapter_type: openclaw_gateway
+    capabilities: "document analysis and metadata extraction agent"
+    crew: research
+    gateway_endpoint: "${GATEWAY_URL}"
+    headers:
+      x-openclaw-token: "${IRIS_OPENCLAW_TOKEN}"
+    policy:
+      tier_ceiling: T2
+      allowed_tiers: [T1, T2]
+      allowed_tools:
+        - MatterReadTool
+        - DocumentReadTool
+        - OCRPreprocessTool
+        - AnomalyDetectTool
+        - PIIRedactTool
+        - BatchProcessTool
+      denied_tools:
+        - ExternalTransmitTool
+        - PublishTool
+        - VictimImpactTool
+        - MatterCreateTool
+        - DocumentWriteTool
+      status: active
+
+  veritas:
+    display_name: "Veritas"
+    role: verification
+    dispatch_priority: medium
+    adapter_type: openclaw_gateway
+    capabilities: "fact verification and truth-checking agent"
+    crew: research
+    gateway_endpoint: "${GATEWAY_URL}"
+    headers:
+      x-openclaw-token: "${VERITAS_OPENCLAW_TOKEN}"
+    policy:
+      tier_ceiling: T1
+      allowed_tiers: [T1, T2, T3]
+      allowed_tools:
+        - MatterReadTool
+        - DocumentReadTool
+        - FactVerifyTool
+        - HallucinationCheckTool
+        - AuditLogTool
+      denied_tools:
+        - ExternalTransmitTool
+        - PublishTool
+        - MatterCreateTool
+        - DocumentWriteTool
+        - VictimImpactTool
+      status: active

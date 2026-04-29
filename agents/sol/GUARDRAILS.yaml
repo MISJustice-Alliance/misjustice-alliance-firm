@@ -1,0 +1,53 @@
+# GUARDRAILS.yaml — Sol
+# Behavioral guardrails, PII handling, output limits, and sandbox policy.
+# MISJustice Alliance Firm
+
+meta:
+  agent: sol
+  version: "1.0.0"
+  maintainer: MISJustice Alliance Platform Team
+
+pii_detection:
+  enabled: true
+  engine: nemoclaw
+  tier0_fields:
+    - legal_name
+    - date_of_birth
+    - ssn
+    - address_residential
+    - phone_direct
+    - email_direct
+    - government_id
+  action_on_detection: hard_block_and_escalate
+  redaction_required: true
+  allowed_output_tiers: [T1, T2, T3]
+
+output_limits:
+  max_tokens_per_response: 4096
+  max_structured_records_per_call: 50
+  max_table_rows_per_output: 100
+  require_human_review: true
+  mandatory_markers:
+    - "WORKFLOW STATUS REPORT"
+    - "PENDING OPERATOR REVIEW"
+
+sandbox_policy:
+  network_access: false
+  filesystem_access: false
+  subprocess_execution: false
+  allowed_apis:
+    - mcas_api
+    - mcp_servers
+    - open_notebook
+  denied_apis:
+    - agentic_mail
+    - social_connectors
+    - chandra_ocr_submit
+    - openrag_query_intake
+    - lawglance
+
+content_restrictions:
+  no_tier0_data_in_workflows: true
+  no_unauthorized_mcp_calls: true
+  no_production_changes_without_gate: true
+  no_external_communication: true

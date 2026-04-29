@@ -1,0 +1,87 @@
+tools:
+  - name: MatterReadTool
+    description: Read matter records from MCAS within Tier 1–2 scope.
+    allowed: true
+    usage: Retrieve case metadata, parties, events, and contact records.
+    schema:
+      input:
+        matter_id: string
+        fields: list[string]  # optional subset
+      output:
+        matter: object
+        classification: string
+    constraints:
+      - "Tier 1–2 data only"
+      - "No bulk extraction"
+      - "Log all access"
+
+  - name: DocumentReadTool
+    description: Read and summarize documents from the document store.
+    allowed: true
+    usage: Retrieve pleadings, correspondence, and evidentiary documents.
+    schema:
+      input:
+        document_id: string
+        section: string  # optional page/section
+      output:
+        content: string
+        classification: string
+    constraints:
+      - "Tier 1–2 data only"
+      - "No download or redistribution"
+      - "Log all access"
+
+  - name: FilingPrepTool
+    description: Prepare draft filings from templates and matter data.
+    allowed: true
+    usage: Generate court filings, motions, and administrative submissions.
+    schema:
+      input:
+        matter_id: string
+        filing_type: string
+        template_id: string
+        facts: object
+      output:
+        draft: string
+        template_used: string
+        classification: string
+    constraints:
+      - "Human approval required before submission"
+      - "No autonomous filing"
+      - "Validate all citations"
+
+  - name: DeadlineTrackingTool
+    description: Track and query procedural deadlines.
+    allowed: true
+    usage: Calculate deadlines, check expiration, and flag upcoming dates.
+    schema:
+      input:
+        matter_id: string
+        deadline_type: string  # e.g., statute_of_limitations, filing_deadline
+        trigger_date: string
+      output:
+        deadlines: list[object]
+        expired: list[object]
+        flags: list[string]
+    constraints:
+      - "Relies on accurate trigger dates"
+      - "Escalate if deadline appears missed"
+      - "No legal advice on remedies"
+
+  - name: FormCompletionTool
+    description: Complete standardized legal and administrative forms.
+    allowed: true
+    usage: Auto-fill forms using matter data and validated inputs.
+    schema:
+      input:
+        form_id: string
+        matter_id: string
+        overrides: object  # optional manual fields
+      output:
+        completed_form: string
+        missing_fields: list[string]
+        classification: string
+    constraints:
+      - "Human review required"
+      - "Flag incomplete or ambiguous fields"
+      - "No PII in log outputs"

@@ -1,0 +1,67 @@
+# config.yaml — Casey (Case Investigator)
+# Runtime configuration
+
+agent:
+  id: casey
+  name: Casey
+  version: "1.0.0"
+  role: case_investigator
+  data_tier: T1-T2
+
+runtime:
+  memory:
+    session:
+      enabled: true
+      max_tokens: 32000
+    cross_session:
+      enabled: true
+      backend: openrag
+      index: casey-referral-context
+      tier_floor: T2
+  verbose: false
+  delegation:
+    enabled: true
+    permitted_delegates:
+      - ollie            # Transmission handoff after human auth
+    prohibited_delegates:
+      - iris             # PI-tier research is out of scope
+  max_iter: 10
+  timeout_seconds: 180
+
+tiers:
+  permitted:
+    - T1
+    - T2
+  ceiling: T2
+  search:
+    tier: T2
+    osint_public: true
+    pi_tier: false
+
+features:
+  referral_packet_assembly: true
+  conflict_assessment: true
+  bar_verification: true
+  de_identification_verification: true
+  draft_queue_placement: true
+  external_transmission: false      # NEVER enabled
+
+safety:
+  escalation_protocol: true
+  hitl_gates:
+    - gate_1_research_scope_authorization
+    - gate_2_mcas_export_authorization
+    - gate_3_referral_packet_transmission
+  nemo_rails:
+    - no_autonomous_transmission
+    - deidentification_required
+    - export_requires_human_auth
+    - prohibited_osint_targets
+    - no_legal_analysis
+    - no_fabricated_credentials
+    - conflict_flag_required
+    - no_pi_tier_search
+
+---
+
+*MISJustice Alliance — Legal Research. Civil Rights. Public Record.*

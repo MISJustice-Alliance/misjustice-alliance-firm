@@ -1,0 +1,22 @@
+agent: chronology
+version: "0.1.0"
+
+models:
+  primary:
+    name: gpt-4o-mini
+    provider: openai
+    temperature: 0.1
+    max_tokens: 4096
+    top_p: 0.95
+
+  fallback:
+    name: gpt-4o
+    provider: openai
+    temperature: 0.1
+    max_tokens: 4096
+
+  local_fallback:
+    name: ollama/llama3
+    provider: ollama
+    temperature: 0.1
+    max_tokens: 4096

@@ -1,25 +1,25 @@
 from datetime import datetime
-from typing import List, Optional, Any
 from uuid import UUID
+
 from pydantic import BaseModel, Field
 
 from app.models import (
-    MatterClassification,
-    MatterStatus,
     ActorType,
     DocumentClassification,
     EventType,
+    MatterClassification,
+    MatterStatus,
 )
 
-
 # ---------- Actor ----------
+
 
 class ActorBase(BaseModel):
     actor_type: ActorType
     pseudonym: str
     real_name_encrypted: bytes
     role_in_matter: str
-    conflict_flags: List[str] = Field(default_factory=list)
+    conflict_flags: list[str] = Field(default_factory=list)
 
 
 class ActorCreate(ActorBase):
@@ -36,14 +36,15 @@ class ActorResponse(ActorBase):
 
 # ---------- Document ----------
 
+
 class DocumentBase(BaseModel):
     filename: str
     storage_key: str
     checksum_sha256: str
     classification: DocumentClassification
-    ocr_text: Optional[str] = ""
-    extracted_entities: Optional[dict] = Field(default_factory=dict)
-    redacted_version_key: Optional[str] = None
+    ocr_text: str | None = ""
+    extracted_entities: dict | None = Field(default_factory=dict)
+    redacted_version_key: str | None = None
     uploaded_by: UUID
 
 
@@ -64,12 +65,13 @@ class DocumentResponse(DocumentBase):
 
 # ---------- Event ----------
 
+
 class EventBase(BaseModel):
     event_type: EventType
-    actor_id: Optional[UUID] = None
-    agent_id: Optional[str] = None
+    actor_id: UUID | None = None
+    agent_id: str | None = None
     description: str
-    metadata: Optional[dict] = Field(default_factory=dict)
+    metadata: dict | None = Field(default_factory=dict)
 
 
 class EventCreate(EventBase):
@@ -87,12 +89,13 @@ class EventResponse(EventBase):
 
 # ---------- AuditEntry ----------
 
+
 class AuditEntryBase(BaseModel):
     action: str
     actor: str
-    ip_address: Optional[str] = None
-    user_agent: Optional[str] = None
-    diff: Optional[dict] = None
+    ip_address: str | None = None
+    user_agent: str | None = None
+    diff: dict | None = None
 
 
 class AuditEntryResponse(AuditEntryBase):
@@ -105,6 +108,7 @@ class AuditEntryResponse(AuditEntryBase):
 
 
 # ---------- Matter ----------
+
 
 class MatterBase(BaseModel):
     title: str
@@ -122,10 +126,10 @@ class MatterResponse(MatterBase):
     status: MatterStatus
     created_at: datetime
     updated_at: datetime
-    actors: List[ActorResponse] = Field(default_factory=list)
-    events: List[EventResponse] = Field(default_factory=list)
-    documents: List[DocumentResponse] = Field(default_factory=list)
-    audit_log: List[AuditEntryResponse] = Field(default_factory=list)
+    actors: list[ActorResponse] = Field(default_factory=list)
+    events: list[EventResponse] = Field(default_factory=list)
+    documents: list[DocumentResponse] = Field(default_factory=list)
+    audit_log: list[AuditEntryResponse] = Field(default_factory=list)
 
     class Config:
         from_attributes = True
@@ -141,22 +145,40 @@ class MatterSummaryResponse(BaseModel):
 
 # ---------- Search ----------
 
+
 class SearchRequest(BaseModel):
     query: str
-    tier: Optional[str] = None
-    matter_id: Optional[UUID] = None
-    filters: Optional[dict] = Field(default_factory=dict)
+    backends: list[str] | None = Field(
+        default=None,
+        description="Backends to query: postgres, elasticsearch, qdrant, neo4j. Defaults to all configured.",
+    )
+    limit: int = Field(default=20, ge=1, le=100)
+    # Legacy fields retained for backward compatibility
+    tier: str | None = None
+    matter_id: UUID | None = None
+    filters: dict | None = Field(default_factory=dict)
 
 
 class SearchResultItem(BaseModel):
     type: str  # matter, document, event
     id: UUID
-    title: Optional[str] = None
-    snippet: Optional[str] = None
-    score: Optional[float] = None
+    title: str | None = None
+    snippet: str | None = None
+    score: float | None = None
+    backend: str | None = None
+
+
+class BackendMetadata(BaseModel):
+    backend: str
+    status: str  # ok, unavailable, error
+    count: int = 0
+    error: str | None = None
+    latency_ms: float | None = None
 
 
 class SearchResponse(BaseModel):
-    results: List[SearchResultItem] = Field(default_factory=list)
-    sources: List[str] = Field(default_factory=list)
-    confidence: Optional[float] = None
+    results: list[SearchResultItem] = Field(default_factory=list)
+    sources: list[str] = Field(default_factory=list)
+    confidence: float | None = None
+    backends: list[BackendMetadata] = Field(default_factory=list)
+    total: int = 0

@@ -1,0 +1,54 @@
+# config.yaml — Atlas
+# Runtime configuration for the Atlas agent.
+# MISJustice Alliance Firm
+
+meta:
+  agent: atlas
+  version: "1.0.0"
+  maintainer: MISJustice Alliance Platform Team
+
+type_hints:
+  - coordinator
+  - read-only
+  - no-action
+
+runtime:
+  verbose: false
+  debug: false
+  max_iterations: 10
+  delegation_enabled: false
+  self_correction_enabled: true
+  human_in_the_loop: true
+  require_explicit_approval: true
+
+tiers:
+  data_tier: T1
+  tier_floor: T1
+  permitted_tiers: [T1, T2, T3]
+  excluded_tiers: [T0]
+
+memory:
+  session:
+    enabled: true
+    max_tokens: 32000
+    backend: langchain_buffer
+  cross_session:
+    enabled: true
+    scope: matter_created_by_atlas
+    backend: openrag
+    index: atlas-matter-context
+    tier_floor: T1
+
+features:
+  case_status_tracking: true
+  deadline_management: true
+  agent_workflow_orchestration: true
+  human_review_gate_triggering: true
+  case_lifecycle_reporting: true
+
+limits:
+  max_concurrent_sessions: 5
+  max_documents_per_session: 50
+  max_records_per_session: 100
+  max_ocr_file_size_mb: 50
+  output_max_tokens: 4096

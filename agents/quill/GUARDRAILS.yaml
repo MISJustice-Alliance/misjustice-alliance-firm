@@ -1,0 +1,57 @@
+# GUARDRAILS.yaml — Quill
+# Behavioral guardrails, PII handling, output limits, and sandbox policy.
+# MISJustice Alliance Firm
+
+meta:
+  agent: quill
+  version: "1.0.0"
+  maintainer: MISJustice Alliance Platform Team
+
+pii_detection:
+  enabled: true
+  engine: nemoclaw
+  tier0_fields:
+    - legal_name
+    - date_of_birth
+    - ssn
+    - address_residential
+    - phone_direct
+    - email_direct
+    - government_id
+  action_on_detection: hard_block_and_escalate
+  redaction_required: true
+  allowed_output_tiers: [T2, T3]
+
+output_limits:
+  max_tokens_per_response: 8192
+  max_structured_records_per_call: 10
+  max_table_rows_per_output: 50
+  require_human_review: true
+  mandatory_markers:
+    - "PENDING HUMAN REVIEW — NOT FINALIZED"
+
+sandbox_policy:
+  network_access: false
+  filesystem_access: false
+  subprocess_execution: false
+  allowed_apis:
+    - mcas_api_read_t2t3
+    - open_notebook
+    - document_store_read
+  denied_apis:
+    - lawglance
+    - auto_research_claw
+    - agentic_mail
+    - social_connectors
+    - mcas_write
+    - gitbook_publish
+    - mcas_read_tier0
+    - mcas_read_tier1
+
+content_restrictions:
+  no_legal_conclusions: true
+  no_fabricated_citations: true
+  no_fabricated_facts: true
+  no_autonomous_publication: true
+  no_tier0_handling: true
+  no_tier1_output: true

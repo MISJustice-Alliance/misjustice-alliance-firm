@@ -1,0 +1,31 @@
+# MISJustice Alliance Firm — Local Development Overrides
+# -----------------------------------------------------------------------------
+# docker compose automatically merges this file with docker-compose.yml.
+# Use it for local-only tweaks: bind mounts, extra ports, debugger configs.
+# NEVER commit secrets here.
+# -----------------------------------------------------------------------------
+
+services:
+  mcas:
+    volumes:
+      - ./services/mcas:/app:ro
+    environment:
+      MCAS_DEBUG: "true"
+    # Uncomment for live reload during development
+    # command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  lawglance:
+    volumes:
+      - ./services/lawglance:/app:ro
+
+  legal-research-mcp:
+    volumes:
+      - ./services/legal-research-mcp:/app:ro
+
+  legal-source-gateway:
+    volumes:
+      - ./services/legal-source-gateway:/app:ro
+
+  vane:
+    volumes:
+      - ./services/vane:/app:ro

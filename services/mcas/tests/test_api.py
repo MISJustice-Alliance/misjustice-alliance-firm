@@ -1,18 +1,9 @@
 import pytest
 from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import (
-    Matter,
-    MatterClassification,
-    MatterStatus,
-    EventType,
-    ActorType,
-    DocumentClassification,
-)
+from app.models import Matter, MatterStatus
 
-
-pytestmark = pytest.mark.asyncio
+pytestmark = pytest.mark.asyncio(loop_scope="session")
 
 
 class TestMatters:
@@ -73,9 +64,7 @@ class TestEvents:
             "description": "Initial intake completed",
             "metadata": {"source": "avery"},
         }
-        response = await client.post(
-            f"/api/v1/matters/{sample_matter.id}/events", json=payload
-        )
+        response = await client.post(f"/api/v1/matters/{sample_matter.id}/events", json=payload)
         assert response.status_code == 201
         data = response.json()
         assert data["matter_id"] == str(sample_matter.id)
@@ -103,9 +92,7 @@ class TestAudit:
         assert data[0]["matter_id"] == str(sample_matter.id)
 
     async def test_get_audit_log_matter_not_found(self, client: AsyncClient):
-        response = await client.get(
-            "/api/v1/matters/00000000-0000-0000-0000-000000000000/audit"
-        )
+        response = await client.get("/api/v1/matters/00000000-0000-0000-0000-000000000000/audit")
         assert response.status_code == 404
 
 
@@ -125,3 +112,62 @@ class TestSearch:
         data = response.json()
         assert data["results"] == []
         assert data["confidence"] == 0.0
+
+    async def test_search_with_backends_param(self, client: AsyncClient, sample_matter: Matter):
+        payload = {"query": "Test Matter", "backends": ["postgres"]}
+        response = await client.post("/api/v1/search", json=payload)
+        assert response.status_code == 200
+        data = response.json()
+        assert "results" in data
+        assert any(r["type"] == "matter" for r in data["results"])
+        assert "backends" in data
+        backend_names = {b["backend"] for b in data["backends"]}
+        assert "postgres" in backend_names
+        assert "elasticsearch" not in backend_names
+
+    async def test_search_with_limit(self, client: AsyncClient, sample_matter: Matter):
+        payload = {"query": "Test", "limit": 1}
+        response = await client.post("/api/v1/search", json=payload)
+        assert response.status_code == 200
+        data = response.json()
+        assert "results" in data
+        assert len(data["results"]) <= 1
+
+    async def test_search_returns_backend_metadata(
+        self, client: AsyncClient, sample_matter: Matter
+    ):
+        payload = {"query": "Test Matter"}
+        response = await client.post("/api/v1/search", json=payload)
+        assert response.status_code == 200
+        data = response.json()
+        assert "backends" in data
+        assert isinstance(data["backends"], list)
+        for meta in data["backends"]:
+            assert "backend" in meta
+            assert "status" in meta
+            assert "count" in meta
+
+    async def test_search_graceful_degradation(self, client: AsyncClient, sample_matter: Matter):
+        # When external backends are unavailable, postgres should still return results
+        payload = {
+            "query": "Test Matter",
+            "backends": ["postgres", "elasticsearch", "qdrant", "neo4j"],
+        }
+        response = await client.post("/api/v1/search", json=payload)
+        assert response.status_code == 200
+        data = response.json()
+        assert any(r["type"] == "matter" for r in data["results"])
+        backends = {b["backend"]: b for b in data["backends"]}
+        assert backends["postgres"]["status"] == "ok"
+        assert backends["elasticsearch"]["status"] == "unavailable"
+        assert backends["qdrant"]["status"] == "unavailable"
+        assert backends["neo4j"]["status"] == "unavailable"
+
+    async def test_search_dedupes_results(self, client: AsyncClient, sample_matter: Matter):
+        # Querying the same item from multiple backends should dedupe
+        payload = {"query": "Test Matter", "backends": ["postgres"]}
+        response = await client.post("/api/v1/search", json=payload)
+        assert response.status_code == 200
+        data = response.json()
+        ids = [(r["id"], r["type"]) for r in data["results"]]
+        assert len(ids) == len(set(ids))

@@ -1,0 +1,27 @@
+models:
+  primary:
+    id: claude-3-5-sonnet
+    provider: anthropic
+    purpose: "Legal research, analysis, and drafting"
+    temperature: 0.3
+    max_tokens: 4096
+    data_tiers: [T2, T3]
+
+  fallback:
+    id: claude-3-5-sonnet
+    provider: anthropic
+    purpose: "Same capabilities as primary; used on primary failure"
+    temperature: 0.3
+    max_tokens: 4096
+    data_tiers: [T2, T3]
+
+routing:
+  strategy: primary_only
+  fallback_on:
+    - rate_limit
+    - service_error
+    - timeout
+
+constraints:
+  - no_model_switching_for_restricted_data
+  - all_outputs_tagged_with_classification

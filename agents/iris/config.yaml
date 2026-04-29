@@ -1,0 +1,66 @@
+# config.yaml — Iris (Document Analyst)
+# Runtime configuration
+
+agent:
+  id: iris
+  name: Iris
+  version: "1.0.0"
+  role: document_analyst
+  data_tier: T1-T2
+
+runtime:
+  memory:
+    session:
+      enabled: true
+      max_tokens: 32000
+    cross_session:
+      enabled: true
+      backend: openrag
+      index: iris-document-context
+      tier_floor: T2
+  verbose: false
+  delegation:
+    enabled: true
+    permitted_delegates:
+      - rae
+      - lex
+      - casey
+    prohibited_delegates:
+      - ollie            # Iris never routes externally
+  max_iter: 10
+  timeout_seconds: 180
+
+tiers:
+  permitted:
+    - T1
+    - T2
+  ceiling: T2
+  document_access:
+    read: true
+    write: false
+    tier_ceiling: T2
+
+features:
+  document_reading: true
+  ocr_processing: true
+  document_analysis: true
+  anomaly_detection: true
+  pii_redaction: true
+  batch_processing: true
+  external_transmission: false      # NEVER enabled
+
+safety:
+  escalation_protocol: true
+  hitl_gates:
+    - gate_1_document_scope_authorization
+    - gate_2_analysis_release_for_downstream
+  nemo_rails:
+    - no_external_transmission
+    - no_complainant_data_in_outputs
+    - redaction_required_before_release
+    - anomaly_flag_requires_human_review
+    - no_unauthorized_document_access
+
+---
+
+*MISJustice Alliance — Legal Research. Civil Rights. Public Record.*

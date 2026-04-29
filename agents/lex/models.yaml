@@ -1,0 +1,413 @@
+# =============================================================================
+# agents/lex/models.yaml
+# Lex — Lead Counsel / Senior Analyst
+# LLM Model Registry and Inference Configuration
+# MISJustice Alliance Firm
+# =============================================================================
+# This file defines every LLM model available to Lex, including primary,
+# fallback, and evaluation sub-call configurations.
+#
+# All API credentials are injected via environment variables. No secrets here.
+# All model identifiers must match the aliases registered in LiteLLM config.
+# =============================================================================
+
+meta:
+  agent: lex
+  agent_version: "0.2.0"
+  schema_version: "1.0.0"
+  effective_date: "2026-04-16"
+  maintainer: MISJustice Alliance Platform Team
+
+# =============================================================================
+# LITELLM PROXY
+# =============================================================================
+litellm_proxy:
+  base_url_env: LITELLM_BASE_URL
+  master_key_env: LITELLM_MASTER_KEY
+  config_path: services/litellm/config.yaml
+  virtual_key_tag: lex
+
+# =============================================================================
+# MODEL REGISTRY
+# =============================================================================
+models:
+
+  # ---------------------------------------------------------------------------
+  # PRIMARY: claude-3-5-sonnet
+  # Role: Main response generation, tool calling, legal reasoning
+  # ---------------------------------------------------------------------------
+  - id: primary
+    litellm_model: claude-3-5-sonnet
+    litellm_alias: anthropic/claude-3-5-sonnet
+    provider: anthropic
+    api_key_env: ANTHROPIC_API_KEY
+    context_window_tokens: 200000
+    max_output_tokens: 8192
+    native_tools: true
+    native_streaming: true
+    native_structured_output: true
+    multimodal: false
+
+    inference_params:
+      temperature: 0.2
+      max_tokens: 8192
+      top_p: 1.0
+      frequency_penalty: 0.0
+      presence_penalty: 0.0
+      seed: null
+
+    request:
+      timeout_seconds: 120
+      streaming: true
+      retry_attempts: 2
+      retry_backoff_seconds: 3
+      retry_on:
+        - rate_limit_error
+        - service_unavailable
+        - gateway_timeout
+
+    token_budget:
+      prompt_tokens_warn_at: 150000
+      prompt_tokens_hard_limit: 190000
+      daily_prompt_tokens_warn_at: 500000
+      daily_completion_tokens_warn_at: 200000
+
+    cost_per_1k_tokens:
+      prompt: 0.003
+      completion: 0.015
+
+    use_for:
+      - legal_analysis_generation
+      - systemic_pattern_synthesis
+      - jurisdictional_trend_mapping
+      - procedural_forecasting
+      - cross_case_comparison
+      - risk_assessment
+      - citation_validation
+      - tool_call_reasoning
+
+    health_check:
+      endpoint: /health/liveliness
+      interval_seconds: 30
+      timeout_seconds: 5
+
+    cost_center: lex-llm-primary
+    notes: >
+      Primary model for all Lex analysis and reasoning tasks.
+      Chosen for strong legal reasoning, long-context handling, and
+      structured output reliability. 8192 max_tokens supports
+      comprehensive legal analysis reports.
+
+  # ---------------------------------------------------------------------------
+  # FALLBACK 1: gpt-4o
+  # Role: Drop-in replacement when Anthropic is unreachable or rate-limited
+  # ---------------------------------------------------------------------------
+  - id: fallback_1
+    litellm_model: gpt-4o
+    litellm_alias: openai/gpt-4o
+    provider: openai
+    api_key_env: OPENAI_API_KEY
+    context_window_tokens: 128000
+    max_output_tokens: 4096
+    native_tools: true
+    native_streaming: true
+    native_structured_output: true
+    multimodal: true
+
+    inference_params:
+      temperature: 0.2
+      max_tokens: 4096
+      top_p: 1.0
+
+    request:
+      timeout_seconds: 120
+      streaming: true
+      retry_attempts: 2
+      retry_backoff_seconds: 3
+      retry_on:
+        - rate_limit_error
+        - service_unavailable
+        - gateway_timeout
+
+    token_budget:
+      prompt_tokens_warn_at: 100000
+      prompt_tokens_hard_limit: 120000
+      daily_prompt_tokens_warn_at: 500000
+      daily_completion_tokens_warn_at: 200000
+
+    cost_per_1k_tokens:
+      prompt: 0.005
+      completion: 0.015
+
+    activate_when:
+      - primary_unreachable
+      - primary_rate_limited
+      - primary_timeout_exceeded
+
+    operator_notice:
+      enabled: true
+      message: >
+        Lex is operating on GPT-4o (OpenAI) — the primary model
+        (Claude 3.5 Sonnet) is currently unavailable. Full functionality
+        is maintained with reduced max_tokens (4096 vs 8192).
+
+    use_for:
+      - legal_analysis_generation
+      - systemic_pattern_synthesis
+      - jurisdictional_trend_mapping
+      - procedural_forecasting
+      - cross_case_comparison
+      - risk_assessment
+      - citation_validation
+      - tool_call_reasoning
+
+    cost_center: lex-llm-fallback-1
+    notes: >
+      First fallback. GPT-4o offers comparable instruction-following
+      and tool-calling quality, with a smaller context window and
+      lower max_tokens (4096). Long reports may need to be split.
+
+  # ---------------------------------------------------------------------------
+  # FALLBACK 2: llama3 (Ollama local inference)
+  # Role: Air-gapped / fully local fallback when all external APIs are down
+  # ---------------------------------------------------------------------------
+  - id: fallback_2
+    litellm_model: ollama/llama3
+    litellm_alias: ollama/llama3
+    provider: ollama
+    base_url_env: OLLAMA_BASE_URL
+    api_key_env: null
+    context_window_tokens: 8192
+    max_output_tokens: 4096
+    native_tools: false
+    native_streaming: true
+    native_structured_output: false
+    multimodal: false
+
+    inference_params:
+      temperature: 0.2
+      max_tokens: 4096
+      top_p: 0.9
+      num_ctx: 8192
+
+    request:
+      timeout_seconds: 120
+      streaming: true
+      retry_attempts: 1
+      retry_backoff_seconds: 5
+
+    tool_calling_adaptation:
+      method: litellm_function_call_shim
+      reliability: degraded
+      max_tool_calls_per_turn: 3
+
+    activate_when:
+      - all_external_providers_unreachable
+
+    operator_notice:
+      enabled: true
+      severity: warning
+      message: >
+        Lex is operating on local inference (Ollama/llama3). All external
+        LLM providers are currently unavailable. Response quality and speed
+        are reduced. Tool calling reliability is degraded. Complex legal
+        analysis should be deferred until external providers are restored.
+
+    capability_limitations:
+      - tool_calling_unreliable
+      - no_structured_json_output
+      - reduced_instruction_following
+      - context_window_8k_only
+      - max_output_4k_only
+
+    cost_per_1k_tokens:
+      prompt: 0.0
+      completion: 0.0
+
+    cost_center: lex-llm-fallback-2-local
+    notes: >
+      Air-gapped local fallback. Lex remains operational for basic
+      analysis tasks. Complex multi-case synthesis and long-form reports
+      should be deferred until external providers are restored.
+
+  # ---------------------------------------------------------------------------
+  # EVALUATION: claude-3-5-sonnet (shared with primary)
+  # Role: LangSmith evaluation and output quality scoring
+  # ---------------------------------------------------------------------------
+  - id: evaluation
+    litellm_model: claude-3-5-sonnet
+    litellm_alias: anthropic/claude-3-5-sonnet
+    provider: anthropic
+    api_key_env: ANTHROPIC_API_KEY
+    context_window_tokens: 200000
+    max_output_tokens: 1024
+    native_tools: false
+    native_streaming: false
+
+    inference_params:
+      temperature: 0.0
+      max_tokens: 1024
+      response_format:
+        type: json_object
+
+    request:
+      timeout_seconds: 30
+      streaming: false
+      retry_attempts: 2
+      retry_backoff_seconds: 5
+
+    use_for:
+      - langsmith_trace_evaluation
+      - legal_advice_boundary_check
+      - source_citation_check
+      - data_classification_compliance_check
+
+    cost_center: lex-llm-evaluation
+    invoked_by: langsmith_evaluation_jobs
+    notes: >
+      Used exclusively by LangSmith evaluator jobs to score Lex output traces
+      for policy compliance, source attribution, and hard limit enforcement.
+
+# =============================================================================
+# FALLBACK CHAIN
+# =============================================================================
+fallback_chain:
+  strategy: ordered_with_conditions
+  chain:
+    - model_id: primary
+      condition: always_try_first
+      healthy: true
+
+    - model_id: fallback_1
+      condition:
+        primary_status:
+          - unreachable
+          - rate_limited
+          - timeout
+      healthy: true
+
+    - model_id: fallback_2
+      condition:
+        all_external_providers_status:
+          - unreachable
+      healthy: true
+      degraded_mode: true
+
+  recovery:
+    retry_primary_after_seconds: 300
+    auto_restore_to_primary: true
+    restore_notify_operator: true
+    restore_message: >
+      Primary LLM (Claude 3.5 Sonnet) is available again. Lex has restored
+      to primary inference.
+
+# =============================================================================
+# PER-ROLE MODEL ASSIGNMENTS
+# =============================================================================
+role_assignments:
+  default: primary
+  roles:
+    - role: legal_analysis_generation
+      model_id: primary
+      fallback_chain: true
+
+    - role: systemic_pattern_synthesis
+      model_id: primary
+      fallback_chain: true
+
+    - role: jurisdictional_trend_mapping
+      model_id: primary
+      fallback_chain: true
+
+    - role: procedural_forecasting
+      model_id: primary
+      fallback_chain: true
+
+    - role: cross_case_comparison
+      model_id: primary
+      fallback_chain: true
+
+    - role: risk_assessment
+      model_id: primary
+      fallback_chain: true
+
+    - role: citation_validation
+      model_id: primary
+      fallback_chain: true
+
+    - role: langsmith_trace_evaluation
+      model_id: evaluation
+      fallback_chain: false
+      invoked_by: langsmith_evaluation_jobs
+
+# =============================================================================
+# TOKEN BUDGET POLICY
+# =============================================================================
+token_budget_policy:
+  enforcement: warn_and_log
+
+  prompt_compression:
+    enabled: true
+    trigger_at_percent: 80
+    strategy:
+      - truncate_historical_context
+      - preserve_system_prompt
+      - preserve_current_task_scope
+
+  daily_budget_usd:
+    warn_at: 10.00
+    alert_at: 20.00
+    hard_stop_at: null
+    alert_channels:
+      - loki_log
+
+# =============================================================================
+# LITELLM ROUTER HINTS
+# =============================================================================
+litellm_router_hints:
+  prefer_low_latency: false
+  virtual_key_env: LITELLM_LEX_VIRTUAL_KEY
+  rate_limits:
+    rpm: 30
+    tpm: 50000
+    daily_usd_limit: 25.00
+  circuit_breaker:
+    failure_threshold: 3
+    window_seconds: 60
+    cooldown_seconds: 120
+
+# =============================================================================
+# OBSERVABILITY
+# =============================================================================
+observability:
+  langsmith:
+    tag_model_id: true
+    tag_fallback_state: true
+    tag_role: true
+
+  prometheus:
+    model_label_source: litellm_model
+    provider_label_source: provider
+
+# =============================================================================
+# CHANGE POLICY
+# =============================================================================
+change_policy:
+  behavioral_change_triggers_soul_review:
+    - inference_params.temperature
+    - fallback_chain
+    - role_assignments
+    - token_budget_policy.enforcement
+
+  non_behavioral_changes:
+    - cost_per_1k_tokens
+    - token_budget.daily_warn_at
+    - litellm_router_hints.rate_limits
+    - model health_check intervals
+
+  version_history:
+    - version: "1.0.0"
+      date: "2026-04-16"
+      author: MISJustice Alliance Platform Team
+      changes: Initial version. Primary Claude 3.5 Sonnet, fallback GPT-4o,
+               local fallback llama3 via Ollama. Evaluation on Claude 3.5 Sonnet.

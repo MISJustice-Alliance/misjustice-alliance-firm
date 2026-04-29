@@ -1,0 +1,40 @@
+# models.yaml — Avery
+# Primary and fallback model configuration with LiteLLM routing.
+# MISJustice Alliance Firm
+
+meta:
+  agent: avery
+  version: "1.0.0"
+  maintainer: MISJustice Alliance Platform Team
+
+routing:
+  provider: litellm
+  proxy_url_env: LITELLM_PROXY_URL
+  api_key_env: LITELLM_API_KEY
+
+models:
+  primary:
+    name: openai/gpt-4o
+    temperature: 0.1
+    max_tokens: 4096
+    timeout_seconds: 120
+    purpose: >
+      Primary model for intake sessions, MCAS record creation, and structured
+      output generation. Selected for strong instruction-following and schema
+      fidelity at low temperature.
+
+  fallback:
+    name: anthropic/claude-3-5-sonnet-20241022
+    temperature: 0.1
+    max_tokens: 4096
+    timeout_seconds: 120
+    purpose: >
+      Fallback model when primary is unavailable or rate-limited.
+      Maintains identical temperature and token limits for output consistency.
+
+retry:
+  max_attempts: 3
+  backoff_seconds: 5
+  failover_to_fallback: true
+  circuit_breaker_failures: 5
+  circuit_breaker_reset_seconds: 60

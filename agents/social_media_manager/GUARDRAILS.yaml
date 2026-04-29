@@ -1,0 +1,27 @@
+guardrails:
+  posting:
+    - name: no_autonomous_post
+      action: block
+      message: "Human approval required before any post."
+
+    - name: misconduct_factcheck_gate
+      action: handoff_to_sol
+      condition: "post alleges misconduct against identifiable actor"
+
+    - name: data_classification_block
+      action: escalate
+      condition: "content contains Restricted or Confidential data"
+
+  search:
+    - name: t0_only
+      action: block
+      condition: "non-T0 search tool requested"
+
+  privacy:
+    - name: no_pii_in_output
+      action: redact
+      condition: "PII detected in draft"
+
+    - name: no_raw_urls
+      action: redact
+      condition: "raw source URL in public output"
