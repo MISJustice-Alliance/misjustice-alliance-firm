@@ -69,3 +69,4 @@ volumes/
 
 # Misc
 *.log
+apps/website/backups/site-backup/*.tar.gz
