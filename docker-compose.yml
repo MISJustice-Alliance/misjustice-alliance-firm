@@ -47,14 +47,14 @@ services:
       MCAS_DATABASE_URL: ${MCAS_DATABASE_URL:-postgresql+asyncpg://mcas:mcas@postgres:5432/mcas}
       MCAS_REDIS_URL: ${MCAS_REDIS_URL:-redis://redis:6379/0}
       MCAS_MINIO_ENDPOINT: ${MCAS_MINIO_ENDPOINT:-minio:9000}
-      MCAS_MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
-      MCAS_MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      MCAS_MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
+      MCAS_MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
       MCAS_NEO4J_URI: ${MCAS_NEO4J_URI:-bolt://neo4j:7687}
       MCAS_NEO4J_USER: ${NEO4J_AUTH_USER:-neo4j}
-      MCAS_NEO4J_PASSWORD: ${NEO4J_AUTH_PASSWORD:-neo4jpassword}
+      MCAS_NEO4J_PASSWORD: ${NEO4J_AUTH_PASSWORD}
       MCAS_ELASTICSEARCH_URL: ${MCAS_ELASTICSEARCH_URL:-http://elasticsearch:9200}
       MCAS_QDRANT_URL: ${MCAS_QDRANT_URL:-http://qdrant:6333}
-      MCAS_SECRET_KEY: ${MCAS_SECRET_KEY:-dev-secret-change-me-in-production}
+      MCAS_SECRET_KEY: ${MCAS_SECRET_KEY}
     ports:
       - "8001:8000"
     networks:
@@ -110,7 +110,7 @@ services:
     <<: *restart-policy
     logging: *default-logging
     environment:
-      NEO4J_AUTH: ${NEO4J_AUTH:-neo4j/neo4jpassword}
+      NEO4J_AUTH: ${NEO4J_AUTH}
       NEO4J_PLUGINS: '["apoc", "gds"]'
       NEO4J_dbms_memory_heap_max__size: ${NEO4J_HEAP_MAX:-1G}
       NEO4J_dbms_memory_pagecache_size: ${NEO4J_PAGECACHE:-512M}
@@ -275,8 +275,8 @@ services:
     <<: *restart-policy
     logging: *default-logging
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     command: server /data --console-address ":9001"
     volumes:
       - minio_data:/data
