@@ -1,6 +1,12 @@
 # MISJustice Alliance Firm — Agent Registry
-# Maps all agents to their Paperclip registration profiles.
+# Maps all agents to their Paperclip registration profiles and local policies.
 # Each entry corresponds to an agent directory under agents/.
+#
+# Policy block (used when Paperclip API is unavailable):
+#   tier_ceiling   — maximum data tier this agent may access (T0 > T1 > T2 > T3)
+#   allowed_tools  — permitted tool names (empty = all allowed unless denied)
+#   denied_tools   — explicitly blocked tool names
+#   status         — active | inactive | suspended
 
 registry:
   # ---------------------------------------------------------------------------
@@ -23,6 +29,21 @@ registry:
       - rae
       - chronology
       - iris
+    policy:
+      tier_ceiling: T1
+      allowed_tiers: [T1, T2, T3]
+      allowed_tools:
+        - MatterReadTool
+        - MatterCreateTool
+        - DocumentUploadTool
+        - DocumentReadTool
+        - OCRPreprocessTool
+        - TierClassifyTool
+      denied_tools:
+        - ExternalTransmitTool
+        - VictimImpactTool
+        - PublishTool
+      status: active
 
   # ---------------------------------------------------------------------------
   # Research Crew
@@ -37,6 +58,23 @@ registry:
     gateway_endpoint: "${GATEWAY_URL}"
     headers:
       x-openclaw-token: "${MIRA_OPENCLAW_TOKEN}"
+    policy:
+      tier_ceiling: T2
+      allowed_tiers: [T2, T3]
+      allowed_tools:
+        - MatterReadTool
+        - DocumentReadTool
+        - SearXNGSearchTool
+        - CourtListenerTool
+        - CAPTool
+        - StatuteLookupTool
+        - PrecedentAnalyzeTool
+      denied_tools:
+        - ExternalTransmitTool
+        - VictimImpactTool
+        - PublishTool
+        - MatterCreateTool
+      status: active
 
   casey:
     display_name: "Casey — Case Investigator"
@@ -48,6 +86,20 @@ registry:
     gateway_endpoint: "${GATEWAY_URL}"
     headers:
       x-openclaw-token: "${CASEY_OPENCLAW_TOKEN}"
+    policy:
+      tier_ceiling: T2
+      allowed_tiers: [T2, T3]
+      allowed_tools:
+        - MatterReadTool
+        - DocumentReadTool
+        - SearXNGSearchTool
+        - FactVerifyTool
+        - WitnessSummaryTool
+      denied_tools:
+        - ExternalTransmitTool
+        - PublishTool
+        - VictimImpactTool
+      status: active
 
   lex:
     display_name: "Lex — Lead Counsel"
@@ -59,6 +111,25 @@ registry:
     gateway_endpoint: "${GATEWAY_URL}"
     headers:
       x-openclaw-token: "${LEX_OPENCLAW_TOKEN}"
+    policy:
+      tier_ceiling: T1
+      allowed_tiers: [T1, T2, T3]
+      allowed_tools:
+        - MatterReadTool
+        - MatterCreateTool
+        - DocumentReadTool
+        - DocumentWriteTool
+        - SearXNGSearchTool
+        - CourtListenerTool
+        - CAPTool
+        - StatuteLookupTool
+        - PrecedentAnalyzeTool
+        - StrategyTool
+        - BriefReviewTool
+      denied_tools:
+        - ExternalTransmitTool
+        - PublishTool
+      status: active
 
   # ---------------------------------------------------------------------------
   # Drafting Crew
@@ -73,6 +144,21 @@ registry:
     gateway_endpoint: "${GATEWAY_URL}"
     headers:
       x-openclaw-token: "${QUILL_OPENCLAW_TOKEN}"
+    policy:
+      tier_ceiling: T2
+      allowed_tiers: [T2, T3]
+      allowed_tools:
+        - MatterReadTool
+        - DocumentReadTool
+        - DocumentWriteTool
+        - DraftMotionTool
+        - DraftMemoTool
+        - BluebookFormatTool
+      denied_tools:
+        - ExternalTransmitTool
+        - PublishTool
+        - MatterCreateTool
+      status: active
 
   citation_authority:
     display_name: "Citation — Citation Auditor"
@@ -84,6 +170,21 @@ registry:
     gateway_endpoint: "${GATEWAY_URL}"
     headers:
       x-openclaw-token: "${CITATION_OPENCLAW_TOKEN}"
+    policy:
+      tier_ceiling: T2
+      allowed_tiers: [T2, T3]
+      allowed_tools:
+        - MatterReadTool
+        - DocumentReadTool
+        - CitationVerifyTool
+        - BluebookFormatTool
+        - HallucinationCheckTool
+      denied_tools:
+        - ExternalTransmitTool
+        - PublishTool
+        - MatterCreateTool
+        - DocumentWriteTool
+      status: active
 
   chronology:
     display_name: "Chronology — Timeline Agent"
@@ -95,6 +196,20 @@ registry:
     gateway_endpoint: "${GATEWAY_URL}"
     headers:
       x-openclaw-token: "${CHRONOLOGY_OPENCLAW_TOKEN}"
+    policy:
+      tier_ceiling: T2
+      allowed_tiers: [T2, T3]
+      allowed_tools:
+        - MatterReadTool
+        - DocumentReadTool
+        - TimelineBuildTool
+        - DateConflictDetectTool
+      denied_tools:
+        - ExternalTransmitTool
+        - PublishTool
+        - MatterCreateTool
+        - DocumentWriteTool
+      status: active
 
   # ---------------------------------------------------------------------------
   # Advocacy Crew
@@ -109,6 +224,21 @@ registry:
     gateway_endpoint: "${GATEWAY_URL}"
     headers:
       x-openclaw-token: "${RAE_OPENCLAW_TOKEN}"
+    policy:
+      tier_ceiling: T2
+      allowed_tiers: [T2, T3]
+      allowed_tools:
+        - MatterReadTool
+        - DocumentReadTool
+        - VictimImpactTool
+        - CivilRightsFramingTool
+        - PolicyContextTool
+        - SearXNGSearchTool
+      denied_tools:
+        - ExternalTransmitTool
+        - PublishTool
+        - MatterCreateTool
+      status: active
 
   social_media_manager:
     display_name: "Social Media Manager — Public Advocate"
@@ -120,6 +250,20 @@ registry:
     gateway_endpoint: "${GATEWAY_URL}"
     headers:
       x-openclaw-token: "${SOCIAL_OPENCLAW_TOKEN}"
+    policy:
+      tier_ceiling: T3
+      allowed_tiers: [T3]
+      allowed_tools:
+        - MatterReadTool
+        - PublishTool
+        - SocialDraftTool
+        - CampaignTool
+      denied_tools:
+        - DocumentReadTool
+        - MatterCreateTool
+        - VictimImpactTool
+        - ExternalTransmitTool
+      status: active
 
   # ---------------------------------------------------------------------------
   # Support Crew
@@ -134,10 +278,25 @@ registry:
     gateway_endpoint: "${GATEWAY_URL}"
     headers:
       x-openclaw-token: "${OLLIE_OPENCLAW_TOKEN}"
+    policy:
+      tier_ceiling: T2
+      allowed_tiers: [T2, T3]
+      allowed_tools:
+        - MatterReadTool
+        - DocumentReadTool
+        - FormFillTool
+        - DeadlineTrackTool
+        - FilingPrepTool
+      denied_tools:
+        - ExternalTransmitTool
+        - PublishTool
+        - VictimImpactTool
+        - MatterCreateTool
+      status: active
 
   atlas:
     display_name: "Atlas"
-    role: support
+    role: coordinator
     dispatch_priority: low
     adapter_type: openclaw_gateway
     capabilities: "general support and logistics agent"
@@ -145,6 +304,21 @@ registry:
     gateway_endpoint: "${GATEWAY_URL}"
     headers:
       x-openclaw-token: "${ATLAS_OPENCLAW_TOKEN}"
+    policy:
+      tier_ceiling: T1
+      allowed_tiers: [T1, T2, T3]
+      allowed_tools:
+        - MatterReadTool
+        - MatterCreateTool
+        - DocumentReadTool
+        - DocumentWriteTool
+        - StrategyTool
+        - AgentOrchestrateTool
+        - WorkflowTriggerTool
+      denied_tools:
+        - ExternalTransmitTool
+        - PublishTool
+      status: active
 
   # ---------------------------------------------------------------------------
   # Systems Crew
@@ -159,6 +333,23 @@ registry:
     gateway_endpoint: "${GATEWAY_URL}"
     headers:
       x-openclaw-token: "${SOL_OPENCLAW_TOKEN}"
+    policy:
+      tier_ceiling: T1
+      allowed_tiers: [T1, T2, T3]
+      allowed_tools:
+        - MatterReadTool
+        - MatterCreateTool
+        - DocumentReadTool
+        - DocumentWriteTool
+        - MCPTool
+        - WorkflowTriggerTool
+        - AgentOrchestrateTool
+        - SystemHealthTool
+      denied_tools:
+        - ExternalTransmitTool
+        - PublishTool
+        - VictimImpactTool
+      status: active
 
   hermes:
     display_name: "Hermes — Supervisor"
@@ -171,6 +362,12 @@ registry:
     headers:
       x-hermes-token: "${HERMES_TOKEN}"
     scopes: [operator.admin, operator.write]
+    policy:
+      tier_ceiling: T0
+      allowed_tiers: [T0, T1, T2, T3]
+      allowed_tools: []
+      denied_tools: []
+      status: active
 
   webmaster:
     display_name: "Webmaster — Site Manager"
@@ -182,6 +379,21 @@ registry:
     gateway_endpoint: "${GATEWAY_URL}"
     headers:
       x-openclaw-token: "${WEBMASTER_OPENCLAW_TOKEN}"
+    policy:
+      tier_ceiling: T3
+      allowed_tiers: [T3]
+      allowed_tools:
+        - PublishTool
+        - SiteUpdateTool
+        - CDNInvalidateTool
+      denied_tools:
+        - MatterReadTool
+        - MatterCreateTool
+        - DocumentReadTool
+        - DocumentWriteTool
+        - ExternalTransmitTool
+        - VictimImpactTool
+      status: active
 
   # ---------------------------------------------------------------------------
   # Verification
@@ -196,6 +408,23 @@ registry:
     gateway_endpoint: "${GATEWAY_URL}"
     headers:
       x-openclaw-token: "${IRIS_OPENCLAW_TOKEN}"
+    policy:
+      tier_ceiling: T2
+      allowed_tiers: [T1, T2]
+      allowed_tools:
+        - MatterReadTool
+        - DocumentReadTool
+        - OCRPreprocessTool
+        - AnomalyDetectTool
+        - PIIRedactTool
+        - BatchProcessTool
+      denied_tools:
+        - ExternalTransmitTool
+        - PublishTool
+        - VictimImpactTool
+        - MatterCreateTool
+        - DocumentWriteTool
+      status: active
 
   veritas:
     display_name: "Veritas"
@@ -207,3 +436,19 @@ registry:
     gateway_endpoint: "${GATEWAY_URL}"
     headers:
       x-openclaw-token: "${VERITAS_OPENCLAW_TOKEN}"
+    policy:
+      tier_ceiling: T1
+      allowed_tiers: [T1, T2, T3]
+      allowed_tools:
+        - MatterReadTool
+        - DocumentReadTool
+        - FactVerifyTool
+        - HallucinationCheckTool
+        - AuditLogTool
+      denied_tools:
+        - ExternalTransmitTool
+        - PublishTool
+        - MatterCreateTool
+        - DocumentWriteTool
+        - VictimImpactTool
+      status: active

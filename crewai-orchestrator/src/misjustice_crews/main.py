@@ -55,6 +55,16 @@ def cmd_validate_config(_args):
     print("Config validation PASSED")
 
 
+def cmd_run_bridge(args):
+    import uvicorn
+    uvicorn.run(
+        "misjustice_crews.bridge.server:app",
+        host=args.host,
+        port=args.port,
+        reload=args.reload,
+    )
+
+
 def main():
     parser = argparse.ArgumentParser(description="Misjustice Crews Orchestrator")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -67,6 +77,12 @@ def main():
     sub.add_parser("list-agents", help="List all registered agents").set_defaults(func=cmd_list_agents)
     sub.add_parser("list-crews", help="List all crews").set_defaults(func=cmd_list_crews)
     sub.add_parser("validate-config", help="Validate orchestrator configuration").set_defaults(func=cmd_validate_config)
+
+    bridge_p = sub.add_parser("bridge", help="Run the crewAI bridge HTTP server")
+    bridge_p.add_argument("--host", default="0.0.0.0")
+    bridge_p.add_argument("--port", type=int, default=8002)
+    bridge_p.add_argument("--reload", action="store_true", default=False)
+    bridge_p.set_defaults(func=cmd_run_bridge)
 
     args = parser.parse_args()
     args.func(args)

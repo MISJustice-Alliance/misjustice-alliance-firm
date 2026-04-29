@@ -200,7 +200,7 @@ async def search(
         elif (r.score or 0) > (seen[key].score or 0):
             seen[key] = r
 
-    deduped = list(seen.values())
+    deduped = list(seen.values())[: payload.limit]
     total = len(deduped)
 
     # Simple confidence heuristic: ratio of results to limit, capped at 1.0

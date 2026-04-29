@@ -1,6 +1,8 @@
 import pytest
 from httpx import AsyncClient
 
+pytestmark = pytest.mark.asyncio(loop_scope="session")
+
 from app.models import (
     Matter,
     MatterStatus,

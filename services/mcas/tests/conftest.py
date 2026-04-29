@@ -5,6 +5,7 @@ import pytest_asyncio
 from httpx import AsyncClient
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.pool import NullPool
 
 from app.database import Base, get_db, get_session_maker, set_engine
 from app.main import app
@@ -18,8 +19,8 @@ TEST_DATABASE_URL = os.getenv(
 
 @pytest_asyncio.fixture(scope="session", autouse=True, loop_scope="session")
 async def setup_database():
-    # Create engine on the session event loop to avoid asyncpg loop mismatch
-    engine = create_async_engine(TEST_DATABASE_URL, echo=False, future=True)
+    # NullPool prevents asyncpg connections from being pooled across event loops
+    engine = create_async_engine(TEST_DATABASE_URL, echo=False, future=True, poolclass=NullPool)
     set_engine(engine)
 
     async with engine.begin() as conn:

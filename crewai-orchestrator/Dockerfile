@@ -14,6 +14,9 @@ FROM python:3.12-slim AS runtime
 
 WORKDIR /app
 
+# Install curl for healthcheck
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+
 # Create non-root user
 RUN useradd -m -u 1000 appuser
 
@@ -28,4 +31,5 @@ ENV PYTHONPATH=/app/src
 
 USER appuser
 
+# Default command runs CLI; override for bridge server
 CMD ["python", "-m", "misjustice_crews.main"]

@@ -91,7 +91,7 @@ services:
       - postgres_data:/var/lib/postgresql/data/pgdata
       - ./postgres_data/init-scripts:/docker-entrypoint-initdb.d:ro
     ports:
-      - "5432:5432"
+      - "5433:5432"
     networks:
       - backend
     healthcheck:
@@ -111,7 +111,7 @@ services:
     logging: *default-logging
     environment:
       NEO4J_AUTH: ${NEO4J_AUTH}
-      NEO4J_PLUGINS: '["apoc", "gds"]'
+      NEO4J_PLUGINS: '["apoc", "graph-data-science"]'
       NEO4J_dbms_memory_heap_max__size: ${NEO4J_HEAP_MAX:-1G}
       NEO4J_dbms_memory_pagecache_size: ${NEO4J_PAGECACHE:-512M}
     volumes:
@@ -188,7 +188,7 @@ services:
   # SearXNG — Privacy Metasearch
   # ---------------------------------------------------------------------------
   searxng:
-    image: searxng/searxng:2024.11.15-94a3ff695
+    image: searxng/searxng:latest
     container_name: misjustice-searxng
     <<: *restart-policy
     logging: *default-logging
@@ -327,7 +327,7 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:5678/healthz || exit 1"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:5678/healthz || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -475,6 +475,44 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ---------------------------------------------------------------------------
+  # crewAI Bridge — Maps OpenClaw dispatches to crewAI crew invocations
+  # ---------------------------------------------------------------------------
+  crewai-bridge:
+    build:
+      context: crewai-orchestrator
+      dockerfile: Dockerfile
+    container_name: misjustice-crewai-bridge
+    <<: *restart-policy
+    logging: *default-logging
+    environment:
+      LITELLM_PROXY_URL: ${LITELLM_PROXY_URL:-http://litellm-proxy:4000}
+      LITELLM_API_KEY: ${LITELLM_API_KEY}
+      MCAS_API_URL: ${MCAS_API_URL:-http://mcas:8000}
+      MCAS_API_TOKEN: ${MCAS_API_TOKEN}
+      N8N_WEBHOOK_URL: ${N8N_WEBHOOK_URL}
+      PAPERCLIP_URL: ${PAPERCLIP_URL}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      LOG_LEVEL: ${CREWAI_LOG_LEVEL:-INFO}
+    command: ["python", "-m", "uvicorn", "misjustice_crews.bridge.server:app", "--host", "0.0.0.0", "--port", "8002"]
+    ports:
+      - "8002:8002"
+    networks:
+      - frontend
+      - backend
+      - agent-net
+    depends_on:
+      redis:
+        condition: service_healthy
+      litellm-proxy:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8002/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
