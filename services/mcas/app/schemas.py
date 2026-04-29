@@ -13,6 +13,7 @@ from app.models import (
 
 # ---------- Actor ----------
 
+
 class ActorBase(BaseModel):
     actor_type: ActorType
     pseudonym: str
@@ -34,6 +35,7 @@ class ActorResponse(ActorBase):
 
 
 # ---------- Document ----------
+
 
 class DocumentBase(BaseModel):
     filename: str
@@ -63,6 +65,7 @@ class DocumentResponse(DocumentBase):
 
 # ---------- Event ----------
 
+
 class EventBase(BaseModel):
     event_type: EventType
     actor_id: UUID | None = None
@@ -86,6 +89,7 @@ class EventResponse(EventBase):
 
 # ---------- AuditEntry ----------
 
+
 class AuditEntryBase(BaseModel):
     action: str
     actor: str
@@ -104,6 +108,7 @@ class AuditEntryResponse(AuditEntryBase):
 
 
 # ---------- Matter ----------
+
 
 class MatterBase(BaseModel):
     title: str
@@ -139,6 +144,7 @@ class MatterSummaryResponse(BaseModel):
 
 
 # ---------- Search ----------
+
 
 class SearchRequest(BaseModel):
     query: str

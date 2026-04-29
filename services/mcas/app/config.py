@@ -9,8 +9,7 @@ class Settings(BaseSettings):
     debug: bool = False
 
     database_url: str = os.getenv(
-        "DATABASE_URL",
-        "postgresql+asyncpg://postgres:postgres@localhost:5432/mcas"
+        "DATABASE_URL", "postgresql+asyncpg://postgres:postgres@localhost:5432/mcas"
     )
     # Pool settings for production
     db_pool_size: int = 10

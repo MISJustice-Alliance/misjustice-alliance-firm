@@ -29,9 +29,7 @@ async def _generate_display_id(db: AsyncSession) -> str:
 
 
 async def _get_matter_or_404(db: AsyncSession, matter_id: uuid.UUID) -> Matter:
-    result = await db.execute(
-        select(Matter).where(Matter.id == matter_id)
-    )
+    result = await db.execute(select(Matter).where(Matter.id == matter_id))
     matter = result.scalar_one_or_none()
     if matter is None:
         raise HTTPException(status_code=404, detail="Matter not found")
@@ -99,7 +97,7 @@ async def create_matter(
 
     return {
         "matter_id": str(matter.id),
-        "display_id": matter.display_id,
+        "display_id": str(matter.display_id),
     }
 
 
@@ -178,7 +176,7 @@ async def create_event(
         actor_id=payload.actor_id,
         agent_id=payload.agent_id,
         description=payload.description,
-        metadata=payload.metadata or {},
+        metadata_=payload.metadata or {},
     )
     db.add(event)
     await db.commit()
@@ -191,7 +189,7 @@ async def create_event(
         actor_id=event.actor_id,
         agent_id=event.agent_id,
         description=event.description,
-        metadata=event.metadata,
+        metadata=event.metadata_,
         timestamp=event.timestamp,
     )
 
@@ -203,9 +201,7 @@ async def get_audit_log(
 ) -> list[AuditEntryResponse]:
     await _get_matter_or_404(db, matter_id)
 
-    result = await db.execute(
-        select(AuditEntry).where(AuditEntry.matter_id == matter_id)
-    )
+    result = await db.execute(select(AuditEntry).where(AuditEntry.matter_id == matter_id))
     entries = result.scalars().all()
 
     return [

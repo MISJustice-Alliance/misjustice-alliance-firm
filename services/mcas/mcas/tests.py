@@ -9,11 +9,9 @@ class EncryptionTests(TestCase):
 
     def setUp(self):
         self.org = Organization.objects.create(
-            name="Test PD",
-            organization_type="police",
-            jurisdiction="Test County"
+            name="Test PD", organization_type="police", jurisdiction="Test County"
         )
-        self.user = User.objects.create_user(username='testuser', password='pass')
+        self.user = User.objects.create_user(username="testuser", password="pass")
 
     def test_person_encryption_decryption(self):
         """Verify encrypted fields are decrypted on retrieval."""
@@ -24,7 +22,7 @@ class EncryptionTests(TestCase):
             role="complainant",
             organization=self.org,
             data_tier="Tier-0",
-            created_by=self.user
+            created_by=self.user,
         )
 
         # Retrieve from database and verify decryption
@@ -42,7 +40,7 @@ class EncryptionTests(TestCase):
             role="witness",
             organization=self.org,
             data_tier="Tier-1",
-            created_by=self.user
+            created_by=self.user,
         )
 
         # Refresh from DB to get the encrypted value as stored
@@ -51,6 +49,7 @@ class EncryptionTests(TestCase):
         # The encrypted value should be different from plaintext
         # (Django's refresh_from_db calls from_db_value, so we need to check the Field's get_prep_value)
         from .models import cipher_suite
+
         encrypted = cipher_suite.encrypt(plaintext.encode()).decode()
 
         # Verify the encryption roundtrip works
@@ -65,7 +64,7 @@ class EncryptionTests(TestCase):
             role="officer",
             organization=self.org,
             data_tier="Tier-0",
-            created_by=self.user
+            created_by=self.user,
         )
 
         str_repr = str(person)
@@ -83,7 +82,7 @@ class EncryptionTests(TestCase):
             role="attorney",
             organization=self.org,
             data_tier="Tier-1",
-            created_by=self.user
+            created_by=self.user,
         )
 
         retrieved = Person.objects.get(id=person.id)
@@ -99,7 +98,7 @@ class EncryptionTests(TestCase):
             role="complainant",
             organization=self.org,
             data_tier="Tier-1",
-            created_by=self.user
+            created_by=self.user,
         )
 
         matter = Matter.objects.create(
@@ -109,7 +108,7 @@ class EncryptionTests(TestCase):
             data_tier="Tier-1",
             complainant=person,
             organization=self.org,
-            created_by=self.user
+            created_by=self.user,
         )
 
         # Verify we can access complainant through matter without decryption errors

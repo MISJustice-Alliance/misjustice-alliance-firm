@@ -15,11 +15,11 @@ class TierBasedPermission(permissions.BasePermission):
 
     # Mapping of agent roles to allowed tiers
     TIER_ACCESS = {
-        'investigator': ['Tier-2', 'Tier-3'],
-        'researcher': ['Tier-2', 'Tier-3'],
-        'analyst': ['Tier-1', 'Tier-2', 'Tier-3'],
-        'admin': ['Tier-1', 'Tier-2', 'Tier-3'],
-        'public': ['Tier-3'],
+        "investigator": ["Tier-2", "Tier-3"],
+        "researcher": ["Tier-2", "Tier-3"],
+        "analyst": ["Tier-1", "Tier-2", "Tier-3"],
+        "admin": ["Tier-1", "Tier-2", "Tier-3"],
+        "public": ["Tier-3"],
     }
 
     def get_agent_tier_access(self, request):
@@ -28,20 +28,20 @@ class TierBasedPermission(permissions.BasePermission):
 
         # Anonymous users can only access Tier-3 (public)
         if not user or not user.is_authenticated:
-            return ['Tier-3']
+            return ["Tier-3"]
 
         # Check for agent-specific scopes (from JWT token)
         # TODO: Parse OAuth2 scopes from request.auth
-        agent_role = getattr(user, 'agent_role', 'investigator')
+        agent_role = getattr(user, "agent_role", "investigator")
 
-        return self.TIER_ACCESS.get(agent_role, ['Tier-3'])
+        return self.TIER_ACCESS.get(agent_role, ["Tier-3"])
 
     def check_object_access(self, request, obj):
         """Verify user can access a specific object based on its tier."""
         allowed_tiers = self.get_agent_tier_access(request)
 
         # Check if object has data_tier attribute
-        if not hasattr(obj, 'data_tier'):
+        if not hasattr(obj, "data_tier"):
             # Objects without tiers default to Tier-3 (public)
             return True
 
@@ -52,10 +52,9 @@ class TierBasedPermission(permissions.BasePermission):
             )
 
         # Tier-0 access is NEVER allowed to agents (Proton/E2EE only)
-        if obj.data_tier == 'Tier-0':
+        if obj.data_tier == "Tier-0":
             raise PermissionDenied(
-                "Tier-0 data is restricted to Proton/E2EE only. "
-                "Agents cannot access encrypted PII."
+                "Tier-0 data is restricted to Proton/E2EE only. Agents cannot access encrypted PII."
             )
 
         return True
@@ -80,14 +79,14 @@ class MatterApprovalPermission(permissions.BasePermission):
         if not request.user or not request.user.is_authenticated:
             return False
 
-        return request.user.groups.filter(name='matter_approvers').exists()
+        return request.user.groups.filter(name="matter_approvers").exists()
 
     def has_object_permission(self, request, view, obj):
         # Verify user has approval authority for this matter's tier
-        if obj.data_tier == 'Tier-0':
+        if obj.data_tier == "Tier-0":
             return False  # Tier-0 never goes through approval workflow
 
-        return request.user.groups.filter(name='matter_approvers').exists()
+        return request.user.groups.filter(name="matter_approvers").exists()
 
 
 class DocumentReadOnlyForTier0(permissions.BasePermission):
@@ -102,12 +101,15 @@ class DocumentReadOnlyForTier0(permissions.BasePermission):
             return request.user and request.user.is_authenticated
 
         # POST/PUT/DELETE require approval role
-        return request.user and request.user.is_authenticated and \
-               request.user.groups.filter(name='document_admins').exists()
+        return (
+            request.user
+            and request.user.is_authenticated
+            and request.user.groups.filter(name="document_admins").exists()
+        )
 
     def has_object_permission(self, request, view, obj):
         # Prevent modification of Tier-0 documents
-        if request.method not in permissions.SAFE_METHODS and obj.data_tier == 'Tier-0':
+        if request.method not in permissions.SAFE_METHODS and obj.data_tier == "Tier-0":
             raise PermissionDenied("Tier-0 documents cannot be modified via API.")
 
         return True
@@ -124,13 +126,18 @@ class TaskAssignmentPermission(permissions.BasePermission):
             return request.user and request.user.is_authenticated
 
         # POST/PATCH require admin or supervisor role
-        return request.user and request.user.is_authenticated and \
-               (request.user.groups.filter(name='admins').exists() or \
-                request.user.groups.filter(name='task_supervisors').exists())
+        return (
+            request.user
+            and request.user.is_authenticated
+            and (
+                request.user.groups.filter(name="admins").exists()
+                or request.user.groups.filter(name="task_supervisors").exists()
+            )
+        )
 
     def has_object_permission(self, request, view, obj):
         # Approval-required tasks can only be touched by admins
-        if obj.requires_approval and request.method != 'GET':
-            return request.user.groups.filter(name='admins').exists()
+        if obj.requires_approval and request.method != "GET":
+            return request.user.groups.filter(name="admins").exists()
 
         return True

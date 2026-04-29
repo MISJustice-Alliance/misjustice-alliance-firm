@@ -1,14 +1,9 @@
 import pytest
 from httpx import AsyncClient
 
+from app.models import Matter, MatterStatus
+
 pytestmark = pytest.mark.asyncio(loop_scope="session")
-
-from app.models import (
-    Matter,
-    MatterStatus,
-)
-
-pytestmark = pytest.mark.asyncio
 
 
 class TestMatters:
@@ -69,9 +64,7 @@ class TestEvents:
             "description": "Initial intake completed",
             "metadata": {"source": "avery"},
         }
-        response = await client.post(
-            f"/api/v1/matters/{sample_matter.id}/events", json=payload
-        )
+        response = await client.post(f"/api/v1/matters/{sample_matter.id}/events", json=payload)
         assert response.status_code == 201
         data = response.json()
         assert data["matter_id"] == str(sample_matter.id)
@@ -99,9 +92,7 @@ class TestAudit:
         assert data[0]["matter_id"] == str(sample_matter.id)
 
     async def test_get_audit_log_matter_not_found(self, client: AsyncClient):
-        response = await client.get(
-            "/api/v1/matters/00000000-0000-0000-0000-000000000000/audit"
-        )
+        response = await client.get("/api/v1/matters/00000000-0000-0000-0000-000000000000/audit")
         assert response.status_code == 404
 
 
@@ -142,7 +133,9 @@ class TestSearch:
         assert "results" in data
         assert len(data["results"]) <= 1
 
-    async def test_search_returns_backend_metadata(self, client: AsyncClient, sample_matter: Matter):
+    async def test_search_returns_backend_metadata(
+        self, client: AsyncClient, sample_matter: Matter
+    ):
         payload = {"query": "Test Matter"}
         response = await client.post("/api/v1/search", json=payload)
         assert response.status_code == 200
@@ -156,7 +149,10 @@ class TestSearch:
 
     async def test_search_graceful_degradation(self, client: AsyncClient, sample_matter: Matter):
         # When external backends are unavailable, postgres should still return results
-        payload = {"query": "Test Matter", "backends": ["postgres", "elasticsearch", "qdrant", "neo4j"]}
+        payload = {
+            "query": "Test Matter",
+            "backends": ["postgres", "elasticsearch", "qdrant", "neo4j"],
+        }
         response = await client.post("/api/v1/search", json=payload)
         assert response.status_code == 200
         data = response.json()

@@ -11,7 +11,7 @@ from app.schemas import SearchResultItem
 class QdrantClient:
     """Lightweight async Qdrant client with graceful degradation."""
 
-    def __init__(self, base_url: str | None = None):
+    def __init__(self, base_url: str | None = None) -> None:
         self.base_url = (base_url or settings.qdrant_url or "").rstrip("/")
         self.collection = "mcas_vectors"
         self._client: httpx.AsyncClient | None = None
@@ -21,7 +21,7 @@ class QdrantClient:
             self._client = httpx.AsyncClient(timeout=5.0, follow_redirects=True)
         return self._client
 
-    async def close(self):
+    async def close(self) -> None:
         if self._client and not self._client.is_closed:
             await self._client.aclose()
             self._client = None

@@ -16,7 +16,7 @@ class Neo4jClient:
         base_url: str | None = None,
         username: str | None = None,
         password: str | None = None,
-    ):
+    ) -> None:
         self.base_url = (base_url or settings.neo4j_url or "").rstrip("/")
         self.username = username or settings.neo4j_user or "neo4j"
         self.password = password or settings.neo4j_password or ""
@@ -25,17 +25,11 @@ class Neo4jClient:
 
     async def _get_client(self) -> httpx.AsyncClient:
         if self._client is None or self._client.is_closed:
-            auth = (
-                httpx.BasicAuth(self.username, self.password)
-                if self.password
-                else None
-            )
-            self._client = httpx.AsyncClient(
-                timeout=5.0, follow_redirects=True, auth=auth
-            )
+            auth = httpx.BasicAuth(self.username, self.password) if self.password else None
+            self._client = httpx.AsyncClient(timeout=5.0, follow_redirects=True, auth=auth)
         return self._client
 
-    async def close(self):
+    async def close(self) -> None:
         if self._client and not self._client.is_closed:
             await self._client.aclose()
             self._client = None

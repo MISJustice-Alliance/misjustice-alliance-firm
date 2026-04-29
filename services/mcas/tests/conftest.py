@@ -12,8 +12,7 @@ from app.main import app
 
 # Use a test database
 TEST_DATABASE_URL = os.getenv(
-    "TEST_DATABASE_URL",
-    "postgresql+asyncpg://postgres:postgres@localhost:5432/mcas_test"
+    "TEST_DATABASE_URL", "postgresql+asyncpg://postgres:postgres@localhost:5432/mcas_test"
 )
 
 
@@ -74,4 +73,5 @@ async def sample_matter(client: AsyncClient):
     assert get_resp.status_code == 200
     matter_data = get_resp.json()
     from types import SimpleNamespace
+
     return SimpleNamespace(**matter_data)

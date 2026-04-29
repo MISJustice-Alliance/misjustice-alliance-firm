@@ -18,20 +18,14 @@ class CaseLawIngestionPipeline:
     """
 
     def __init__(
-        self,
-        neo4j_client: Neo4jGraphRAG,
-        llm_client: LiteLLMClient,
-        batch_size: int = 10
+        self, neo4j_client: Neo4jGraphRAG, llm_client: LiteLLMClient, batch_size: int = 10
     ):
         self.neo4j = neo4j_client
         self.llm = llm_client
         self.batch_size = batch_size
 
     async def ingest_from_courtlistener(
-        self,
-        query: str,
-        jurisdiction: str | None = None,
-        max_cases: int = 100
+        self, query: str, jurisdiction: str | None = None, max_cases: int = 100
     ):
         """
         Ingest cases from CourtListener API.
@@ -43,7 +37,7 @@ class CaseLawIngestionPipeline:
         params = {
             "q": query,
             "type": "o",  # Opinions
-            "page_size": 20
+            "page_size": 20,
         }
         if jurisdiction:
             params["court"] = jurisdiction
@@ -115,7 +109,7 @@ class CaseLawIngestionPipeline:
                 cited_cases=cited_cases,
                 embedding=embedding,
                 judge=case_data.get("author"),
-                court=case_data.get("court")
+                court=case_data.get("court"),
             )
 
             if success:
@@ -143,7 +137,7 @@ class CaseLawIngestionPipeline:
             "fourteenth amendment": "US-CONST-AM14",
             "due process": "US-CONST-AM14-DP",
             "equal protection": "US-CONST-AM14-EP",
-            "brady": "BRADY-DOCTRINE"
+            "brady": "BRADY-DOCTRINE",
         }
 
         for keyword, provision_id in provision_map.items():
@@ -156,12 +150,14 @@ class CaseLawIngestionPipeline:
         """Format citations for graph relationships."""
         formatted = []
         for cite in citations_data:
-            formatted.append({
-                "citation": cite.get("cite", "Unknown"),
-                "case_name": cite.get("case_name", "Unknown"),
-                "year": cite.get("year", 1900),
-                "context": "positive",  # Default, would need analysis
-                "frequency": 1,
-                "depth": "holding"
-            })
+            formatted.append(
+                {
+                    "citation": cite.get("cite", "Unknown"),
+                    "case_name": cite.get("case_name", "Unknown"),
+                    "year": cite.get("year", 1900),
+                    "context": "positive",  # Default, would need analysis
+                    "frequency": 1,
+                    "depth": "holding",
+                }
+            )
         return formatted

@@ -20,6 +20,7 @@ class CitationContext(Enum):
 @dataclass
 class PrecedentPath:
     """Represents a path of precedential reasoning."""
+
     start_case: str
     end_case: str
     path_length: int
@@ -31,6 +32,7 @@ class PrecedentPath:
 @dataclass
 class CaseSimilarity:
     """Semantic and factual similarity between cases."""
+
     case_citation: str
     case_name: str
     semantic_score: float
@@ -46,9 +48,7 @@ class Neo4jGraphRAG:
     """
 
     def __init__(self, uri: str, user: str, password: str):
-        self.driver: AsyncDriver = AsyncGraphDatabase.driver(
-            uri, auth=(user, password)
-        )
+        self.driver: AsyncDriver = AsyncGraphDatabase.driver(uri, auth=(user, password))
 
     async def close(self):
         await self.driver.close()
@@ -70,7 +70,7 @@ class Neo4jGraphRAG:
         cited_cases: list[dict[str, Any]],
         embedding: list[float],
         judge: str | None = None,
-        court: str | None = None
+        court: str | None = None,
     ) -> bool:
         """
         Ingest a case into the graph with full relationships.
@@ -147,7 +147,9 @@ class Neo4jGraphRAG:
         citation_parts = citation.split()
         volume = int(citation_parts[0]) if citation_parts[0].isdigit() else 0
         reporter = citation_parts[1] if len(citation_parts) > 1 else "Unknown"
-        page = int(citation_parts[2]) if len(citation_parts) > 2 and citation_parts[2].isdigit() else 0
+        page = (
+            int(citation_parts[2]) if len(citation_parts) > 2 and citation_parts[2].isdigit() else 0
+        )
 
         try:
             async with self.driver.session() as session:
@@ -168,7 +170,7 @@ class Neo4jGraphRAG:
                     provisions=constitutional_provisions,
                     cited_cases=cited_cases,
                     judge=judge,
-                    court=court
+                    court=court,
                 )
                 record = await result.single()
                 logger.info(f"Successfully ingested case: {record['citation']}")
@@ -188,7 +190,7 @@ class Neo4jGraphRAG:
         case_facts: str,
         legal_issues: list[str],
         top_k: int = 10,
-        min_similarity: float = 0.7
+        min_similarity: float = 0.7,
     ) -> list[CaseSimilarity]:
         """
         Hybrid retrieval: Vector similarity + Graph traversal.
@@ -233,27 +235,26 @@ class Neo4jGraphRAG:
                 embedding=query_embedding,
                 legal_issues=legal_issues,
                 top_k=top_k,
-                min_similarity=min_similarity
+                min_similarity=min_similarity,
             )
 
             similarities = []
             async for record in result:
-                similarities.append(CaseSimilarity(
-                    case_citation=record["citation"],
-                    case_name=record["case_name"],
-                    semantic_score=record["semantic_score"],
-                    factual_score=record["factual_score"],
-                    shared_issues=record["shared_issues"],
-                    distinguishing_facts=[]  # Would need separate query
-                ))
+                similarities.append(
+                    CaseSimilarity(
+                        case_citation=record["citation"],
+                        case_name=record["case_name"],
+                        semantic_score=record["semantic_score"],
+                        factual_score=record["factual_score"],
+                        shared_issues=record["shared_issues"],
+                        distinguishing_facts=[],  # Would need separate query
+                    )
+                )
 
             return similarities
 
     async def find_precedential_path(
-        self,
-        start_citation: str,
-        end_citation: str,
-        max_depth: int = 5
+        self, start_citation: str, end_citation: str, max_depth: int = 5
     ) -> PrecedentPath | None:
         """
         Find the path of precedential reasoning between two cases.
@@ -295,10 +296,7 @@ class Neo4jGraphRAG:
 
         async with self.driver.session() as session:
             result = await session.run(
-                query,
-                start=start_citation,
-                end=end_citation,
-                max_depth=max_depth
+                query, start=start_citation, end=end_citation, max_depth=max_depth
             )
 
             record = await result.single()
@@ -311,14 +309,11 @@ class Neo4jGraphRAG:
                 path_length=record["path_length"],
                 total_similarity=record["jurisprudential_strength"],
                 reasoning_chain=record["reasoning_chain"],
-                jurisprudential_strength=record["jurisprudential_strength"]
+                jurisprudential_strength=record["jurisprudential_strength"],
             )
 
     async def find_controlling_authority(
-        self,
-        jurisdiction: str,
-        legal_issue: str,
-        constitutional_provision: str | None = None
+        self, jurisdiction: str, legal_issue: str, constitutional_provision: str | None = None
     ) -> list[dict[str, Any]]:
         """
         Find mandatory (binding) precedent for a given jurisdiction and issue.
@@ -368,14 +363,12 @@ class Neo4jGraphRAG:
                 query,
                 jurisdiction=jurisdiction,
                 issue=legal_issue,
-                provision=constitutional_provision
+                provision=constitutional_provision,
             )
             return [record.data() async for record in result]
 
     async def find_distinguishing_cases(
-        self,
-        base_citation: str,
-        legal_issue: str
+        self, base_citation: str, legal_issue: str
     ) -> list[dict[str, Any]]:
         """
         Find cases that distinguish themselves from the base case.
@@ -402,17 +395,11 @@ class Neo4jGraphRAG:
         """
 
         async with self.driver.session() as session:
-            result = await session.run(
-                query,
-                base_citation=base_citation,
-                issue=legal_issue
-            )
+            result = await session.run(query, base_citation=base_citation, issue=legal_issue)
             return [record.data() async for record in result]
 
     async def get_judge_behavior_pattern(
-        self,
-        judge_name: str,
-        legal_issue: str | None = None
+        self, judge_name: str, legal_issue: str | None = None
     ) -> dict[str, Any]:
         """
         Analyze a judge's voting patterns on specific issues.
@@ -442,11 +429,7 @@ class Neo4jGraphRAG:
         """
 
         async with self.driver.session() as session:
-            result = await session.run(
-                query,
-                judge=judge_name,
-                issue=legal_issue
-            )
+            result = await session.run(query, judge=judge_name, issue=legal_issue)
             record = await result.single()
             return record.data() if record else {}
 
@@ -455,10 +438,7 @@ class Neo4jGraphRAG:
     # ============================================================
 
     async def match_violation_patterns(
-        self,
-        case_facts_embedding: list[float],
-        indicators: list[str],
-        top_k: int = 5
+        self, case_facts_embedding: list[float], indicators: list[str], top_k: int = 5
     ) -> list[dict[str, Any]]:
         """
         Find cases exhibiting similar violation patterns.
@@ -492,18 +472,11 @@ class Neo4jGraphRAG:
 
         async with self.driver.session() as session:
             result = await session.run(
-                query,
-                embedding=case_facts_embedding,
-                indicators=indicators,
-                top_k=top_k
+                query, embedding=case_facts_embedding, indicators=indicators, top_k=top_k
             )
             return [record.data() async for record in result]
 
-    async def create_semantic_relationships(
-        self,
-        citation: str,
-        min_similarity: float = 0.85
-    ):
+    async def create_semantic_relationships(self, citation: str, min_similarity: float = 0.85):
         """
         Post-processing: Create SEMANTICALLY_SIMILAR relationships
         between cases based on vector similarity.
@@ -524,11 +497,9 @@ class Neo4jGraphRAG:
         """
 
         async with self.driver.session() as session:
-            result = await session.run(
-                query,
-                citation=citation,
-                min_similarity=min_similarity
-            )
+            result = await session.run(query, citation=citation, min_similarity=min_similarity)
             record = await result.single()
-            logger.info(f"Created {record['relationships_created']} semantic relationships for {citation}")
+            logger.info(
+                f"Created {record['relationships_created']} semantic relationships for {citation}"
+            )
             return record["relationships_created"]

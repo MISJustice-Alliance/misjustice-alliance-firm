@@ -18,7 +18,7 @@ class LegalReasoningQueries:
         self,
         current_case_facts: str,
         target_outcome: str,  # e.g., "suppression_granted", "habeas_granted"
-        jurisdiction: str
+        jurisdiction: str,
     ) -> list[dict[str, Any]]:
         """
         Find the chain of precedent leading to a desired outcome.
@@ -65,17 +65,12 @@ class LegalReasoningQueries:
 
         async with self.client.driver.session() as session:
             result = await session.run(
-                query,
-                embedding=embedding,
-                outcome=target_outcome,
-                jurisdiction=jurisdiction
+                query, embedding=embedding, outcome=target_outcome, jurisdiction=jurisdiction
             )
             return [record.data() async for record in result]
 
     async def constitutional_doctrine_evolution(
-        self,
-        provision_id: str,
-        legal_issue: str
+        self, provision_id: str, legal_issue: str
     ) -> list[dict[str, Any]]:
         """
         Trace the evolution of constitutional doctrine over time.
@@ -114,17 +109,10 @@ class LegalReasoningQueries:
         """
 
         async with self.client.driver.session() as session:
-            result = await session.run(
-                query,
-                provision=provision_id,
-                issue=legal_issue
-            )
+            result = await session.run(query, provision=provision_id, issue=legal_issue)
             return [record.data() async for record in result]
 
-    async def find_circuit_split(
-        self,
-        legal_issue: str
-    ) -> list[dict[str, Any]]:
+    async def find_circuit_split(self, legal_issue: str) -> list[dict[str, Any]]:
         """
         Identify circuit splits (conflicting interpretations across circuits).
         Critical for determining forum shopping opportunities.
@@ -168,7 +156,7 @@ class LegalReasoningQueries:
         case_facts_embedding: list[float],
         judge_name: str | None,
         court_name: str,
-        legal_issues: list[str]
+        legal_issues: list[str],
     ) -> dict[str, Any]:
         """
         Predict case outcome based on similar past cases,
@@ -219,7 +207,7 @@ class LegalReasoningQueries:
                 embedding=case_facts_embedding,
                 judge=judge_name,
                 court=court_name,
-                issues=legal_issues
+                issues=legal_issues,
             )
             predictions = [record.data() async for record in result]
 
@@ -230,7 +218,9 @@ class LegalReasoningQueries:
 
             return {
                 "predictions": predictions,
-                "confidence": "high" if predictions and predictions[0]["probability"] > 0.6 else "medium"
+                "confidence": "high"
+                if predictions and predictions[0]["probability"] > 0.6
+                else "medium",
             }
 
     async def _get_embedding(self, text: str) -> list[float]:

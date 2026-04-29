@@ -11,7 +11,7 @@ from app.schemas import SearchResultItem
 class ElasticsearchClient:
     """Lightweight async Elasticsearch client with graceful degradation."""
 
-    def __init__(self, base_url: str | None = None):
+    def __init__(self, base_url: str | None = None) -> None:
         self.base_url = (base_url or settings.elasticsearch_url or "").rstrip("/")
         self.index = "mcas"
         self._client: httpx.AsyncClient | None = None
@@ -21,7 +21,7 @@ class ElasticsearchClient:
             self._client = httpx.AsyncClient(timeout=5.0, follow_redirects=True)
         return self._client
 
-    async def close(self):
+    async def close(self) -> None:
         if self._client and not self._client.is_closed:
             await self._client.aclose()
             self._client = None
@@ -54,9 +54,7 @@ class ElasticsearchClient:
                 },
                 "size": limit,
             }
-            response = await client.post(
-                f"{self.base_url}/{self.index}/_search", json=payload
-            )
+            response = await client.post(f"{self.base_url}/{self.index}/_search", json=payload)
             latency_ms = (time.perf_counter() - start) * 1000
 
             if response.status_code != 200:

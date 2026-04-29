@@ -1,3 +1,4 @@
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -8,7 +9,7 @@ from app.routers import matters, search
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     engine = get_engine()
     # Startup: in production use Alembic migrations instead of create_all
     async with engine.begin():
@@ -30,5 +31,5 @@ app.include_router(search.router, prefix="/api/v1")
 
 
 @app.get("/health")
-async def health_check():
+async def health_check() -> dict[str, str]:
     return {"status": "ok", "version": settings.app_version}

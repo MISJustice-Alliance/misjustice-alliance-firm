@@ -88,7 +88,7 @@ class Actor(Base):
     pseudonym = Column(String, nullable=False)
     real_name_encrypted = Column(LargeBinary, nullable=False)
     role_in_matter = Column(String, nullable=False)
-    conflict_flags = Column(ARRAY(String), default=list)
+    conflict_flags = Column(ARRAY(String), default=list)  # type: ignore[var-annotated]
 
     matter = relationship("Matter", back_populates="actors")
 

@@ -28,23 +28,23 @@ class N8NHumanGateway:
         self.secret = webhook_secret
 
     async def request_attorney_assignment(
-        self,
-        case_id: str,
-        matches: list,
-        case_summary: str
+        self, case_id: str, matches: list, case_summary: str
     ) -> dict[str, Any]:
         """Trigger n8n workflow for attorney assignment approval."""
 
-        async with aiohttp.ClientSession() as session, session.post(
-            f"{self.base_url}/webhook/attorney-assignment",
-            json={
-                "case_id": case_id,
-                "matches": matches,
-                "case_summary": case_summary,
-                "legal_issues": matches[0].get("legal_issues", []) if matches else []
-            },
-            headers={"X-Webhook-Secret": self.secret}
-        ) as response:
+        async with (
+            aiohttp.ClientSession() as session,
+            session.post(
+                f"{self.base_url}/webhook/attorney-assignment",
+                json={
+                    "case_id": case_id,
+                    "matches": matches,
+                    "case_summary": case_summary,
+                    "legal_issues": matches[0].get("legal_issues", []) if matches else [],
+                },
+                headers={"X-Webhook-Secret": self.secret},
+            ) as response,
+        ):
             return await response.json()
 
     async def submit_document_for_review(
@@ -54,30 +54,31 @@ class N8NHumanGateway:
         document_text: str,
         document_type: str,
         citations: list,
-        word_count: int
+        word_count: int,
     ) -> dict[str, Any]:
         """Trigger n8n workflow for document final review."""
 
-        async with aiohttp.ClientSession() as session, session.post(
-            f"{self.base_url}/webhook/document-for-review",
-            json={
-                "document_id": document_id,
-                "case_id": case_id,
-                "document_text": document_text,
-                "document_type": document_type,
-                "citations": citations,
-                "word_count": word_count,
-                "generated_at": datetime.now().isoformat(),
-                "generation_confidence": 0.85  # From LLM confidence score
-            },
-            headers={"X-Webhook-Secret": self.secret}
-        ) as response:
+        async with (
+            aiohttp.ClientSession() as session,
+            session.post(
+                f"{self.base_url}/webhook/document-for-review",
+                json={
+                    "document_id": document_id,
+                    "case_id": case_id,
+                    "document_text": document_text,
+                    "document_type": document_type,
+                    "citations": citations,
+                    "word_count": word_count,
+                    "generated_at": datetime.now().isoformat(),
+                    "generation_confidence": 0.85,  # From LLM confidence score
+                },
+                headers={"X-Webhook-Secret": self.secret},
+            ) as response,
+        ):
             return await response.json()
 
     async def alert_critical_violation(
-        self,
-        violation_finding: ViolationFinding,
-        case_id: str
+        self, violation_finding: ViolationFinding, case_id: str
     ) -> None:
         """Trigger n8n workflow for critical violation alert."""
 
@@ -94,7 +95,7 @@ class N8NHumanGateway:
                     "suggested_precedents": violation_finding.suggested_precedents,
                     "recommended_action": violation_finding.recommended_action,
                     "time_sensitive": violation_finding.severity == "critical",
-                    "deadline": None  # Could be extracted from case
+                    "deadline": None,  # Could be extracted from case
                 },
-                headers={"X-Webhook-Secret": self.secret}
+                headers={"X-Webhook-Secret": self.secret},
             )

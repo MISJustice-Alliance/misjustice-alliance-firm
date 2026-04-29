@@ -72,9 +72,7 @@ async def _search_postgres(
         )
 
     # Search events
-    event_stmt = select(Event).where(
-        func.lower(Event.description).contains(query)
-    )
+    event_stmt = select(Event).where(func.lower(Event.description).contains(query))
     if payload.matter_id:
         event_stmt = event_stmt.where(Event.matter_id == payload.matter_id)
     event_stmt = event_stmt.limit(limit)
@@ -85,7 +83,7 @@ async def _search_postgres(
                 type="event",
                 id=e.id,
                 title=e.event_type,
-                snippet=e.description[:200],
+                snippet=e.description[:200] if e.description else "",
                 backend="postgres",
             )
         )
@@ -153,7 +151,7 @@ async def search(
     request: Request,
     payload: SearchRequest,
     db: Annotated[AsyncSession, Depends(get_db)],
-):
+) -> SearchResponse:
     # Determine which backends to query
     requested_backends = payload.backends or ALL_BACKENDS
     active_backends = [b.lower() for b in requested_backends]
@@ -176,7 +174,7 @@ async def search(
     sources: list[str] = []
 
     for item in gathered:
-        if isinstance(item, Exception):
+        if isinstance(item, BaseException):
             backends_meta.append(
                 BackendMetadata(
                     backend="unknown",
@@ -195,9 +193,7 @@ async def search(
     seen: dict[tuple, SearchResultItem] = {}
     for r in all_results:
         key = (r.id, r.type)
-        if key not in seen:
-            seen[key] = r
-        elif (r.score or 0) > (seen[key].score or 0):
+        if key not in seen or (r.score or 0) > (seen[key].score or 0):
             seen[key] = r
 
     deduped = list(seen.values())[: payload.limit]

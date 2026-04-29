@@ -1,15 +1,22 @@
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from collections.abc import AsyncGenerator
+
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 from sqlalchemy.orm import declarative_base
 
 from app.config import settings
 
 Base = declarative_base()
 
-_engine = None
-_async_session_maker = None
+_engine: AsyncEngine | None = None
+_async_session_maker: async_sessionmaker[AsyncSession] | None = None
 
 
-def _create_engine(url: str = None):
+def _create_engine(url: str | None = None) -> AsyncEngine:
     url = url or settings.database_url
     return create_async_engine(
         url,
@@ -22,19 +29,19 @@ def _create_engine(url: str = None):
     )
 
 
-def get_engine():
+def get_engine() -> AsyncEngine:
     global _engine
     if _engine is None:
         _engine = _create_engine()
     return _engine
 
 
-def set_engine(engine):
+def set_engine(engine: AsyncEngine) -> None:
     global _engine
     _engine = engine
 
 
-def get_session_maker():
+def get_session_maker() -> async_sessionmaker[AsyncSession]:
     global _async_session_maker
     if _async_session_maker is None:
         _async_session_maker = async_sessionmaker(
@@ -47,7 +54,7 @@ def get_session_maker():
     return _async_session_maker
 
 
-async def get_db():
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
     async with get_session_maker()() as session:
         try:
             yield session
