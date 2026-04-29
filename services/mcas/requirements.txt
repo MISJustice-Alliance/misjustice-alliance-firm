@@ -10,3 +10,9 @@ boto3==1.26.137
 requests==2.31.0
 pytest==8.3.3
 pytest-django==4.7.0
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+sqlalchemy[asyncio]==2.0.36
+asyncpg==0.30.0
+pydantic-settings==2.6.0
+alembic==1.14.0

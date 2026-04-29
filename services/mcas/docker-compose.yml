@@ -26,16 +26,10 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: mcas-api
-    command: >
-      sh -c "python manage.py migrate &&
-             python manage.py collectstatic --noinput &&
-             gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 4"
     ports:
       - "8000:8000"
     environment:
-      - DEBUG=${DEBUG:-False}
-      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
-      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1}
+      - DATABASE_URL=postgresql+asyncpg://${DB_USER:-mcas_user}:${DB_PASSWORD:-mcas_password}@postgres:5432/${DB_NAME:-mcas_db}
       - DB_NAME=${DB_NAME:-mcas_db}
       - DB_USER=${DB_USER:-mcas_user}
       - DB_PASSWORD=${DB_PASSWORD:-mcas_password}
@@ -50,7 +44,7 @@ services:
     security_opt:
       - no-new-privileges:true
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/healthz/"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
