@@ -1,0 +1,44 @@
+agent:
+  name: ollie
+  display_name: "Ollie — Paralegal"
+  version: "0.1.0"
+  type: specialist
+  owner: zhc-firm
+  team: bridge
+
+data:
+  tier_min: T1
+  tier_max: T2
+  classification_policy: "https://raw.githubusercontent.com/enuno/zhc-firm/refs/heads/main/policies/DATA_CLASSIFICATION.md"
+
+runtime:
+  log_level: info
+  log_destination: ../logs/ollie/
+  max_concurrent_tasks: 3
+  timeout_seconds: 120
+  retry_attempts: 2
+
+approval:
+  human_in_the_loop: true
+  mechanism: n8n
+  webhooks:
+    escalation: "critical-violation-detected"
+    approval_required: "document-for-review"
+  auto_approve:
+    - matter_read_t1
+    - deadline_query
+  require_approval:
+    - filing_prep
+    - form_completion
+    - document_read_t2
+
+memory:
+  working_max_tokens: 4096
+  episodic_retention_days: 30
+  semantic_update_requires_approval: true
+
+ethics:
+  policy_url: "https://raw.githubusercontent.com/enuno/zhc-firm/refs/heads/main/docs/legal/ethics_policy.md"
+  no_autonomous_filing: true
+  no_legal_advice: true
+  no_external_search: true

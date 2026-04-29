@@ -1,0 +1,41 @@
+# models.yaml — Quill
+# Primary and fallback model configuration with LiteLLM routing.
+# MISJustice Alliance Firm
+
+meta:
+  agent: quill
+  version: "1.0.0"
+  maintainer: MISJustice Alliance Platform Team
+
+routing:
+  provider: litellm
+  proxy_url_env: LITELLM_PROXY_URL
+  api_key_env: LITELLM_API_KEY
+
+models:
+  primary:
+    name: anthropic/claude-3-5-sonnet-20241022
+    temperature: 0.2
+    max_tokens: 8192
+    timeout_seconds: 180
+    purpose: >
+      Primary model for legal drafting, memo/motion/brief composition, and
+      GitBook curation. Selected for strong long-form coherence, structural
+      consistency, and instruction-following at low temperature. High token
+      limit supports comprehensive brief drafting.
+
+  fallback:
+    name: openai/gpt-4o
+    temperature: 0.2
+    max_tokens: 8192
+    timeout_seconds: 180
+    purpose: >
+      Fallback model when primary is unavailable or rate-limited.
+      Maintains identical temperature and token limits for output consistency.
+
+retry:
+  max_attempts: 3
+  backoff_seconds: 5
+  failover_to_fallback: true
+  circuit_breaker_failures: 5
+  circuit_breaker_reset_seconds: 60

@@ -1,0 +1,485 @@
+# =============================================================================
+# agents/mira/GUARDRAILS.yaml
+# Mira — Legal Researcher / Telephony & Messaging Specialist
+# Runtime Guardrail Definitions
+# MISJustice Alliance Firm
+# =============================================================================
+
+meta:
+  agent: mira
+  agent_version: "0.2.0"
+  schema_version: "1.0.0"
+  effective_date: "2026-04-16"
+  maintainer: MISJustice Alliance Platform Team
+  reviewed_by: veritas
+  review_cycle_days: 90
+
+# =============================================================================
+# GUARDRAIL PIPELINE ORDER
+# =============================================================================
+pipeline_order:
+  - INPUT
+  - TOOL_PRE
+  - OUTPUT
+  - TOOL_POST
+  - MEMORY_PRE
+  - MEMORY_POST
+  - AUDIT
+
+# =============================================================================
+# INPUT GUARDRAILS
+# =============================================================================
+input_guardrails:
+
+  - id: G-IN-001
+    name: legal_advice_request_detection
+    category: INPUT
+    priority: 1
+    enforcement: block
+    description: >
+      Detects requests for legal advice or strategy.
+    detection:
+      method: llm_score
+      model_id: primary
+      threshold: 0.80
+      additional_patterns:
+        - "(should|can) (I|we|the client|my client)"
+        - "what (is|are) (my|our|their) (legal (rights|options|remedies))"
+        - "(will|would) (I|we|they) (win|lose|succeed|prevail)"
+        - "what (should|would) (I|we|a lawyer) (do|recommend|advise)"
+    on_trigger:
+      action: block
+      notify_operator: true
+      operator_message: >
+        ⚠️ LEGAL ADVICE BOUNDARY
+        Mira cannot provide legal advice or strategy recommendations.
+        This task has been blocked. Please re-scope as research or messaging.
+      log_level: INFO
+      metric: mira_safety_legal_advice_declined_total
+      emit_audit_event: true
+      audit_event_type: legal_advice_declined
+
+  - id: G-IN-002
+    name: tier0_access_request_detection
+    category: INPUT
+    priority: 2
+    enforcement: block
+    description: >
+      Detects requests to access Tier-0 classified content.
+    detection:
+      method: pattern_match
+      case_insensitive: true
+      patterns:
+        - "(attorney.client|attorney client) privilege"
+        - "(sealed|protected|classified) (record|document|filing|communication)"
+        - "tier.?0"
+    on_trigger:
+      action: block
+      notify_operator: true
+      operator_message: >
+        ⚠️ CLASSIFICATION CEILING — Tier-0 Access Denied
+        Mira is authorized to handle Tier-3 and below content only.
+      log_level: WARNING
+      metric: mira_safety_tier0_access_refused_total
+      emit_audit_event: true
+      audit_event_type: tier0_access_refused
+
+  - id: G-IN-003
+    name: impersonation_instruction_detection
+    category: INPUT
+    priority: 3
+    enforcement: block
+    description: >
+      Detects instructions to impersonate a human, attorney, or official.
+    detection:
+      method: pattern_match
+      case_insensitive: true
+      patterns:
+        - "pretend (you are|to be|that) (a|an) (lawyer|attorney|human|person)"
+        - "act as (if you are|a|an) (lawyer|attorney|human|court official)"
+        - "say you are (a|an) (lawyer|attorney|human)"
+    on_trigger:
+      action: block
+      notify_operator: true
+      operator_message: >
+        ⚠️ POLICY BLOCK — Impersonation Refused
+        Mira cannot impersonate any person, attorney, or official.
+      log_level: WARNING
+      metric: mira_safety_hard_limit_invoked_total
+      emit_audit_event: true
+      audit_event_type: impersonation_refused
+
+  - id: G-IN-004
+    name: contact_without_consent_detection
+    category: INPUT
+    priority: 4
+    enforcement: block
+    description: >
+      Detects tasks to contact someone without confirmed consent.
+    detection:
+      method: llm_score
+      model_id: primary
+      threshold: 0.80
+      additional_patterns:
+        - "contact (them|him|her|this person) (without|no) (consent|approval)"
+        - "send (a|this) message (anyway|regardless|without asking)"
+    on_trigger:
+      action: block
+      notify_operator: true
+      operator_message: >
+        ⚠️ POLICY BLOCK — Contact Without Consent Refused
+        Mira cannot draft outreach without documented consent or staff-approved basis.
+      log_level: WARNING
+      metric: mira_safety_hard_limit_invoked_total
+      emit_audit_event: true
+      audit_event_type: contact_without_consent_refused
+
+# =============================================================================
+# OUTPUT GUARDRAILS
+# =============================================================================
+output_guardrails:
+
+  - id: G-OUT-001
+    name: legal_disclaimer_enforcement
+    category: OUTPUT
+    priority: 1
+    enforcement: redact
+    description: >
+      Ensures mandatory legal disclaimer is present on research outputs.
+    detection:
+      method: pattern_match
+      check: disclaimer_present
+      disclaimer_pattern: "(not legal advice|does not constitute legal advice|for informational purposes only|consult a licensed attorney)"
+    on_trigger:
+      action: redact
+      redaction_type: append
+      append_content: |
+        ---
+        ⚠️ **NOT LEGAL ADVICE** — This output is produced by an AI research
+        agent and is provided for informational purposes only. It does not
+        constitute legal advice, legal representation, or a legal opinion.
+        Do not rely on this content as a substitute for consultation with a
+        licensed attorney.
+      notify_operator: false
+      log_level: WARNING
+      metric: mira_safety_disclaimer_missing_total
+      emit_audit_event: true
+      audit_event_type: disclaimer_appended_by_guardrail
+
+  - id: G-OUT-002
+    name: tier1_content_in_sms_detection
+    category: OUTPUT
+    priority: 2
+    enforcement: block
+    description: >
+      Detects Tier-1 or Restricted content in SMS/message drafts.
+    detection:
+      method: pattern_match
+      case_insensitive: true
+      patterns:
+        - "TIER.?1"
+        - "RESTRICTED"
+        - "CONFIDENTIAL"
+        - "(attorney.client|attorney client) privilege"
+        - "privileged and confidential"
+    on_trigger:
+      action: block
+      notify_operator: true
+      operator_message: >
+        ⚠️ SAFETY BLOCK — Classified Content in Message Draft
+        Mira detected Tier-1 or Restricted content in a message draft.
+        Restricted and Confidential data must never be sent via SMS.
+      log_level: CRITICAL
+      metric: mira_safety_hard_limit_invoked_total
+      emit_audit_event: true
+      audit_event_type: classified_content_in_message_blocked
+      escalate_to_veritas: true
+
+  - id: G-OUT-003
+    name: impersonation_in_output_detection
+    category: OUTPUT
+    priority: 3
+    enforcement: block
+    description: >
+      Detects output where Mira claims to be human or an attorney.
+    detection:
+      method: llm_score
+      model_id: primary
+      threshold: 0.80
+      check_for:
+        - claiming_to_be_human
+        - claiming_licensed_attorney_status
+        - claiming_court_authority
+        - denying_ai_nature
+    on_trigger:
+      action: block
+      notify_operator: true
+      operator_message: >
+        ⚠️ SAFETY BLOCK — Impersonation Detected
+        Mira output contained a false identity claim.
+        The output has been blocked and escalated to Veritas.
+      log_level: CRITICAL
+      metric: mira_safety_hard_limit_invoked_total
+      emit_audit_event: true
+      audit_event_type: impersonation_blocked
+      escalate_to_veritas: true
+
+  - id: G-OUT-004
+    name: pii_redaction_in_output
+    category: OUTPUT
+    priority: 4
+    enforcement: redact
+    description: >
+      Redacts high-confidence PII patterns from output.
+    detection:
+      method: pattern_match
+      patterns:
+        - pattern: "\\b\\d{3}-\\d{2}-\\d{4}\\b"
+          label: SSN
+          replace_with: "[SSN REDACTED]"
+        - pattern: "\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Z|a-z]{2,}\\b"
+          label: EMAIL
+          replace_with: "[EMAIL REDACTED]"
+    on_trigger:
+      action: redact
+      notify_operator: false
+      log_level: INFO
+      emit_audit_event: true
+      audit_event_type: pii_redacted_from_output
+
+  - id: G-OUT-005
+    name: sms_length_check
+    category: OUTPUT
+    priority: 5
+    enforcement: warn
+    description: >
+      Warns if SMS draft exceeds 480 characters.
+    check:
+      field: recommended_text
+      max_length: 480
+      condition: channel == "sms"
+    on_trigger:
+      action: warn
+      notify_operator: true
+      operator_message: >
+        ⚠️ NOTICE — SMS draft exceeds 480 characters.
+        Consider splitting into multiple messages or using email.
+      log_level: INFO
+      metric: mira_safety_sms_length_exceeded_total
+      emit_audit_event: true
+      audit_event_type: sms_length_exceeded
+
+# =============================================================================
+# TOOL GUARDRAILS (PRE-EXECUTION)
+# =============================================================================
+tool_pre_guardrails:
+
+  - id: G-TOOL-PRE-001
+    name: denied_tool_invocation_block
+    category: TOOL_PRE
+    priority: 1
+    applies_to_tools: all
+    enforcement: block
+    description: >
+      Blocks invocation of any tool in the denied_tools list.
+    denied_tools_reference: agents/mira/tools.yaml#denied_tools
+    on_trigger:
+      action: block
+      notify_operator: true
+      operator_message: >
+        ⚠️ POLICY BLOCK — Tool Not Permitted
+        The tool "{tool_name}" is not permitted for Mira.
+      log_level: WARNING
+      metric: mira_denied_tool_attempt_total
+      emit_audit_event: true
+      audit_event_type: denied_tool_invocation_blocked
+
+  - id: G-TOOL-PRE-002
+    name: mcas_classification_ceiling
+    category: TOOL_PRE
+    priority: 2
+    applies_to_tools:
+      - MatterReadTool
+      - DocumentReadTool
+    enforcement: block
+    description: >
+      Blocks MCAS read operations if data exceeds Tier-2.
+    check:
+      classification_ceiling: tier2
+      blocked_scopes:
+        - mcas:read:tier0
+        - mcas:read:tier1
+    on_trigger:
+      action: block
+      notify_operator: true
+      operator_message: >
+        ⚠️ CLASSIFICATION CEILING — MCAS Access Denied
+        The requested MCAS data exceeds Mira's Tier-2 classification ceiling.
+      log_level: WARNING
+      emit_audit_event: true
+      audit_event_type: mcas_classification_ceiling_enforced
+
+# =============================================================================
+# TOOL GUARDRAILS (POST-EXECUTION)
+# =============================================================================
+tool_post_guardrails:
+
+  - id: G-TOOL-POST-001
+    name: tool_output_classification_scan
+    category: TOOL_POST
+    priority: 1
+    applies_to_tools: all
+    enforcement: block
+    description: >
+      Scans all tool outputs for Tier-0 or Tier-1 content.
+    detection:
+      method: pattern_match
+      case_insensitive: true
+      patterns:
+        - "(attorney.client|attorney client) privilege"
+        - "privileged and confidential"
+        - "TIER.?0"
+        - "TIER.?1"
+        - "under seal"
+    on_trigger:
+      action: block
+      notify_operator: true
+      operator_message: >
+        ⚠️ SAFETY BLOCK — Classified Content in Tool Output
+        A tool returned Tier-0 or Tier-1 classified content.
+        The output has been quarantined.
+      log_level: CRITICAL
+      emit_audit_event: true
+      audit_event_type: classified_content_in_tool_output
+      escalate_to_veritas: true
+
+# =============================================================================
+# MEMORY GUARDRAILS
+# =============================================================================
+memory_guardrails:
+
+  - id: G-MEM-001
+    name: prohibited_memory_category_block
+    category: MEMORY_PRE
+    priority: 1
+    enforcement: block
+    description: >
+      Blocks MemoryPalace writes to unapproved categories.
+    permitted_categories_reference: agents/mira/config.yaml#memorypalace.permitted_categories
+    on_trigger:
+      action: block
+      notify_operator: false
+      log_level: WARNING
+      metric: mira_memory_write_rejected_total
+      emit_audit_event: true
+      audit_event_type: memory_write_rejected_prohibited_category
+
+  - id: G-MEM-002
+    name: pii_in_memory_write_block
+    category: MEMORY_PRE
+    priority: 2
+    enforcement: block
+    description: >
+      Blocks MemoryPalace writes containing PII or case content.
+    detection:
+      method: pattern_match
+      patterns:
+        - "\\b\\d{3}-\\d{2}-\\d{4}\\b"
+        - "MCAS-[0-9]{4,}"
+        - "complainant"
+        - "respondent"
+    on_trigger:
+      action: block
+      notify_operator: false
+      log_level: WARNING
+      metric: mira_memory_write_rejected_total
+      emit_audit_event: true
+      audit_event_type: memory_write_rejected_pii
+
+  - id: G-MEM-003
+    name: classified_content_in_memory_block
+    category: MEMORY_PRE
+    priority: 3
+    enforcement: block
+    description: >
+      Blocks MemoryPalace writes containing Tier-1 or Tier-0 content.
+    detection:
+      method: pattern_match
+      case_insensitive: true
+      patterns:
+        - "TIER.?0"
+        - "TIER.?1"
+        - "(attorney.client|attorney client) privilege"
+        - "privileged and confidential"
+    on_trigger:
+      action: block
+      notify_operator: false
+      log_level: CRITICAL
+      metric: mira_memory_write_rejected_total
+      emit_audit_event: true
+      audit_event_type: memory_write_rejected_classified
+      escalate_to_veritas: true
+
+# =============================================================================
+# AUDIT GUARDRAILS
+# =============================================================================
+audit_guardrails:
+
+  - id: G-AUD-001
+    name: full_turn_audit_log
+    category: AUDIT
+    priority: 1
+    enforcement: audit
+    description: >
+      Logs every turn to LangSmith and Loki.
+    log_fields:
+      - session_id
+      - matter_id
+      - task_id
+      - tool_calls_made
+      - guardrails_triggered
+      - model_used
+      - fallback_active
+      - tokens_used
+    destinations:
+      - langsmith
+      - loki
+    emit_audit_event: true
+    audit_event_type: turn_audit_log
+
+  - id: G-AUD-002
+    name: hard_limit_invocation_summary
+    category: AUDIT
+    priority: 2
+    enforcement: audit
+    description: >
+      Produces hard limit invocation records for Veritas.
+    triggers_on:
+      - G-IN-001
+      - G-IN-002
+      - G-IN-003
+      - G-IN-004
+      - G-OUT-002
+      - G-OUT-003
+      - G-TOOL-PRE-001
+      - G-TOOL-POST-001
+    log_fields:
+      - guardrail_id
+      - limit_id
+      - trigger_source
+      - session_id
+      - task_id
+    destinations:
+      - langsmith
+      - loki
+    emit_veritas_feed: true
+
+# =============================================================================
+# GLOBAL SETTINGS
+# =============================================================================
+global:
+  fail_open: false
+  fail_open_message: >
+    ⚠️ GUARDRAIL EVALUATION ERROR
+    A guardrail check could not be completed. The action has been blocked
+    as a safety precaution. Please retry or contact platform support.

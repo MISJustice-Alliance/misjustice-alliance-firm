@@ -1,0 +1,344 @@
+# =============================================================================
+# agents/mira/tools.yaml
+# Mira — Legal Researcher / Telephony & Messaging Specialist
+# Tool Registry
+# MISJustice Alliance Firm
+# =============================================================================
+# This file is the canonical tool registry for the Mira agent.
+# It is the authoritative source for:
+#   - Tool identity, purpose, and implementation path
+#   - Input/output schemas
+#   - Confirmation and HITL requirements
+#   - Classification ceilings and access constraints
+#   - Deny list with rationale
+#   - Runtime enforcement cross-references
+#
+# Relationship to other files:
+#   agent.yaml           — references tool names; this file is the detail record
+#   SOUL.md              — defines behavioral constraints tools must enforce
+#   POLICY.md            — defines tool access policy
+#   mira_policy.paperclip.yaml — runtime allow/deny enforcement
+# =============================================================================
+
+meta:
+  agent: mira
+  agent_version: "0.2.0"
+  tools_schema_version: "1.0.0"
+  effective_date: "2026-04-16"
+  maintainer: MISJustice Alliance Platform Team
+  total_allowed: 6
+  total_denied: 9
+
+# =============================================================================
+# ALLOWED TOOLS
+# =============================================================================
+allowed:
+
+  # ---------------------------------------------------------------------------
+  # GROUP 1 — MCAS Matter and Document Access
+  # ---------------------------------------------------------------------------
+
+  - name: MatterReadTool
+    display_name: "MCAS Matter Read"
+    group: mcas
+    version: "1.0.0"
+    path: agents/base/tools/matter_read.py
+    description: >
+      Read matter metadata and non-sensitive summaries from MCAS.
+      Returns matter title, phase, category, jurisdiction, key dates,
+      and open task counts. Tier-0 and Tier-1 fields are redacted.
+    use_cases:
+      - Retrieve matter context before research or messaging
+      - Verify matter jurisdiction and phase
+      - Check open tasks and deadlines
+    inputs:
+      matter_id:
+        type: string
+        required: true
+        description: MCAS matter ID
+        pattern: "^MCAS-[0-9]{4,}$"
+      fields:
+        type: list[string]
+        required: false
+        description: Optional field filter; omitted returns all permitted fields
+    outputs:
+      matter_id:
+        type: string
+      title:
+        type: string
+      phase:
+        type: string
+      category:
+        type: string
+      jurisdiction:
+        type: string
+      key_dates:
+        type: list[object]
+      open_tasks_count:
+        type: integer
+      classification:
+        type: string
+        enum: [PUBLIC, INTERNAL, CONFIDENTIAL, RESTRICTED]
+    requires_confirmation: false
+    classification_ceiling: tier2
+    paperclip_policy_ref: mira_policy.paperclip.yaml#matter_read
+    errors:
+      - code: MATTER_NOT_FOUND
+        action: surface_error_request_correction
+      - code: CLASSIFICATION_EXCEEDS_CEILING
+        action: block_and_escalate
+
+  - name: DocumentReadTool
+    display_name: "MCAS Document Read"
+    group: mcas
+    version: "1.0.0"
+    path: agents/base/tools/document_read.py
+    description: >
+      Read document contents and metadata from MCAS.
+      Returns document title, content, metadata, and classification.
+      Tier-0 and Tier-1 documents require explicit staff approval.
+    use_cases:
+      - Read case filings, motions, or orders for research
+      - Review evidence summaries
+      - Extract factual background for analysis
+    inputs:
+      document_id:
+        type: string
+        required: true
+        description: MCAS document ID
+      matter_id:
+        type: string
+        required: true
+        description: Associated matter ID
+    outputs:
+      document_id:
+        type: string
+      matter_id:
+        type: string
+      title:
+        type: string
+      content:
+        type: string
+      metadata:
+        type: object
+      classification:
+        type: string
+        enum: [PUBLIC, INTERNAL, CONFIDENTIAL, RESTRICTED]
+    requires_confirmation: false
+    classification_ceiling: tier2
+    paperclip_policy_ref: mira_policy.paperclip.yaml#document_read
+    errors:
+      - code: DOCUMENT_NOT_FOUND
+        action: surface_error_request_correction
+      - code: CLASSIFICATION_EXCEEDS_CEILING
+        action: block_and_escalate
+
+  # ---------------------------------------------------------------------------
+  # GROUP 2 — MCP Legal Research Tools
+  # ---------------------------------------------------------------------------
+
+  - name: mcp_cases_get
+    display_name: "MCP Case Retrieval"
+    group: mcp
+    version: "1.0.0"
+    path: agents/base/tools/mcp_cases_get.py
+    description: >
+      Retrieve case law, dockets, and filings via the Model Context Protocol (MCP).
+      Queries legal databases for cases matching search criteria.
+    use_cases:
+      - Search for precedents by topic or citation
+      - Retrieve case summaries and holdings
+      - Find jurisdictional patterns
+    inputs:
+      query:
+        type: string
+        required: true
+        description: Case search query string
+      jurisdiction:
+        type: string
+        required: false
+        description: Filter by jurisdiction
+      date_range:
+        type: object
+        required: false
+        description: '{ start: "YYYY-MM-DD", end: "YYYY-MM-DD" }'
+      max_results:
+        type: integer
+        required: false
+        default: 50
+        description: Maximum results to return
+    outputs:
+      cases:
+        type: list[object]
+        description: >
+          List of case objects: { citation, title, date, jurisdiction, summary }
+      total_results:
+        type: integer
+      query_time_ms:
+        type: integer
+    requires_confirmation: false
+    classification_ceiling: tier2
+    paperclip_policy_ref: mira_policy.paperclip.yaml#mcp_cases_get
+
+  - name: mcp_statutes_search
+    display_name: "MCP Statute Search"
+    group: mcp
+    version: "1.0.0"
+    path: agents/base/tools/mcp_statutes_search.py
+    description: >
+      Search statutory databases via the Model Context Protocol (MCP).
+    use_cases:
+      - Find relevant statutory provisions
+      - Check statutory amendments and effective dates
+    inputs:
+      query:
+        type: string
+        required: true
+        description: Statute search query string
+      jurisdiction:
+        type: string
+        required: false
+        description: Filter by jurisdiction
+      code_type:
+        type: string
+        required: false
+        description: Type of legal code (e.g., USC, state, local)
+        enum: [USC, state, local]
+      max_results:
+        type: integer
+        required: false
+        default: 50
+        description: Maximum results to return
+    outputs:
+      statutes:
+        type: list[object]
+        description: >
+          List of statute objects: { citation, title, text, jurisdiction, effective_date }
+      total_results:
+        type: integer
+    requires_confirmation: false
+    classification_ceiling: tier2
+    paperclip_policy_ref: mira_policy.paperclip.yaml#mcp_statutes_search
+
+  - name: mcp_citations_resolve
+    display_name: "MCP Citation Resolution"
+    group: mcp
+    version: "1.0.0"
+    path: agents/base/tools/mcp_citations_resolve.py
+    description: >
+      Resolve and validate legal citations via the Model Context Protocol (MCP).
+      Returns canonical forms, validity status, and source URLs.
+    use_cases:
+      - Validate citations in research outputs
+      - Convert informal citations to canonical form
+      - Retrieve source URLs for cited authorities
+    inputs:
+      citations:
+        type: list[string]
+        required: true
+        description: List of citation strings to resolve
+    outputs:
+      resolved:
+        type: list[object]
+        description: >
+          List of resolution objects: { citation, valid, canonical_form, source_url }
+    requires_confirmation: false
+    classification_ceiling: tier2
+    paperclip_policy_ref: mira_policy.paperclip.yaml#mcp_citations_resolve
+
+  # ---------------------------------------------------------------------------
+  # GROUP 3 — Web Search
+  # ---------------------------------------------------------------------------
+
+  - name: SearXNGWrapper
+    display_name: "SearXNG Web Search"
+    group: search
+    version: "1.0.0"
+    path: agents/base/tools/searxng_wrapper.py
+    description: >
+      Web search via SearXNG for legal research and public information retrieval.
+    use_cases:
+      - Find recent news or public records related to legal matters
+      - Supplement MCP research with public web sources
+      - Verify public-facing information
+    inputs:
+      query:
+        type: string
+        required: true
+      search_type:
+        type: string
+        required: false
+        default: "general"
+        enum: [general, news, legal]
+      max_results:
+        type: integer
+        required: false
+        default: 20
+      safe_search:
+        type: integer
+        required: false
+        default: 2
+        enum: [0, 1, 2]
+    outputs:
+      results:
+        type: list[object]
+        description: >
+          List of result objects: { title, url, snippet, source }
+      total_results:
+        type: integer
+      query_time_ms:
+        type: integer
+    requires_confirmation: false
+    classification_ceiling: tier3
+    paperclip_policy_ref: mira_policy.paperclip.yaml#searxng_wrapper
+    notes: >
+      SearXNG returns public-web content only. All results are treated as
+      Tier-3 (PUBLIC-SAFE) unless explicitly marked otherwise by the source.
+
+# =============================================================================
+# DENIED TOOLS
+# =============================================================================
+denied:
+
+  - name: mcas_write_matter
+    reason: >
+      Matter and person creation/updates require the IntakeCrew (Avery)
+      with an appropriate HITL gate. Mira has read-only MCAS access.
+
+  - name: mcas_write_person
+    reason: >
+      Person record writes require Avery + HITL gate. Mira is an analysis agent
+      with no MCAS write privileges.
+
+  - name: mcas_delete_any
+    reason: >
+      All deletions require human authorization. Mira has no delete access.
+
+  - name: mcas_read_tier0
+    reason: >
+      Tier-0 never enters the agent pipeline. Mira's classification ceiling is Tier-3
+      for search and Tier-2 for MCAS reads.
+
+  - name: agenticmail_send
+    reason: >
+      External communications require dedicated agents (Casey) + HITL gate.
+
+  - name: proton_send
+    reason: >
+      Tier-0 communications are human-only. Mira does not handle external transmission.
+
+  - name: gitbook_publish
+    reason: >
+      Publication requires PublicationCrew (Sol, Webmaster) + publication_approval HITL gate.
+
+  - name: social_post_any
+    reason: >
+      Social posting requires Social Media Manager + social_campaign_approval HITL gate.
+
+  - name: messaging_gateway
+    reason: >
+      Disabled by default; enable only when consent + compliance implemented.
+
+  - name: telephony_gateway
+    reason: >
+      Disabled by default; enable only when consent + compliance implemented.

@@ -1,0 +1,62 @@
+# MISJustice Alliance
+
+> Documenting Legal Misconduct and Civil Rights Violations Through Decentralized, Censorship-Resistant Technology
+
+## About
+
+MISJustice Alliance is a non-profit civil litigation advocacy collective dedicated to defending constitutional and civil rights of individuals victimized by systemic corruption and misconduct within legal, governmental, and institutional frameworks.
+
+We operate under strict anonymity protocols to protect both volunteer legal professionals and vulnerable individuals seeking assistance. Our platform serves as a watchdog organization committed to exposing patterns of institutional abuse.
+
+## What We Do
+
+- **Document Misconduct**: Comprehensive database of legal misconduct, civil rights violations, and systemic injustices with verifiable evidence
+- **Permanent Archive**: All cases archived on Arweave permaweb for permanent, immutable storage that cannot be censored or deleted
+- **Anonymous Submissions**: Submit cases anonymously with end-to-end encryption; no central authority can remove or alter documented evidence
+- **Legal Research**: Provide case analysis, legal theory development, and strategic guidance
+- **Advocacy**: Connect victims with pro bono attorneys and civil rights organizations
+
+## Areas of Expertise
+
+- Civil rights violations and constitutional deprivations
+- Police misconduct and law enforcement abuse of power
+- Prosecutorial misconduct and judicial system failures
+- Legal malpractice by attorneys and court-appointed counsel
+- Institutional corruption within government agencies
+- Whistleblower protection and anti-retaliation support
+
+## Technology
+
+Built on **Arweave permaweb** for censorship-resistant, permanent documentation:
+- Decentralized storage ensures no single point of failure
+- Immutable records cannot be altered or deleted
+- Blockchain-verified timestamps for evidence integrity
+- End-to-end encryption for anonymous submissions
+
+## Key Pages
+
+- [Homepage](https://misjusticealliance.org/) - Overview and featured cases
+- [Browse Cases](https://misjusticealliance.org/cases) - Searchable case database
+- [Mission Statement](https://misjusticealliance.org/mission) - Our purpose and principles
+- [Contact](https://misjusticealliance.org/contact) - Secure communication channels
+
+## Contact
+
+- **Email**: contact@misjusticealliance.org (PGP encrypted)
+- **Signal**: Available via secure verification
+- **Session**: End-to-end encrypted messaging
+- **Web**: https://misjusticealliance.org/contact
+
+## For Detailed Information
+
+For comprehensive case documentation, legal analysis, and detailed organizational information, see our full context file:
+- [llms-full.txt](https://misjusticealliance.org/llms-full.txt)
+
+## Legal Notice
+
+MISJustice Alliance is a legal research collective, not a law firm. We do not provide legal advice or representation. All documented cases require licensed legal counsel for formal proceedings.
+
+---
+
+*Last Updated: 2026-01-18*
+*Powered by Arweave Permaweb*

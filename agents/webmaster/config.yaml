@@ -1,0 +1,74 @@
+# Webmaster — Runtime Configuration
+# Version: 0.1.0
+
+agent:
+  name: webmaster
+  display_name: "Webmaster"
+  version: "0.1.0"
+  type: specialist
+  team: bridge
+  data_tier: T3
+
+runtime:
+  log_level: metadata_only
+  store_staging_data: false
+  retention_days: 30
+  max_concurrent_staging_sessions: 3
+  approval_timeout_hours: 168
+
+features:
+  human_handoff:
+    enabled: true
+    mechanism: n8n
+    webhooks:
+      escalation: "critical-violation-detected"
+      approval_required: "document-for-review"
+
+  redaction:
+    enabled: true
+    scan_depth: full
+    fail_on_detection: true
+    placeholder_format: "[[REDACTED]]"
+
+  seo_geo:
+    enabled: true
+    auto_generate_meta: true
+    schema_org_required: true
+    structured_data_format: json-ld
+
+  sitemap:
+    enabled: true
+    auto_update_on_publish: true
+    max_urls_per_sitemap: 50000
+
+integrations:
+  mcas_api:
+    endpoint: "${MCAS_API_URL}"
+    auth: "${MCAS_API_KEY}"
+    allowed_tiers: [T3]
+
+  open_notebook:
+    endpoint: "${OPEN_NOTEBOOK_URL}"
+    auth: "${OPEN_NOTEBOOK_API_KEY}"
+
+  gitbook_api:
+    endpoint: "${GITBOOK_API_URL}"
+    auth: "${GITBOOK_API_TOKEN}"
+    space_id: "${GITBOOK_SPACE_ID}"
+
+  cms:
+    endpoint: "${CMS_STAGING_URL}"
+    auth: "${CMS_API_KEY}"
+    production_endpoint: "${CMS_PROD_URL}"
+
+  n8n:
+    webhook_base: "${N8N_WEBHOOK_BASE}"
+    auth: "${N8N_WEBHOOK_KEY}"
+
+  searxng:
+    endpoint: "${SEARXNG_T0_URL}"
+    safe_search: true
+
+compliance:
+  ethics_policy: "https://raw.githubusercontent.com/enuno/zhc-firm/refs/heads/main/docs/legal/ethics_policy.md"
+  data_classification_policy: "https://raw.githubusercontent.com/enuno/zhc-firm/refs/heads/main/policies/DATA_CLASSIFICATION.md"

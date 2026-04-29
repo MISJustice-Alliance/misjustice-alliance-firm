@@ -1,0 +1,29 @@
+agent: citation_authority
+version: "0.1.0"
+
+data_tiers:
+  allowed: [T1, T2, T3]
+  default_search: T1
+  escalation_on: [T2, T3]
+
+runtime:
+  log_level: metadata_only
+  retention_days: 30
+  store_verification_logs: false
+  session_timeout_minutes: 60
+
+verification:
+  require_cross_reference: true
+  min_sources: 2
+  approve_on_single_source: false
+
+escalation:
+  enabled: true
+  mechanism: n8n
+  webhooks:
+    critical: critical-violation-detected
+    review: document-for-review
+
+policies:
+  ethics: https://raw.githubusercontent.com/enuno/zhc-firm/refs/heads/main/docs/legal/ethics_policy.md
+  data_classification: https://raw.githubusercontent.com/enuno/zhc-firm/refs/heads/main/policies/DATA_CLASSIFICATION.md

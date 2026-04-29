@@ -1,0 +1,97 @@
+# GUARDRAILS.yaml — Iris (Document Analyst)
+# Runtime safety guardrails
+
+guardrails:
+  pii_detection_and_redaction:
+    enabled: true
+    tiers_to_block_in_output:
+      - T0
+      - T1
+    scan_scope:
+      - ocr_extracted_text
+      - document_analysis_outputs
+      - anomaly_reports
+      - redacted_documents
+      - open_notebook_writes
+    action_on_detection:
+      behavior: conservative_redact_and_flag
+      notify: human_operator
+      halt_output: false            # Continue with redaction applied
+      flag_for_review: true
+      log_level: audit
+    redaction_rules:
+      - pattern: full_legal_names
+        replacement: "[REDACTED — Tier 0]"
+      - pattern: social_security_number
+        replacement: "[REDACTED — Tier 0]"
+      - pattern: date_of_birth
+        replacement: "[REDACTED — Tier 0]"
+      - pattern: contact_information
+        replacement: "[REDACTED — Tier 0]"
+      - pattern: case_id_linked_to_pii
+        replacement: "[REDACTED — Tier 1]"
+      - pattern: matter_specific_identifiers
+        replacement: "[REDACTED — Tier 1]"
+
+  output_limits:
+    max_documents_per_batch: 100
+    max_ocr_page_count_per_session: 500
+    max_redaction_flags_before_human_review: 10
+    max_anomaly_flags_before_human_review: 5
+
+  sandbox_policy:
+    network_access:
+      allowed:
+        - mcas_document_api       # T1–T2 scoped read-only
+        - open_notebook_api
+        - openrag_api
+        - internal_tools_api      # OCR, analysis, anomaly, redaction
+        - litellm_proxy
+      denied:
+        - external_email_apis
+        - public_web_unfiltered
+        - social_media_apis
+        - third_party_ocr_services  # Use internal OCRTool only
+    file_system_access:
+      allowed:
+        - read: agents/iris/memory/
+        - write: agents/iris/memory/
+        - write: agents/iris/logs/
+      denied:
+        - write: agents/*/        # No cross-agent writes
+        - read: agents/casey/*    # No cross-agent reads
+    process_execution:
+      allowed: false
+
+  external_transmission_boundary:
+    description: >-
+      Iris is an internal research agent. Any attempt to route output
+      to AgenticMail, external APIs, or any destination outside
+      Open Notebook and OpenRAG is blocked.
+    enforcement: hard_block
+    triggers:
+      - output_destination_agentic_mail
+      - output_destination_external_api
+      - output_destination_external_url
+
+  document_tier_boundary:
+    description: >-
+      Block access to documents or fields classified above T2.
+      Iris may not read T3/PI-tier document content.
+    enforcement: hard_block
+    triggers:
+      - document_classification_tier: T3
+      - field_access_tier: T3
+
+  anomaly_human_review_gate:
+    description: >-
+      Any document flagged by AnomalyDetectionTool at standard or deep
+      level must pass human review before release to downstream agents.
+    enforcement: hard_block
+    triggers:
+      - anomaly_score_above: 0.70
+      - integrity_flag: true
+
+---
+
+*MISJustice Alliance — Legal Research. Civil Rights. Public Record.*

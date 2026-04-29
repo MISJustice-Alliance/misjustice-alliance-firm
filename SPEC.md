@@ -1214,6 +1214,36 @@ MCAS emits webhooks to n8n on:
 | **Quill** | PublicationCrew | gpt-4o-mini | ollama/llama3 | Yes | T1-publicsafe | None |
 | **Vane** | — (human operator tool) | ollama/llama3 | — | No | T4-admin | None |
 
+### Agent Directory Structure
+
+Every agent registered in the `agents/` directory MUST conform to the following directory layout. This structure is the canonical source of truth for Paperclip registration, OpenClaw dispatch, and CrewAI runtime initialization.
+
+```
+agents/<name>/
+├── README.md              # Agent overview, responsibilities, and quick-start
+├── SPEC.md                # Agent-specific technical specification
+├── SOUL.md                # Agent identity constitution and values
+├── agent.yaml             # Paperclip agent manifest (canonical runtime definition)
+├── MEMORY.md              # Memory policy, scope, and retention rules
+├── tools.yaml             # Tool inventory, bindings, and tier scoping
+├── models.yaml            # LLM configuration (primary model, fallback, temperature, tokens)
+├── config.yaml            # Runtime configuration parameters
+├── POLICY.md              # Behavioral and security policy
+├── GUARDRAILS.yaml        # Safety guardrails, output constraints, and blocking rules
+├── EVALS.yaml             # Evaluation criteria, test cases, and acceptance thresholds
+├── RUNBOOK.md             # Operational runbook for deployment, debugging, and rollback
+├── METRICS.md             # Observability, performance, and SLA metrics
+├── system_prompt.md       # Runtime system prompt injected at agent initialization
+├── memory/                # Persistent memory storage (vector embeddings, session state)
+├── evals/                 # Evaluation outputs, datasets, and regression results
+└── logs/                  # Runtime log outputs and audit trails
+```
+
+**Enforcement:**
+- The CI pipeline validates that every subdirectory under `agents/` contains all required files before allowing registration.
+- Missing mandatory files (`agent.yaml`, `system_prompt.md`, `SOUL.md`) block Paperclip registration and OpenClaw dispatch.
+- Optional files may be empty stubs during development but must be present in production.
+
 ---
 
 ## 17. Data Classification Model

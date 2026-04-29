@@ -33,7 +33,7 @@ x-restart-policy: &restart-policy
 
 services:
   # ---------------------------------------------------------------------------
-  # MCAS API (FastAPI)
+  # MCAS API (Django + DRF)
   # ---------------------------------------------------------------------------
   mcas:
     build:
@@ -47,14 +47,14 @@ services:
       MCAS_DATABASE_URL: ${MCAS_DATABASE_URL:-postgresql+asyncpg://mcas:mcas@postgres:5432/mcas}
       MCAS_REDIS_URL: ${MCAS_REDIS_URL:-redis://redis:6379/0}
       MCAS_MINIO_ENDPOINT: ${MCAS_MINIO_ENDPOINT:-minio:9000}
-      MCAS_MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
-      MCAS_MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      MCAS_MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
+      MCAS_MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
       MCAS_NEO4J_URI: ${MCAS_NEO4J_URI:-bolt://neo4j:7687}
       MCAS_NEO4J_USER: ${NEO4J_AUTH_USER:-neo4j}
-      MCAS_NEO4J_PASSWORD: ${NEO4J_AUTH_PASSWORD:-neo4jpassword}
+      MCAS_NEO4J_PASSWORD: ${NEO4J_AUTH_PASSWORD}
       MCAS_ELASTICSEARCH_URL: ${MCAS_ELASTICSEARCH_URL:-http://elasticsearch:9200}
       MCAS_QDRANT_URL: ${MCAS_QDRANT_URL:-http://qdrant:6333}
-      MCAS_SECRET_KEY: ${MCAS_SECRET_KEY:-dev-secret-change-me-in-production}
+      MCAS_SECRET_KEY: ${MCAS_SECRET_KEY}
     ports:
       - "8001:8000"
     networks:
@@ -89,8 +89,9 @@ services:
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - postgres_data:/var/lib/postgresql/data/pgdata
+      - ./postgres_data/init-scripts:/docker-entrypoint-initdb.d:ro
     ports:
-      - "5432:5432"
+      - "5433:5432"
     networks:
       - backend
     healthcheck:
@@ -109,8 +110,8 @@ services:
     <<: *restart-policy
     logging: *default-logging
     environment:
-      NEO4J_AUTH: ${NEO4J_AUTH:-neo4j/neo4jpassword}
-      NEO4J_PLUGINS: '["apoc", "gds"]'
+      NEO4J_AUTH: ${NEO4J_AUTH}
+      NEO4J_PLUGINS: '["apoc", "graph-data-science"]'
       NEO4J_dbms_memory_heap_max__size: ${NEO4J_HEAP_MAX:-1G}
       NEO4J_dbms_memory_pagecache_size: ${NEO4J_PAGECACHE:-512M}
     volumes:
@@ -147,7 +148,7 @@ services:
     networks:
       - backend
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:6333/healthz || exit 1"]
+      test: ["CMD-SHELL", "bash -c '> /dev/tcp/localhost/6333'"]
       interval: 15s
       timeout: 10s
       retries: 3
@@ -214,7 +215,7 @@ services:
   # LiteLLM Proxy — LLM Routing & Tier Blocking
   # ---------------------------------------------------------------------------
   litellm-proxy:
-    image: ghcr.io/berriai/litellm:main-latest
+    image: ghcr.io/berriai/litellm:main-v1.52.0
     container_name: misjustice-litellm
     <<: *restart-policy
     logging: *default-logging
@@ -237,7 +238,7 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:4000/health/liveliness || exit 1"]
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:4000/health/liveliness')"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -274,8 +275,8 @@ services:
     <<: *restart-policy
     logging: *default-logging
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     command: server /data --console-address ":9001"
     volumes:
       - minio_data:/data
@@ -326,7 +327,7 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:5678/healthz || exit 1"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:5678/healthz || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -357,6 +358,187 @@ services:
         condition: service_started
       n8n:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ---------------------------------------------------------------------------
+  # LawGlance — Legal RAG Search Service
+  # ---------------------------------------------------------------------------
+  lawglance:
+    build:
+      context: services/lawglance
+      dockerfile: Dockerfile
+    container_name: misjustice-lawglance
+    <<: *restart-policy
+    logging: *default-logging
+    ports:
+      - "8501:8000"
+    networks:
+      - backend
+      - frontend
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ---------------------------------------------------------------------------
+  # Legal Research MCP — Model Context Protocol Tool Registry
+  # ---------------------------------------------------------------------------
+  legal-research-mcp:
+    build:
+      context: services/legal-research-mcp
+      dockerfile: Dockerfile
+    container_name: misjustice-legal-research-mcp
+    <<: *restart-policy
+    logging: *default-logging
+    ports:
+      - "8502:8000"
+    networks:
+      - backend
+      - frontend
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ---------------------------------------------------------------------------
+  # Legal Source Gateway — Upstream Legal Data Source Registry
+  # ---------------------------------------------------------------------------
+  legal-source-gateway:
+    build:
+      context: services/legal-source-gateway
+      dockerfile: Dockerfile
+    container_name: misjustice-legal-source-gateway
+    <<: *restart-policy
+    logging: *default-logging
+    ports:
+      - "8503:8000"
+    networks:
+      - backend
+      - frontend
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ---------------------------------------------------------------------------
+  # VANE — Vector-Assisted Navigation Engine
+  # ---------------------------------------------------------------------------
+  vane:
+    build:
+      context: services/vane
+      dockerfile: Dockerfile
+    container_name: misjustice-vane
+    <<: *restart-policy
+    logging: *default-logging
+    ports:
+      - "8504:8000"
+    networks:
+      - backend
+      - frontend
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ---------------------------------------------------------------------------
+  # OpenClaw Gateway — Agent Dispatch & Task Router
+  # ---------------------------------------------------------------------------
+  openclaw-gateway:
+    build:
+      context: services/openclaw-stub
+      dockerfile: Dockerfile
+    container_name: misjustice-openclaw
+    <<: *restart-policy
+    logging: *default-logging
+    environment:
+      OPENCLAW_REDIS_URL: ${OPENCLAW_REDIS_URL:-redis://redis:6379/0}
+      OPENCLAW_PORT: 8080
+      OPENCLAW_LOG_LEVEL: ${OPENCLAW_LOG_LEVEL:-info}
+    # No host port — 8080 used by searxng; internal only
+    networks:
+      - frontend
+      - agent-net
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ---------------------------------------------------------------------------
+  # crewAI Bridge — Maps OpenClaw dispatches to crewAI crew invocations
+  # ---------------------------------------------------------------------------
+  crewai-bridge:
+    build:
+      context: crewai-orchestrator
+      dockerfile: Dockerfile
+    container_name: misjustice-crewai-bridge
+    <<: *restart-policy
+    logging: *default-logging
+    environment:
+      LITELLM_PROXY_URL: ${LITELLM_PROXY_URL:-http://litellm-proxy:4000}
+      LITELLM_API_KEY: ${LITELLM_API_KEY}
+      MCAS_API_URL: ${MCAS_API_URL:-http://mcas:8000}
+      MCAS_API_TOKEN: ${MCAS_API_TOKEN}
+      N8N_WEBHOOK_URL: ${N8N_WEBHOOK_URL}
+      PAPERCLIP_URL: ${PAPERCLIP_URL}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      LOG_LEVEL: ${CREWAI_LOG_LEVEL:-INFO}
+    command: ["python", "-m", "uvicorn", "misjustice_crews.bridge.server:app", "--host", "0.0.0.0", "--port", "8002"]
+    ports:
+      - "8002:8002"
+    networks:
+      - frontend
+      - backend
+      - agent-net
+    depends_on:
+      redis:
+        condition: service_healthy
+      litellm-proxy:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8002/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ---------------------------------------------------------------------------
+  # NemoClaw Sandbox — GPU-Sandboxed Agent Runtime
+  # ---------------------------------------------------------------------------
+  nemoclaw-sandbox:
+    build:
+      context: services/openclaw-stub
+      dockerfile: Dockerfile
+    container_name: misjustice-nemoclaw
+    <<: *restart-policy
+    logging: *default-logging
+    environment:
+      NEMOCLAW_OPENCLAW_URL: ${NEMOCLAW_OPENCLAW_URL:-http://openclaw-gateway:8080}
+      NEMOCLAW_REDIS_URL: ${NEMOCLAW_REDIS_URL:-redis://redis:6379/0}
+      NEMOCLAW_LOG_LEVEL: ${NEMOCLAW_LOG_LEVEL:-info}
+    networks:
+      - agent-net
+    depends_on:
+      openclaw-gateway:
+        condition: service_started
+    # No ports — internal-only service on agent-net
 
 # -----------------------------------------------------------------------------
 # Networks
@@ -369,6 +551,10 @@ networks:
     driver: bridge
     internal: false
     name: misjustice-backend
+  agent-net:
+    driver: bridge
+    internal: true
+    name: misjustice-agent-net
 
 # -----------------------------------------------------------------------------
 # Volumes

@@ -1,0 +1,24 @@
+agent: social_media_manager
+version: "0.1.0"
+
+runtime:
+  log_level: metadata_only
+  retention_days: 30
+  max_drafts_in_flight: 10
+
+approval:
+  required: true
+  auto_post: false
+  platforms: [x, bluesky, reddit, nostr]
+
+escalation:
+  webhook: n8n
+  triggers:
+    - misconduct_allegation
+    - restricted_or_confidential_data
+    - autonomous_posting_request
+    - coordinated_attack_detected
+
+search:
+  tier: T0
+  tools: [searxng_t0_publicsafe]

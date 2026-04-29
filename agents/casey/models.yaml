@@ -1,0 +1,46 @@
+# models.yaml — Casey (Case Investigator)
+# LiteLLM routing configuration
+
+litellm:
+  proxy_url_env: LITELLM_PROXY_URL
+  api_key_env: LITELLM_API_KEY
+
+models:
+  primary:
+    name: gpt-4o
+    provider: openai
+    litellm_route: openai/gpt-4o
+    temperature: 0.1
+    max_tokens: 4096
+    timeout_seconds: 180
+    purpose: >
+      Strong research synthesis, structured output fidelity, and reliable
+      sourcing behavior (citation grounding) for referral packet assembly.
+
+  fallback:
+    name: claude-3-5-sonnet-20241022
+    provider: anthropic
+    litellm_route: anthropic/claude-3-5-sonnet-20241022
+    temperature: 0.1
+    max_tokens: 4096
+    timeout_seconds: 180
+    purpose: >
+      Fallback for primary model unavailability. Maintains citation grounding
+      and structured output reliability.
+
+retry:
+  max_attempts: 3
+  backoff_seconds: 5
+  failover_to_fallback: true
+
+routing_rules:
+  - condition: primary_model_timeout
+    action: retry_primary_once_then_fallback
+  - condition: primary_model_rate_limited
+    action: immediate_fallback
+  - condition: primary_model_4xx_error
+    action: immediate_fallback
+
+---
+
+*MISJustice Alliance — Legal Research. Civil Rights. Public Record.*

@@ -1,0 +1,35 @@
+agent: rae
+version: "0.1.0"
+type: specialist
+team: research
+
+runtime:
+  max_tokens: 4096
+  temperature: 0.3
+  timeout_seconds: 120
+  max_turns: 20
+
+logging:
+  level: metadata_only
+  retention_days: 30
+  store_outputs: false
+
+data_classification:
+  default_tier: T2
+  allowed_tiers: [T2, T3]
+  restricted_action: escalate_and_purge
+
+escalation:
+  enabled: true
+  mechanism: n8n
+  webhook: "critical-violation-detected"
+  auto_escalate_on:
+    - restricted_data_detected
+    - legal_advice_request
+    - constitutional_violation_flag
+
+review:
+  human_required_for:
+    - victim_impact_outputs
+    - restricted_data_encountered
+    - escalation_events

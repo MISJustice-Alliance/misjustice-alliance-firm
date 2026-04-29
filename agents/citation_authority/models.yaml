@@ -1,0 +1,22 @@
+models:
+  primary:
+    name: gpt-4o
+    provider: openai
+    temperature: 0.0
+    max_tokens: 4096
+    top_p: 1.0
+    frequency_penalty: 0.0
+    presence_penalty: 0.0
+    context_window: 128000
+    purpose: >
+      High-accuracy verification with deterministic output.
+      Zero temperature eliminates creative variation in citation checks.
+
+  fallback:
+    name: gpt-4o-mini
+    provider: openai
+    temperature: 0.0
+    max_tokens: 4096
+    purpose: >
+      Cost-efficient fallback for high-volume batches.
+      Same temperature constraint to preserve accuracy.

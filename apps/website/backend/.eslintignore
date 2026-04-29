@@ -1,0 +1,10 @@
+dist
+node_modules
+coverage
+*.js
+!.eslintrc.js
+!.prettierrc.js
+
+# Test files and helpers (not included in tsconfig.json)
+tests/**/*
+scripts/**/*

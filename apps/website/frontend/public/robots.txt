@@ -1,0 +1,178 @@
+# MISJustice Alliance - Robots.txt
+# https://misjusticealliance.org/
+# Last Updated: 2026-01-18
+
+# =============================================================================
+# DEFAULT RULES - Allow all legitimate crawlers
+# =============================================================================
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+Disallow: /_next/
+Disallow: /static/chunks/
+Crawl-delay: 1
+
+# Sitemap location
+Sitemap: https://misjusticealliance.org/sitemap.xml
+
+# =============================================================================
+# GENERATIVE ENGINE OPTIMIZATION (GEO) - LLMs.txt Standard
+# See: https://llmstxt.org/
+# =============================================================================
+# These files provide structured context for AI/LLM systems to better
+# understand and accurately represent our organization and mission.
+#
+# llms.txt - Concise summary for quick AI context loading
+# llms-full.txt - Comprehensive documentation for detailed queries
+
+LLMsTxt: https://misjusticealliance.org/llms.txt
+LLMsTxt-Full: https://misjusticealliance.org/llms-full.txt
+
+# =============================================================================
+# SEARCH ENGINE CRAWLERS - Full Access
+# =============================================================================
+User-agent: Googlebot
+Allow: /
+
+User-agent: Googlebot-Image
+Allow: /
+
+User-agent: Googlebot-News
+Allow: /
+
+User-agent: Googlebot-Video
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: Slurp
+Allow: /
+
+User-agent: DuckDuckBot
+Allow: /
+
+User-agent: Baiduspider
+Allow: /
+
+User-agent: YandexBot
+Allow: /
+
+User-agent: facebookexternalhit
+Allow: /
+
+User-agent: Twitterbot
+Allow: /
+
+User-agent: LinkedInBot
+Allow: /
+
+User-agent: Applebot
+Allow: /
+
+# =============================================================================
+# AI/LLM CRAWLERS - Explicitly Allowed for GEO
+# =============================================================================
+# OpenAI
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+# Anthropic
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+# Google AI
+User-agent: Google-Extended
+Allow: /
+
+# Perplexity
+User-agent: PerplexityBot
+Allow: /
+
+# Cohere
+User-agent: cohere-ai
+Allow: /
+
+# Meta AI
+User-agent: Meta-ExternalAgent
+Allow: /
+
+User-agent: FacebookBot
+Allow: /
+
+# Microsoft Copilot
+User-agent: Copilot
+Allow: /
+
+# Common Crawl (used for AI training datasets)
+User-agent: CCBot
+Allow: /
+
+# AI Search Engines
+User-agent: YouBot
+Allow: /
+
+User-agent: Bytespider
+Allow: /
+
+# =============================================================================
+# RESEARCH & ACADEMIC CRAWLERS - Allowed
+# =============================================================================
+User-agent: ia_archiver
+Allow: /
+
+User-agent: archive.org_bot
+Allow: /
+
+# =============================================================================
+# SECURITY & SEO TOOL CRAWLERS - Allowed
+# =============================================================================
+User-agent: AhrefsBot
+Allow: /
+
+User-agent: SemrushBot
+Allow: /
+
+User-agent: MJ12bot
+Allow: /
+
+User-agent: DotBot
+Allow: /
+
+User-agent: Screaming Frog SEO Spider
+Allow: /
+
+# =============================================================================
+# MONITORING & UPTIME CRAWLERS - Allowed
+# =============================================================================
+User-agent: UptimeRobot
+Allow: /
+
+User-agent: Pingdom
+Allow: /
+
+User-agent: StatusCake
+Allow: /
+
+# =============================================================================
+# EXPLICIT ALLOW FOR LLM CONTEXT FILES
+# =============================================================================
+User-agent: *
+Allow: /llms.txt
+Allow: /llms-full.txt
+Allow: /sitemap.xml
+Allow: /robots.txt
+Allow: /.well-known/

@@ -1,6 +1,7 @@
 from rest_framework import permissions
 from rest_framework.exceptions import PermissionDenied
 
+
 class TierBasedPermission(permissions.BasePermission):
     """
     Enforce data tier access control based on agent authorization level.
@@ -122,9 +123,10 @@ class TaskAssignmentPermission(permissions.BasePermission):
         if request.method in permissions.SAFE_METHODS:
             return request.user and request.user.is_authenticated
 
-        # POST/PATCH require supervisor role
+        # POST/PATCH require admin or supervisor role
         return request.user and request.user.is_authenticated and \
-               request.user.groups.filter(name='task_supervisors').exists()
+               (request.user.groups.filter(name='admins').exists() or \
+                request.user.groups.filter(name='task_supervisors').exists())
 
     def has_object_permission(self, request, view, obj):
         # Approval-required tasks can only be touched by admins

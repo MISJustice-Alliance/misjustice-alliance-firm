@@ -1,0 +1,108 @@
+# Webmaster — Safety Guardrails
+# Version: 0.1.0
+
+guardrails:
+  - id: GR-001
+    name: "No Autonomous Publication"
+    severity: critical
+    description: "Prevent any production publish without an explicit human approval token."
+    trigger: "PublicCasePortalTool is invoked without a valid approval_token"
+    action: block
+    log: true
+    escalate: true
+    message: "Autonomous publication is prohibited. Human approval token required."
+
+  - id: GR-002
+    name: "Tier 0/1 Identifier Block"
+    severity: critical
+    description: "Block content containing PII or sensitive identifiers from reaching staging or production."
+    trigger: "Redaction scan detects names, addresses, DOBs, SSNs, phone numbers, or sensitive locations"
+    action: block
+    log: true
+    escalate: true
+    message: "Tier 0/1 identifier detected. Pipeline halted. Escalate for manual review."
+
+  - id: GR-003
+    name: "RESTRICTED Content Block"
+    severity: critical
+    description: "Never publish or stage content classified as RESTRICTED."
+    trigger: "data_classification == RESTRICTED"
+    action: block
+    log: true
+    escalate: true
+    message: "RESTRICTED data cannot be published. Escalate immediately."
+
+  - id: GR-004
+    name: "Unapproved Search Tool Block"
+    severity: high
+    description: "Restrict search to T0-publicsafe tools only."
+    trigger: "Invocation of LawGlance, AutoResearchClaw, or unapproved public search engines"
+    action: block
+    log: true
+    escalate: false
+    message: "Unapproved search tool. Use SearXNG T0 PublicSafe only."
+
+  - id: GR-005
+    name: "No PII in Memory or Logs"
+    severity: high
+    description: "Prevent Tier 0/1 identifiers from being persisted to memory or log files."
+    trigger: "Memory write or log entry contains PII pattern"
+    action: scrub
+    log: true
+    escalate: false
+    message: "PII scrubbed from memory/log before persistence."
+
+  - id: GR-006
+    name: "Production Write Scope"
+    severity: high
+    description: "Limit production writes to approved public content only."
+    trigger: "ContentUpdateTool or SiteMaintenanceTool targets production without approval"
+    action: block
+    log: true
+    escalate: true
+    message: "Production write blocked. Route through staging and approval first."
+
+  - id: GR-007
+    name: "Sensitive Case Escalation"
+    severity: medium
+    description: "Flag high-profile or sensitive cases for mandatory human review."
+    trigger: "matter_id or case name matches sensitive-case registry OR user tags as high-profile"
+    action: flag
+    log: true
+    escalate: true
+    message: "High-profile or sensitive case detected. Mandatory human review required."
+
+  - id: GR-008
+    name: "Approval Timeout Gate"
+    severity: medium
+    description: "Prevent stale approvals from being reused."
+    trigger: "approval_token age > 168 hours"
+    action: block
+    log: true
+    escalate: false
+    message: "Approval token expired. Request fresh human approval."
+
+  - id: GR-009
+    name: "Schema.org Validation"
+    severity: low
+    description: "Ensure all published pages include required structured data."
+    trigger: "Publish action missing schema.org markup"
+    action: warn
+    log: true
+    escalate: false
+    message: "Missing schema.org markup. Add before publishing."
+
+  - id: GR-010
+    name: "Sitemap Hygiene"
+    severity: low
+    description: "Prevent non-public URLs from appearing in sitemap."
+    trigger: "Sitemap contains URLs matching staging, admin, or internal patterns"
+    action: block
+    log: true
+    escalate: false
+    message: "Non-public URL detected in sitemap. Remove before update."
+
+enforcement:
+  mode: strict
+  default_action: block
+  audit_destination: "logs/guardrail_events.log"

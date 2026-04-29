@@ -1,0 +1,20 @@
+version: 1
+
+agent:
+  name: chronology
+  display_name: "Chronology — Timeline Agent"
+  role: "Timeline Agent"
+  system_prompt_path: ./system_prompt.md
+
+  tools:
+    - "kimi_cli.tools.file:ReadFile"
+    - "kimi_cli.tools.file:WriteFile"
+    - "kimi_cli.tools.think:Think"
+    - "kimi_cli.tools.todo:SetTodoList"
+
+  exclude_tools:
+    - "kimi_cli.tools.shell:Shell"
+
+# MISJustice Alliance Firm Agent Configuration
+# This is a Kimi-compatible agent definition.
+# For OpenClaw/NemoClaw config, see agent.yaml in this directory.

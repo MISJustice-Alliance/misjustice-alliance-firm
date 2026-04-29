@@ -1,0 +1,50 @@
+# config.yaml — Quill
+# Runtime configuration for the Quill agent.
+# MISJustice Alliance Firm
+
+meta:
+  agent: quill
+  version: "1.0.0"
+  maintainer: MISJustice Alliance Platform Team
+
+runtime:
+  verbose: false
+  debug: false
+  max_iterations: 10
+  delegation_enabled: false
+  self_correction_enabled: true
+  human_in_the_loop: true
+  require_explicit_approval: true
+
+tiers:
+  data_tier: T2
+  tier_floor: T2
+  permitted_tiers: [T2, T3]
+  excluded_tiers: [T0, T1]
+
+memory:
+  session:
+    enabled: true
+    max_tokens: 32000
+    backend: langchain_buffer
+  cross_session:
+    enabled: true
+    scope: quill_drafts
+    backend: open_notebook
+    workspace: quill-drafts
+    tier_floor: T2
+
+features:
+  memo_drafting: true
+  motion_drafting: true
+  brief_drafting: true
+  gitbook_curation: true
+  redaction_verification: true
+  cross_linking: true
+  citation_formatting: true
+
+limits:
+  max_concurrent_sessions: 3
+  max_drafts_per_session: 10
+  max_tokens_per_draft: 8192
+  output_max_tokens: 8192

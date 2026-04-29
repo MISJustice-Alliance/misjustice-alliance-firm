@@ -1,0 +1,296 @@
+# =============================================================================
+# agents/quill/tools.yaml
+# Quill — Brief Writer
+# Tool Registry
+# MISJustice Alliance Firm
+# =============================================================================
+
+meta:
+  agent: quill
+  agent_version: "1.0.0"
+  tools_schema_version: "1.0.0"
+  effective_date: "2026-04-16"
+  maintainer: MISJustice Alliance Platform Team
+  total_allowed: 5
+  total_denied: 8
+
+# =============================================================================
+# ALLOWED TOOLS
+# =============================================================================
+allowed:
+
+  - name: matter_read_tool
+    display_name: "MatterReadTool"
+    group: mcas_read
+    version: "1.0.0"
+    path: agents/base/tools/matter_read_tool.py
+    description: >
+      Read matter context, facts, and approved evidence summaries from MCAS.
+      T2–T3 scoped read-only access. No Tier-0 or Tier-1 sensitive fields are
+      returned. Used to load case context before drafting memos, motions,
+      or briefs.
+    use_cases:
+      - Loading matter context for memo drafting (Workflow A)
+      - Loading matter context for motion drafting (Workflow B)
+      - Loading matter context for brief drafting (Workflow C)
+      - Loading public-approved matter summaries for GitBook curation (Workflow D)
+    inputs:
+      matter_id:
+        type: string
+        required: true
+        description: MCAS matter identifier
+        pattern: "^MCAS-[0-9]{4,}$"
+      scope:
+        type: string
+        required: false
+        enum: [summary, full, events, documents]
+        default: summary
+    outputs:
+      matter_summary:
+        type: object
+        description: Non-sensitive matter summary (T2–T3 only)
+      events:
+        type: array
+        description: Public-safe event summaries
+      documents:
+        type: array
+        description: Document metadata and references (no Tier-0/1 content)
+    requires_confirmation: false
+    classification_ceiling: tier3
+    data_never_returned:
+      - legal_name
+      - date_of_birth
+      - ssn
+      - address_residential
+      - phone_direct
+      - email_direct
+      - government_id
+      - tier0_fields
+      - tier1_pii
+    paperclip_policy_ref: quill_policy.paperclip.yaml#matter_read_tool
+    errors:
+      - code: MCAS_UNAVAILABLE
+        action: pause_session_notify_operator
+      - code: INVALID_MATTER_ID
+        action: surface_error_request_correction
+
+  - name: document_read_tool
+    display_name: "DocumentReadTool"
+    group: document_read
+    version: "1.0.0"
+    path: agents/base/tools/document_read_tool.py
+    description: >
+      Read source documents, research memos, and prior drafts from the platform
+      document store. T2–T3 scoped read-only access. Used to access verified
+      research outputs, chronologies, and existing drafts for revision.
+    use_cases:
+      - Reading research memos from Rae/Lex for incorporation into drafts
+      - Reading prior draft versions for revision
+      - Reading chronology outputs for fact sections
+      - Reading public-safe documents for GitBook curation
+    inputs:
+      document_id:
+        type: string
+        required: true
+        description: Platform document identifier
+      version:
+        type: string
+        required: false
+        description: Specific version to retrieve; omit for latest
+    outputs:
+      content:
+        type: string
+        description: Document content (redacted to T2–T3 ceiling)
+      metadata:
+        type: object
+        description: Document metadata (author, date, classification)
+    requires_confirmation: false
+    classification_ceiling: tier3
+    paperclip_policy_ref: quill_policy.paperclip.yaml#document_read_tool
+    errors:
+      - code: DOCUMENT_NOT_FOUND
+        action: surface_error_request_correction
+      - code: TIER_ACCESS_DENIED
+        action: hard_block_surface_error
+
+  - name: memo_drafting_tool
+    display_name: "MemoDraftingTool"
+    group: drafting_write
+    version: "1.0.0"
+    path: agents/base/tools/memo_drafting_tool.py
+    description: >
+      Compose legal research memos and analytical documents in the draft
+      workspace. Outputs are written to Open Notebook (`quill-drafts`) and
+      marked as pending human review. No autonomous publication or MCAS write.
+    use_cases:
+      - Composing legal research memos (Workflow A)
+      - Composing analytical summaries of case law
+      - Composing procedural guidance documents
+    inputs:
+      title:
+        type: string
+        required: true
+        max_length: 300
+      matter_id:
+        type: string
+        required: true
+        pattern: "^MCAS-[0-9]{4,}$"
+      sections:
+        type: array
+        required: true
+        description: Ordered list of section objects (heading, content)
+      citations:
+        type: array
+        required: false
+        description: Verified citations to include
+      classification:
+        type: string
+        required: true
+        enum: [T2, T3]
+    outputs:
+      draft_ref:
+        type: string
+        description: Reference to drafted document in Open Notebook
+      word_count:
+        type: integer
+      status:
+        type: string
+        enum: [draft]
+    requires_confirmation: false
+    classification_ceiling: tier3
+    nemo_rails:
+      - tier0_data_isolation
+      - no_fabricated_citations
+    paperclip_policy_ref: quill_policy.paperclip.yaml#memo_drafting_tool
+
+  - name: motion_drafting_tool
+    display_name: "MotionDraftingTool"
+    group: drafting_write
+    version: "1.0.0"
+    path: agents/base/tools/motion_drafting_tool.py
+    description: >
+      Compose procedural motions and court filings in the draft workspace.
+      Outputs are written to Open Notebook and marked as pending human review.
+    use_cases:
+      - Composing procedural motions (Workflow B)
+      - Composing stipulations and agreed orders
+      - Composing discovery motions
+    inputs:
+      motion_type:
+        type: string
+        required: true
+        enum: [motion_to_dismiss, motion_for_summary_judgment, motion_to_compel, motion_in_limine, other]
+      court:
+        type: string
+        required: true
+      matter_id:
+        type: string
+        required: true
+        pattern: "^MCAS-[0-9]{4,}$"
+      facts:
+        type: string
+        required: true
+        description: Verified facts for the statement of facts section
+      argument:
+        type: string
+        required: true
+        description: Structured legal argument
+      prayer:
+        type: string
+        required: true
+        description: Specific relief requested
+      classification:
+        type: string
+        required: true
+        enum: [T2, T3]
+    outputs:
+      draft_ref:
+        type: string
+      word_count:
+        type: integer
+      status:
+        type: string
+        enum: [draft]
+    requires_confirmation: false
+    classification_ceiling: tier3
+    nemo_rails:
+      - tier0_data_isolation
+      - no_fabricated_citations
+    paperclip_policy_ref: quill_policy.paperclip.yaml#motion_drafting_tool
+
+  - name: brief_drafting_tool
+    display_name: "BriefDraftingTool"
+    group: drafting_write
+    version: "1.0.0"
+    path: agents/base/tools/brief_drafting_tool.py
+    description: >
+      Compose appellate briefs and comprehensive legal arguments in the draft
+      workspace. Supports Table of Contents, Table of Authorities, and
+      issue-by-issue argument structure. Outputs are written to Open Notebook
+      and marked as pending human review.
+    use_cases:
+      - Composing appellate briefs (Workflow C)
+      - Composing amicus briefs
+      - Composing comprehensive legal position papers
+    inputs:
+      brief_type:
+        type: string
+        required: true
+        enum: [appellate_brief, amicus_brief, response_brief, reply_brief, other]
+      court:
+        type: string
+        required: true
+      matter_id:
+        type: string
+        required: true
+        pattern: "^MCAS-[0-9]{4,}$"
+      issues:
+        type: array
+        required: true
+        description: Ordered list of legal issues with standard of review
+      facts:
+        type: string
+        required: true
+      arguments:
+        type: array
+        required: true
+        description: Issue-by-issue arguments with citations
+      classification:
+        type: string
+        required: true
+        enum: [T2, T3]
+    outputs:
+      draft_ref:
+        type: string
+      word_count:
+        type: integer
+      status:
+        type: string
+        enum: [draft]
+    requires_confirmation: false
+    classification_ceiling: tier3
+    nemo_rails:
+      - tier0_data_isolation
+      - no_fabricated_citations
+    paperclip_policy_ref: quill_policy.paperclip.yaml#brief_drafting_tool
+
+# =============================================================================
+# DENIED TOOLS
+# =============================================================================
+denied:
+  - name: lawglance
+    reason: Legal research belongs to Rae / Lex scope
+  - name: auto_research_claw
+    reason: Research loop invocation belongs to Rae / Lex scope
+  - name: agentic_mail
+    reason: External comms require Casey / Ollie + HITL
+  - name: social_connectors
+    reason: Social platform access is Social Media Manager scope
+  - name: mcas_write
+    reason: MCAS record creation and modification belongs to Avery
+  - name: gitbook_publish
+    reason: Publication requires Sol QA + human approval gate
+  - name: mcas_read_tier0
+    reason: Tier-0 data is never accessible to Quill
+  - name: mcas_read_tier1
+    reason: Tier-1 data requires explicit human gate; Quill operates at T2–T3

@@ -1,9 +1,34 @@
-services:
-  nginx:
-    image: nginx:alpine
-    networks:
-      - dokploy-network
+# MISJustice Alliance Firm — Test Runner
+# -----------------------------------------------------------------------------
+# Extends the main compose stack with a disposable test runner.
+# Usage: docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm test-runner
+# -----------------------------------------------------------------------------
 
-networks:
-  dokploy-network:
-    external: true
+services:
+  test-runner:
+    build:
+      context: services/mcas
+      dockerfile: Dockerfile
+    container_name: misjustice-test-runner
+    environment:
+      MCAS_ENV: test
+      MCAS_DATABASE_URL: postgresql+asyncpg://mcas:mcas@postgres:5432/mcas_test
+      MCAS_REDIS_URL: redis://redis:6379/1
+      MCAS_SECRET_KEY: test-secret-do-not-use-in-production
+      MCAS_MINIO_ENDPOINT: minio:9000
+      MCAS_MINIO_ACCESS_KEY: minioadmin
+      MCAS_MINIO_SECRET_KEY: minioadmin
+      MCAS_ELASTICSEARCH_URL: ""
+      MCAS_QDRANT_URL: ""
+      MCAS_NEO4J_URL: ""
+    command: >
+      sh -c "python -m pytest tests/ -v --tb=short"
+    networks:
+      - backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy

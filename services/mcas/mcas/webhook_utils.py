@@ -1,11 +1,13 @@
-import requests
-import json
-import hmac
 import hashlib
+import hmac
+import json
 import logging
-from django.utils import timezone
+
+import requests
 from django.db.models import Q
-from .models import WebhookSubscription, WebhookEvent
+from django.utils import timezone
+
+from .models import WebhookSubscription
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +72,10 @@ def send_webhook_request(subscription, webhook_event):
             payload_json.encode(),
             hashlib.sha256
         ).hexdigest()
-        headers['X-MCAS-Signature'] = signature
+        headers['X-MCAS-Signature'] = f"sha256={signature}"
+
+    if not subscription.url.startswith('https://'):
+        raise RuntimeError("Insecure webhook URL: HTTPS is required")
 
     response = requests.post(
         subscription.url,
@@ -78,7 +83,6 @@ def send_webhook_request(subscription, webhook_event):
         headers=headers,
         timeout=10
     )
-
     response.raise_for_status()
 
     # Update subscription's last delivery time

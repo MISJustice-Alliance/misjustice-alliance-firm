@@ -6,6 +6,7 @@ Run: python test_encryption_simple.py
 
 from cryptography.fernet import Fernet
 
+
 def test_fernet_encryption():
     """Test Fernet encryption roundtrip."""
     key = Fernet.generate_key()
@@ -30,10 +31,7 @@ def test_none_handling():
 
     # Simulate get_prep_value behavior with None
     plaintext = None
-    if plaintext:
-        ciphertext = cipher.encrypt(plaintext.encode()).decode()
-    else:
-        ciphertext = plaintext
+    ciphertext = cipher.encrypt(plaintext.encode()).decode() if plaintext else plaintext
 
     assert ciphertext is None, "None should pass through unchanged"
     print("✓ None values handled correctly")
@@ -44,10 +42,7 @@ def test_empty_string_handling():
     cipher = Fernet(key)
 
     plaintext = ""
-    if plaintext:
-        ciphertext = cipher.encrypt(plaintext.encode()).decode()
-    else:
-        ciphertext = plaintext
+    ciphertext = cipher.encrypt(plaintext.encode()).decode() if plaintext else plaintext
 
     assert ciphertext == "", "Empty string should pass through unchanged"
     print("✓ Empty string values handled correctly")

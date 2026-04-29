@@ -1,14 +1,46 @@
-from rest_framework import viewsets, permissions, status
-from rest_framework.decorators import action
-from rest_framework.response import Response
-from django.db.models.signals import post_save
+import os
+import uuid
+
+from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
-import json
-from .models import Person, Organization, Matter, Event, Document, Task, WebhookEvent, WebhookSubscription
-from .serializers import PersonSerializer, OrganizationSerializer, MatterSerializer, EventSerializer, DocumentSerializer, TaskSerializer, WebhookEventSerializer, WebhookSubscriptionSerializer
-from .permissions import TierBasedPermission, MatterApprovalPermission, DocumentReadOnlyForTier0, TaskAssignmentPermission
-from .webhook_utils import deliver_webhook
+from rest_framework import permissions, status, viewsets
+from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.response import Response
+
+from .models import (
+    Document,
+    Event,
+    Matter,
+    Organization,
+    Person,
+    Task,
+    WebhookEvent,
+    WebhookSubscription,
+)
+from .permissions import (
+    DocumentReadOnlyForTier0,
+    MatterApprovalPermission,
+    TaskAssignmentPermission,
+    TierBasedPermission,
+)
+from .serializers import (
+    DocumentSerializer,
+    EventSerializer,
+    MatterSerializer,
+    OrganizationSerializer,
+    PersonSerializer,
+    TaskSerializer,
+    WebhookEventSerializer,
+    WebhookSubscriptionSerializer,
+)
 from .storage_utils import get_storage_client
+from .webhook_utils import deliver_webhook
+
+
+@api_view(['GET'])
+@permission_classes([])
+def healthz(request):
+    return Response({'status': 'ok'})
 
 
 class PersonViewSet(viewsets.ModelViewSet):
@@ -53,7 +85,7 @@ class MatterViewSet(viewsets.ModelViewSet):
         """HITL gate: Approve matter for public publication."""
         matter = self.get_object()
         if matter.data_tier not in ['Tier-2', 'Tier-3']:
-            return Response({'error': f'Tier-1 matters cannot be published publicly'}, status=400)
+            return Response({'error': 'Tier-1 matters cannot be published publicly'}, status=400)
         matter.approved_for_publication = True
         matter.save()
         return Response({'status': 'approved for publication'})
@@ -98,14 +130,43 @@ class DocumentViewSet(viewsets.ModelViewSet):
         matter_id = request.data.get('matter')
         data_tier = request.data.get('data_tier', 'Tier-2')
 
-        # Generate file path: matters/{matter_id}/filename
-        file_path = f"matters/{matter_id}/{file_obj.name}"
+        if not matter_id:
+            return Response(
+                {'error': 'matter is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            matter = Matter.objects.get(pk=matter_id)
+        except Matter.DoesNotExist:
+            return Response(
+                {'error': 'Matter not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        valid_tiers = [choice[0] for choice in Document.DATA_TIER_CHOICES]
+        if data_tier not in valid_tiers:
+            return Response(
+                {'error': 'Invalid data_tier'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        matter_tier_num = int(matter.data_tier.split('-')[1])
+        doc_tier_num = int(data_tier.split('-')[1])
+        if doc_tier_num > matter_tier_num:
+            return Response(
+                {'error': 'Document tier exceeds matter tier'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        original_name = os.path.basename(file_obj.name)
+        storage_key = f"matters/{matter_id}/{uuid.uuid4()}_{original_name}"
 
         # Upload to R2
         storage_client = get_storage_client()
         uploaded_path = storage_client.upload_file(
             file_obj,
-            file_path,
+            storage_key,
             mime_type=file_obj.content_type
         )
 
@@ -118,7 +179,7 @@ class DocumentViewSet(viewsets.ModelViewSet):
         # Create Document record
         document = Document.objects.create(
             matter_id=matter_id,
-            title=request.data.get('title', file_obj.name),
+            title=request.data.get('title', original_name),
             document_type=request.data.get('document_type', 'other'),
             data_tier=data_tier,
             file_path=uploaded_path,
@@ -182,10 +243,23 @@ def handle_matter_created(sender, instance, created, **kwargs):
         deliver_webhook(webhook)
 
 
+@receiver(pre_save, sender=Event)
+def cache_event_pattern_flagged(sender, instance, **kwargs):
+    if instance.pk:
+        try:
+            old = Event.objects.get(pk=instance.pk)
+            instance._previous_pattern_flagged = old.pattern_flagged
+        except Event.DoesNotExist:
+            instance._previous_pattern_flagged = False
+    else:
+        instance._previous_pattern_flagged = False
+
+
 @receiver(post_save, sender=Event)
-def handle_event_pattern_flagged(sender, instance, **kwargs):
+def handle_event_pattern_flagged(sender, instance, created, **kwargs):
     """Fire webhook when pattern is flagged."""
-    if instance.pattern_flagged:
+    previous = getattr(instance, '_previous_pattern_flagged', False)
+    if instance.pattern_flagged and (created or not previous):
         webhook = WebhookEvent.objects.create(
             event_type='event.pattern_flagged',
             payload={

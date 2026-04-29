@@ -1,0 +1,38 @@
+agent: chronology
+version: "0.1.0"
+
+tools:
+  - name: MatterReadTool
+    description: Read Matter records from MCAS (Tier 2 de-identified scope).
+    access: read
+    target: mcas_matters
+
+  - name: DocumentReadTool
+    description: Read Document and Evidence metadata from MCAS.
+    access: read
+    target: mcas_documents
+
+  - name: EventCreateTool
+    description: Create structured Event records in MCAS or Open Notebook.
+    access: write
+    target: mcas_events
+
+  - name: EventSequenceTool
+    description: Order and sequence events chronologically with gap detection.
+    access: transform
+    target: chronology_output
+
+  - name: DateConflictDetectionTool
+    description: Flag timing inconsistencies and overlapping date claims.
+    access: analyze
+    target: event_records
+
+  - name: OpenNotebookWriteTool
+    description: Write litigation-ready chronology documents for human review.
+    access: write
+    target: open_notebook
+
+  - name: MemoryPalaceMCP
+    description: Store and recall cross-session chronology context.
+    access: read_write
+    target: memorypalace

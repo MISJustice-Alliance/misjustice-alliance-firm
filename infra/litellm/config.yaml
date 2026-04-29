@@ -19,13 +19,13 @@ model_list:
       tier_allowed: [T0, T1, T2, T3]
 
   # Cloud fallback (example — requires real API key in production)
-  - model_name: cloud-gpt-fallback
-    litellm_params:
-      model: openai/gpt-4o-mini
-      api_key: os.environ/OPENAI_API_KEY
-      timeout: 60
-    model_info:
-      tier_allowed: [T0, T2, T3]
+  # - model_name: cloud-gpt-fallback
+  #   litellm_params:
+  #     model: openai/gpt-4o-mini
+  #     api_key: os.environ/OPENAI_API_KEY
+  #     timeout: 60
+  #   model_info:
+  #     tier_allowed: [T0, T2, T3]
 
   # Embeddings (local)
   - model_name: local-embeddings

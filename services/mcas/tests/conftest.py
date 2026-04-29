@@ -1,11 +1,14 @@
 import os
-import pytest
+
+import httpx
 import pytest_asyncio
 from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.pool import NullPool
 
+from app.database import Base, get_db, get_session_maker, set_engine
 from app.main import app
-from app.database import Base, set_engine, get_session_maker, get_db
 
 # Use a test database
 TEST_DATABASE_URL = os.getenv(
@@ -16,13 +19,14 @@ TEST_DATABASE_URL = os.getenv(
 
 @pytest_asyncio.fixture(scope="session", autouse=True, loop_scope="session")
 async def setup_database():
-    # Create engine on the session event loop to avoid asyncpg loop mismatch
-    engine = create_async_engine(TEST_DATABASE_URL, echo=False, future=True)
+    # NullPool prevents asyncpg connections from being pooled across event loops
+    engine = create_async_engine(TEST_DATABASE_URL, echo=False, future=True, poolclass=NullPool)
     set_engine(engine)
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
+        await conn.execute(text("CREATE SEQUENCE IF NOT EXISTS matter_display_id_seq START 1"))
 
     # Override DB dependency to use the test engine
     async def override_get_db():
@@ -50,7 +54,8 @@ async def db_session() -> AsyncSession:
 
 @pytest_asyncio.fixture(loop_scope="session")
 async def client() -> AsyncClient:
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    transport = httpx.ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
 
 

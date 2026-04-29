@@ -1,0 +1,27 @@
+agent: chronology
+version: "0.1.0"
+
+data_tier:
+  min: T1
+  max: T2
+
+search:
+  token_tier: T1-internal
+
+memory:
+  provider: memorypalace
+  scope: per-matter
+  classification_ceiling: tier2
+
+sandbox:
+  provider: openshell
+  policy_file: services/openshell/policies/chronology_policy.yaml
+
+logging:
+  level: metadata_only
+  retention_days: 30
+  store_event_records: false
+
+orchestration:
+  crew: LegalResearchCrew
+  hitl_required_before_publish: true

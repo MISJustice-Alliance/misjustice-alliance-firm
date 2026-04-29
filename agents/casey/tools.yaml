@@ -1,0 +1,88 @@
+# tools.yaml — Casey (Case Investigator)
+# Tool inventory and bindings
+
+mcas_tools:
+  - name: MatterReadTool
+    description: Read de-identified Tier 2 matter exports via the MCAS export API.
+    endpoint: /matters/export
+    methods: [POST]
+    auth: MCAS_API_TOKEN_CASEY + human_export_auth_token
+    scope: export_api_only
+    tier_floor: T2
+    human_auth_required: true
+
+  - name: MatterWriteTool
+    description: Write referral and flag events to MCAS.
+    endpoint: /events
+    methods: [POST]
+    auth: MCAS_API_TOKEN_CASEY
+    permitted_event_types:
+      - referral_packet_assembled
+      - referral_candidate_flagged
+
+  - name: DocumentReadTool
+    description: Read document metadata for context (not content directly).
+    endpoint: /documents/metadata
+    methods: [GET]
+    auth: MCAS_API_TOKEN_CASEY
+    scope: metadata_only
+
+  - name: EventCreateTool
+    description: Create structured event records in MCAS.
+    endpoint: /events
+    methods: [POST]
+    auth: MCAS_API_TOKEN_CASEY
+    permitted_event_types:
+      - referral_packet_assembled
+      - referral_candidate_flagged
+
+web_search:
+  provider: searxng
+  endpoint_env: SEARXNG_API_URL
+  token_env: SEARXNG_TOKEN_RESTRICTED
+  tier: T2
+  engine_groups:
+    - internal_restricted
+    - public_legal
+    - bar_registries
+    - attorney_directories
+    - nonprofit_registries
+    - advocacy_org_public
+    - public_web_safe
+  max_results_per_query: 15
+
+open_notebook:
+  provider: open_notebook
+  endpoint_env: OPEN_NOTEBOOK_URL
+  token_env: OPEN_NOTEBOOK_TOKEN_CASEY
+  workspace: casey-referrals
+  output_format: markdown
+
+agentic_mail:
+  provider: agentic_mail
+  endpoint_env: AGENTIC_MAIL_URL
+  token_env: AGENTIC_MAIL_TOKEN_CASEY
+  access: draft_only
+  draft_template: referral_packet
+
+openrag:
+  provider: openrag
+  endpoint_env: OPENRAG_URL
+  token_env: OPENRAG_TOKEN_CASEY
+  access: query_only
+  scope: internal_restricted
+
+custom_tools:
+  - name: DeidentificationScanner
+    description: Scans draft content for Tier 0 and Tier 1 identifiers before external preparation.
+    type: internal
+    trigger: pre_output
+
+  - name: BarStatusVerifier
+    description: Queries state bar registries to confirm active status and disciplinary history.
+    type: search_pipeline
+    trigger: candidate_profiling
+
+---
+
+*MISJustice Alliance — Legal Research. Civil Rights. Public Record.*
