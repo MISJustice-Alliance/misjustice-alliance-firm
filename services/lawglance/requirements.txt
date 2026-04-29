@@ -4,3 +4,6 @@ pydantic
 httpx
 pytest
 pytest-asyncio
+qdrant-client>=1.9.0
+sentence-transformers>=2.7.0
+numpy>=1.26.0
