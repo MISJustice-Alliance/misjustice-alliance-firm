@@ -1,0 +1,45 @@
+{
+  "name": "HITL Intake Gate",
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "intake-gate"
+    },
+    {
+      "parameters": {
+        "options": {},
+        "content": "=New intake requires approval:\n\nMatter: {{ $json.matter_title }}\nRequested by: {{ $json.requested_by }}\nSummary: {{ $json.summary }}"
+      },
+      "name": "Compose Slack Message",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "options": {}
+      },
+      "name": "Return Decision",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [650, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [[{"node": "Compose Slack Message", "type": "main", "index": 0}]]
+    },
+    "Compose Slack Message": {
+      "main": [[{"node": "Return Decision", "type": "main", "index": 0}]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": ["hitl", "intake"]
+}

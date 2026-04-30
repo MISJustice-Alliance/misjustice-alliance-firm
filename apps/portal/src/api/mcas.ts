@@ -10,7 +10,7 @@ import type {
   ApprovalItem,
 } from '../types';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api/v1/mcas';
 
 async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${url}`, {
@@ -50,6 +50,23 @@ export async function createMatter(req: CreateMatterRequest): Promise<CreateMatt
     method: 'POST',
     body: JSON.stringify(req),
   });
+}
+
+// --- Documents ---
+
+export async function uploadDocument(matterId: string, file: File): Promise<Document> {
+  const form = new FormData();
+  form.append('file', file);
+  form.append('classification', 'T2_INTERNAL');
+  const res = await fetch(`${API_BASE}/matters/${matterId}/documents`, {
+    method: 'POST',
+    body: form,
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => 'Unknown error');
+    throw new Error(`HTTP ${res.status}: ${text}`);
+  }
+  return res.json() as Promise<Document>;
 }
 
 // --- Events ---

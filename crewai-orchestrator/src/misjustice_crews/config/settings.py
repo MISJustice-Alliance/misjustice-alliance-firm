@@ -6,6 +6,13 @@ class Settings(BaseSettings):
     litellm_proxy_url: str = ""
     litellm_api_key: str = ""
 
+    # Model aliases (logical names resolved by LiteLLM proxy)
+    default_model: str = "default"
+    fast_model: str = "fast"
+    reasoning_model: str = "reasoning"
+    coding_model: str = "coding"
+    local_model: str = "local-only"
+
     # MCAS (Matter Control and Administration System)
     mcas_api_url: str = ""
     mcas_api_token: str = ""
@@ -23,7 +30,6 @@ class Settings(BaseSettings):
     paperclip_url: str = ""
 
     # Orchestrator defaults
-    default_model: str = "openai/gpt-4o"
     log_level: str = "INFO"
     data_tier_default: str = "T2"
 

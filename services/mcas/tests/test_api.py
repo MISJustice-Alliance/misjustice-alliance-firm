@@ -28,6 +28,15 @@ class TestMatters:
         assert data["title"] == sample_matter.title
         assert data["status"] == MatterStatus.INTAKE.value
 
+    async def test_list_matters(self, client: AsyncClient, sample_matter: Matter):
+        response = await client.get("/api/v1/matters")
+        assert response.status_code == 200
+        data = response.json()
+        assert isinstance(data, list)
+        assert len(data) >= 1
+        assert any(m["matter_id"] == str(sample_matter.id) for m in data)
+        assert all("display_id" in m for m in data)
+
     async def test_get_matter_not_found(self, client: AsyncClient):
         response = await client.get("/api/v1/matters/00000000-0000-0000-0000-000000000000")
         assert response.status_code == 404

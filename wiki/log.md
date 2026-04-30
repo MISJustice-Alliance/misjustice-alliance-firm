@@ -23,6 +23,13 @@
 - Source: CLAUDE.md → raw/articles/claude-ai-policy-router.md
 - Source: docker-compose.yml → raw/articles/docker-compose-main.md
 
-## [2026-04-26] create | Additional concept pages
-- Created 8 concept pages: MCAS, Legal Source Gateway, Search Tier Model, HITL Governance, MemoryPalace, OpenShell, Data Classification, Paperclip
-- Updated index.md (29 total pages)
+## [2026-04-29] update | LiteLLM providers ingested; orphans archived
+- Ingested: `infra/litellm/PROVIDERS.md` → `raw/articles/infra-litellm-providers.md`
+- Created: `concepts/multi-provider-inference.md`
+- Archived: moved misplaced `entities/paperclip/` pages to `_archive/entities/`
+- Updated: `index.md` (30 total pages)
+
+## [2026-04-29] lint | Orphan cleanup + broken link check
+- Found 2 orphaned pages in `entities/paperclip/misjustice-alliance-firm/` (misplaced Paperclip artifacts)
+- Moved to `_archive/entities/paperclip/`
+- 19 broken wikilinks in SCHEMA.md and index.md (raw article references — expected, non-actionable)

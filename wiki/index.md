@@ -2,7 +2,7 @@
 
 > Content catalog. Every wiki page listed under its type with a one-line summary.
 > Read this first to find relevant pages for any query.
-> Last updated: 2026-04-26 | Total pages: 29
+> Last updated: 2026-04-29 | Total pages: 30
 
 ## Entities
 - [[avery-intake-coordinator]] — Avery (Intake Coordinator)
@@ -27,6 +27,7 @@
 - [[mcas-case-management]] — MCAS (MISJustice Case & Advocacy Server)
 - [[memorypalace-agent-memory]] — MemoryPalace Agent Memory
 - [[misjustice-alliance-firm]] — MISJustice Alliance Firm
+- [[multi-provider-inference]] — Multi-Provider Inference Architecture
 - [[openshell-sandbox]] — OpenShell Sandbox Runtime
 - [[paperclip-control-plane]] — Paperclip Control Plane
 - [[search-tier-model]] — Search Tier Model
@@ -36,6 +37,7 @@
 - [[raw/articles/agents-md-firm-roster]]
 - [[raw/articles/claude-ai-policy-router]]
 - [[raw/articles/docker-compose-main]]
+- [[raw/articles/infra-litellm-providers]]
 - [[raw/articles/readme-project-overview]]
 - [[raw/articles/spec-architecture-spec]]
 
