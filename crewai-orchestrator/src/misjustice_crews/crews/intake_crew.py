@@ -9,7 +9,10 @@ from misjustice_crews.tasks.intake_tasks import (
 
 
 class IntakeCrew:
-    """Intake crew: Avery (coordinator), Casey (investigator), Iris (document analyst)."""
+    """Intake crew: Avery (coordinator), Casey (investigator), Iris (document analyst).
+
+    Process: sequential → Avery receives, Casey investigates, Iris screens documents.
+    """
 
     def __init__(self, factory: AgentFactory | None = None):
         self.factory = factory or AgentFactory()
@@ -26,4 +29,5 @@ class IntakeCrew:
             tasks=[t1, t2, t3],
             process=Process.sequential,
             verbose=True,
+            memory=True,
         )

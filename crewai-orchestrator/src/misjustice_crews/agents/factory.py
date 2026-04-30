@@ -8,6 +8,7 @@ from crewai import Agent
 from crewai.llm import LLM
 
 from misjustice_crews.config.settings import settings
+from misjustice_crews.tools.registry import resolve_tools
 
 
 def _find_agents_dir() -> Path:
@@ -95,6 +96,7 @@ class AgentFactory:
             llm=llm,
             verbose=True,
             allow_delegation=False,
+            tools=resolve_tools(tool_names),
         )
         # Attach tool names metadata for crews to resolve
         agent._zhc_tool_names = tool_names
