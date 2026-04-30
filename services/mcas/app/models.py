@@ -39,6 +39,7 @@ class ActorType(enum.StrEnum):
     OFFICER = "OFFICER"
     JUDGE = "JUDGE"
     ORGANIZATION = "ORGANIZATION"
+    SYSTEM = "SYSTEM"
 
 
 class DocumentClassification(enum.StrEnum):

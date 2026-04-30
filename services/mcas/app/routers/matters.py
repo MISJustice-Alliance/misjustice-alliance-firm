@@ -10,6 +10,8 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app import mempalace as mp
+from app import storage
 from app.database import get_db
 from app.models import Actor, AuditEntry, Document, Event, Matter
 from app.schemas import (
@@ -22,8 +24,6 @@ from app.schemas import (
     MatterResponse,
     MatterSummaryResponse,
 )
-from app import storage
-from app import mempalace as mp
 
 router = APIRouter(tags=["matters"])
 
