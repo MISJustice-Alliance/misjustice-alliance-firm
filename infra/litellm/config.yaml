@@ -1,54 +1,337 @@
-# MODULE: litellm-proxy
-# LiteLLM configuration for local development.
-# In production, this file is generated from Vault / Bitwarden SM.
+# =============================================================================
+# LiteLLM Proxy Configuration — Multi-Provider Inference with Failover
+# =============================================================================
+# Architecture:
+#   - Model Groups (logical names): default, fast, reasoning, coding, local-only
+#   - Physical Backends: Venice.ai (primary), Ollama (fallback), OpenRouter, Anthropic, OpenAI, Google
+#   - Fallbacks: local → cloud; cloud → alternative cloud
+#   - Rate Limits: per-provider RPM/TPM to prevent quota exhaustion
+#   - Tier Access: T0/T1 privileged matters restricted to local-only
 #
-# Policies:
-# - Tier-1 (PRIVILEGED) matters MUST use local LLMs only.
-# - Tier-2+ may use cloud providers with logging disabled.
-# - Model fallback is enabled for resilience.
-# -----------------------------------------------------------------------------
+# Provider Quick Reference:
+#   openai/* + api_base=https://api.venice.ai/v1  → Venice.ai (OpenAI-compatible, primary)
+#   ollama/llama3.2                               → Local (host.docker.internal:11434)
+#   openrouter/openai/...                         → OpenRouter (aggregates 100+ providers)
+#   anthropic/claude-...                          → Anthropic API direct
+#   openai/gpt-4o                                 → OpenAI API direct
+#   openai/o3-mini                                → OpenAI reasoning models
+#   gemini/gemini-1.5-pro                         → Google Gemini direct
+# =============================================================================
 
 model_list:
-  # Local model (ollama / vllm / llama.cpp)
-  - model_name: local-llm
+  # ============================================================================
+  # PRIMARY: VENICE.AI — Uncensored, private inference (OpenAI-compatible API)
+  # ============================================================================
+  - model_name: fast
     litellm_params:
-      model: ollama/llama3.2
-      api_base: http://host.docker.internal:11434
+      model: openai/llama-3.3-70b
+      api_base: https://api.venice.ai/v1
+      api_key: os.environ/VENICE_API_KEY
+      timeout: 60
+      rpm: 120
+      tpm: 240000
+    model_info:
+      tier_allowed: [T0, T2, T3]
+      tags: ["cloud", "uncensored", "fast", "private"]
+
+  - model_name: reasoning
+    litellm_params:
+      model: openai/deepseek-v4-pro
+      api_base: https://api.venice.ai/v1
+      api_key: os.environ/VENICE_API_KEY
+      timeout: 180
+      rpm: 60
+      tpm: 120000
+    model_info:
+      tier_allowed: [T0, T2, T3]
+      tags: ["cloud", "uncensored", "reasoning", "private"]
+
+  - model_name: default
+    litellm_params:
+      model: openai/llama-3.3-70b
+      api_base: https://api.venice.ai/v1
+      api_key: os.environ/VENICE_API_KEY
+      timeout: 60
+      rpm: 120
+      tpm: 240000
+    model_info:
+      tier_allowed: [T0, T2, T3]
+      tags: ["cloud", "uncensored", "fast", "private"]
+
+  # ============================================================================
+  # FALLBACK: LOCAL — Ollama (misjustice-ollama:11434)
+  # ============================================================================
+  - model_name: local-only
+    litellm_params:
+      model: ollama/llama3.2:1b
+      api_base: http://ollama:11434
       timeout: 120
+      rpm: 60
     model_info:
       tier_allowed: [T0, T1, T2, T3]
+      tags: ["local", "privacy-first"]
 
-  # Cloud fallback (example — requires real API key in production)
-  # - model_name: cloud-gpt-fallback
-  #   litellm_params:
-  #     model: openai/gpt-4o-mini
-  #     api_key: os.environ/OPENAI_API_KEY
-  #     timeout: 60
-  #   model_info:
-  #     tier_allowed: [T0, T2, T3]
+  - model_name: default
+    litellm_params:
+      model: ollama/llama3.2:1b
+      api_base: http://ollama:11434
+      timeout: 120
+      rpm: 60
+    model_info:
+      tier_allowed: [T0, T1, T2, T3]
+      tags: ["local", "privacy-first"]
 
-  # Embeddings (local)
+  - model_name: fast
+    litellm_params:
+      model: ollama/llama3.2:1b
+      api_base: http://ollama:11434
+      timeout: 120
+      rpm: 60
+    model_info:
+      tier_allowed: [T0, T1, T2, T3]
+      tags: ["local", "privacy-first"]
+
+  - model_name: reasoning
+    litellm_params:
+      model: ollama/llama3.2:1b
+      api_base: http://ollama:11434
+      timeout: 120
+      rpm: 60
+    model_info:
+      tier_allowed: [T0, T1, T2, T3]
+      tags: ["local", "privacy-first"]
+
   - model_name: local-embeddings
     litellm_params:
       model: ollama/nomic-embed-text
-      api_base: http://host.docker.internal:11434
+      api_base: http://ollama:11434
       timeout: 60
+      rpm: 120
     model_info:
       tier_allowed: [T0, T1, T2, T3]
+      tags: ["local", "embeddings"]
 
-# General settings
+  # ============================================================================
+  # SECONDARY CLOUD: OpenAI, Anthropic, Google (requires valid API keys)
+  # ============================================================================
+  - model_name: default
+    litellm_params:
+      model: openai/gpt-4o
+      api_key: os.environ/OPENAI_API_KEY
+      timeout: 60
+      rpm: 80
+      tpm: 160000
+    model_info:
+      tier_allowed: [T0, T2, T3]
+      tags: ["cloud", "general"]
+
+  - model_name: fast
+    litellm_params:
+      model: openai/gpt-4o-mini
+      api_key: os.environ/OPENAI_API_KEY
+      timeout: 30
+      rpm: 200
+      tpm: 400000
+    model_info:
+      tier_allowed: [T0, T2, T3]
+      tags: ["cloud", "cheap", "fast"]
+
+  - model_name: reasoning
+    litellm_params:
+      model: anthropic/claude-3-5-sonnet-20241022
+      api_key: os.environ/ANTHROPIC_API_KEY
+      timeout: 120
+      rpm: 40
+      tpm: 80000
+    model_info:
+      tier_allowed: [T0, T2, T3]
+      tags: ["cloud", "reasoning", "long-context"]
+
+  - model_name: reasoning
+    litellm_params:
+      model: gemini/gemini-1.5-pro
+      api_key: os.environ/GEMINI_API_KEY
+      timeout: 120
+      rpm: 30
+      tpm: 60000
+    model_info:
+      tier_allowed: [T0, T2, T3]
+      tags: ["cloud", "reasoning", "multimodal", "large-context"]
+
+  - model_name: coding
+    litellm_params:
+      model: openai/o3-mini
+      api_key: os.environ/OPENAI_API_KEY
+      timeout: 120
+      rpm: 50
+      tpm: 100000
+    model_info:
+      tier_allowed: [T0, T2, T3]
+      tags: ["cloud", "coding", "reasoning"]
+
+  - model_name: coding
+    litellm_params:
+      model: anthropic/claude-3-5-sonnet-20241022
+      api_key: os.environ/ANTHROPIC_API_KEY
+      timeout: 90
+      rpm: 40
+      tpm: 80000
+    model_info:
+      tier_allowed: [T0, T2, T3]
+      tags: ["cloud", "coding", "long-context"]
+
+  # ============================================================================
+  # DISABLED: OpenRouter — Privacy guardrails blocking (404); re-enable when fixed
+  # ============================================================================
+  # - model_name: default
+  #   litellm_params:
+  #     model: openrouter/openai/gpt-4o-mini
+  #     api_key: os.environ/OPENROUTER_API_KEY
+  #     timeout: 60
+  #     rpm: 100
+  #     tpm: 200000
+  #   model_info:
+  #     tier_allowed: [T0, T2, T3]
+  #     tags: ["cloud", "cheap", "fast"]
+
+  # - model_name: fast
+  #   litellm_params:
+  #     model: openrouter/openai/gpt-4o-mini
+  #     api_key: os.environ/OPENROUTER_API_KEY
+  #     timeout: 30
+  #     rpm: 200
+  #     tpm: 400000
+  #   model_info:
+  #     tier_allowed: [T0, T2, T3]
+  #     tags: ["cloud", "cheap", "fast"]
+
+  # - model_name: reasoning
+  #   litellm_params:
+  #     model: openrouter/anthropic/claude-3.5-sonnet
+  #     api_key: os.environ/OPENROUTER_API_KEY
+  #     timeout: 120
+  #     rpm: 50
+  #     tpm: 100000
+  #   model_info:
+  #     tier_allowed: [T0, T2, T3]
+  #     tags: ["cloud", "reasoning", "expensive"]
+
+  # - model_name: coding
+  #   litellm_params:
+  #     model: openrouter/openai/gpt-4o
+  #     api_key: os.environ/OPENROUTER_API_KEY
+  #     timeout: 90
+  #     rpm: 60
+  #     tpm: 150000
+  #   model_info:
+  #     tier_allowed: [T0, T2, T3]
+  #     tags: ["cloud", "coding"]
+
+  # ============================================================================
+  # DISABLED: Kimi — Key invalid (401) + coding endpoint agent-restricted (403)
+  # ============================================================================
+  # - model_name: kimi-code
+  #   litellm_params:
+  #     model: openai/kimi-k2.5
+  #     api_base: https://api.kimi.com/coding/v1
+  #     api_key: os.environ/KIMI_API_KEY
+  #     timeout: 120
+  #     rpm: 60
+  #     tpm: 120000
+  #   model_info:
+  #     tier_allowed: [T0, T2, T3]
+  #     tags: ["cloud", "coding", "reasoning", "long-context"]
+
+  # - model_name: coding
+  #   litellm_params:
+  #     model: openai/kimi-k2.5
+  #     api_base: https://api.kimi.com/coding/v1
+  #     api_key: os.environ/KIMI_API_KEY
+  #     timeout: 120
+  #     rpm: 60
+  #     tpm: 120000
+  #   model_info:
+  #     tier_allowed: [T0, T2, T3]
+  #     tags: ["cloud", "coding", "reasoning", "long-context"]
+
+# =============================================================================
+# General Settings
+# =============================================================================
 general_settings:
   master_key: os.environ/LITELLM_MASTER_KEY
   database_url: os.environ/DATABASE_URL
   store_model_in_db: true
   proxy_batch_write_at: 60
+  # alert_to_email: ops@misjustice.org  # future: alerting
 
-# Rate limits
+# =============================================================================
+# Router Settings — Load Balancing, Fallbacks, Retries
+# =============================================================================
 router_settings:
   timeout: 120
-  routing_strategy: simple-shuffle
-  model_group_alias:
-    default: local-llm
+  # Routing strategy: least-busy = pick first healthy provider in group order
+  # This ensures Venice (first in each group) is tried before Ollama fallback
+  routing_strategy: least-busy
 
-# LiteLLM Proxy callbacks / guardrails (future)
-# callbacks: []
+  # ---------------------------------------------------------------------------
+  # FALLBACKS: When ALL members of a model group fail, try these groups next.
+  # ---------------------------------------------------------------------------
+  fallbacks:
+    - local-only:
+        - default
+        - fast
+        - reasoning
+
+    - default:
+        - fast
+        - reasoning
+        - coding
+
+    - fast:
+        - default
+        - reasoning
+        - coding
+
+    - reasoning:
+        - coding
+        - default
+        - fast
+
+    - coding:
+        - reasoning
+        - default
+        - fast
+
+  # ---------------------------------------------------------------------------
+  # CONTEXT WINDOW FALLBACKS: If prompt exceeds model context, fallback
+  # ---------------------------------------------------------------------------
+  context_window_fallbacks:
+    - fast:
+        - default
+        - reasoning
+        - coding
+
+  # ---------------------------------------------------------------------------
+  # RETRIES: Number of retries per model before triggering fallback
+  # ---------------------------------------------------------------------------
+  num_retries: 2
+
+  # ---------------------------------------------------------------------------
+  # MODEL GROUP ALIASES: Short names clients can use
+  # ---------------------------------------------------------------------------
+  model_group_alias:
+    default: default       # Venice primary → Ollama fallback
+    fast: fast             # Venice primary → Ollama fallback
+    reasoning: reasoning   # Venice primary → Ollama fallback
+    coding: coding         # OpenAI/Anthropic (requires keys)
+    local: local-only      # Privacy-first, no cloud
+    embeddings: local-embeddings
+
+# =============================================================================
+# Guardrails & Callbacks
+# =============================================================================
+litellm_settings:
+  input_callback: ["tier_guard"]
+  # success_callback: ["langfuse"]
+  # failure_callback: ["langfuse"]
+  # callbacks: ["presidio", "llmguard"]

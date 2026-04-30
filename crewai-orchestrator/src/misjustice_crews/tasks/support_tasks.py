@@ -1,40 +1,40 @@
 from crewai import Task
 
 
-class SystemsMaintenanceTask(Task):
+class ToolOrchestrationTask(Task):
     def __init__(self, agent, **kwargs):
         super().__init__(
             description=(
-                "Perform routine systems maintenance: monitor service health, review logs, "
-                "apply security patches, and verify backup integrity."
+                "Orchestrate tools and systems for the matter. Configure MCP integrations, "
+                "manage workflows, and ensure all services are operational."
             ),
-            expected_output="A systems maintenance report with health status, issues found, actions taken, and backup verification.",
+            expected_output="Tool orchestration report with service status, integration config, and workflow triggers.",
             agent=agent,
             **kwargs,
         )
 
 
-class CampaignDraftingTask(Task):
+class FilingPrepTask(Task):
     def __init__(self, agent, **kwargs):
         super().__init__(
             description=(
-                "Draft public advocacy campaign materials: social media posts, press releases, "
-                "email newsletters, and talking points aligned with the matter's messaging."
+                "Prepare all required filing documents. Assemble signatures, exhibits, "
+                "certificates of service, and cover sheets per court rules."
             ),
-            expected_output="Campaign content package with posts, press release, newsletter, and talking points.",
+            expected_output="A complete filing package ready for submission with all required components.",
             agent=agent,
             **kwargs,
         )
 
 
-class SiteUpdatesTask(Task):
+class DeadlineTrackingTask(Task):
     def __init__(self, agent, **kwargs):
         super().__init__(
             description=(
-                "Update the public website with new matter pages, blog posts, resource links, "
-                "and SEO metadata. Ensure accessibility compliance."
+                "Track all procedural deadlines for the matter. Generate a deadline calendar "
+                "with statutory limits, court rules, and reminder triggers."
             ),
-            expected_output="Site update manifest with new pages, modified files, SEO metadata, and accessibility notes.",
+            expected_output="A deadline calendar with dates, descriptions, statutory bases, and reminder schedules.",
             agent=agent,
             **kwargs,
         )

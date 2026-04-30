@@ -1,22 +1,28 @@
 """Matter CRUD router — matters, documents, events, audit log."""
 
 import hashlib
+import io
 import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
+from app import mempalace as mp
+from app import storage
 from app.database import get_db
 from app.models import Actor, AuditEntry, Document, Event, Matter
 from app.schemas import (
+    ActorResponse,
     AuditEntryResponse,
     DocumentResponse,
     EventCreate,
     EventResponse,
     MatterCreate,
     MatterResponse,
+    MatterSummaryResponse,
 )
 
 router = APIRouter(tags=["matters"])
@@ -46,10 +52,60 @@ def _matter_to_response(matter: Matter) -> MatterResponse:
         status=matter.status,
         created_at=matter.created_at,
         updated_at=matter.updated_at,
-        actors=[],
-        events=[],
-        documents=[],
-        audit_log=[],
+        actors=[
+            ActorResponse(
+                id=a.id,
+                matter_id=a.matter_id,
+                actor_type=a.actor_type,
+                pseudonym=a.pseudonym,
+                real_name_encrypted=a.real_name_encrypted,
+                role_in_matter=a.role_in_matter,
+                conflict_flags=a.conflict_flags or [],
+            )
+            for a in matter.actors
+        ],
+        events=[
+            EventResponse(
+                id=e.id,
+                matter_id=e.matter_id,
+                event_type=e.event_type,
+                actor_id=e.actor_id,
+                agent_id=e.agent_id,
+                description=e.description,
+                metadata=e.metadata_,
+                timestamp=e.timestamp,
+            )
+            for e in matter.events
+        ],
+        documents=[
+            DocumentResponse(
+                id=d.id,
+                matter_id=d.matter_id,
+                filename=d.filename,
+                storage_key=d.storage_key,
+                checksum_sha256=d.checksum_sha256,
+                classification=d.classification,
+                ocr_text=d.ocr_text,
+                extracted_entities=d.extracted_entities,
+                redacted_version_key=d.redacted_version_key,
+                uploaded_by=d.uploaded_by,
+                created_at=d.created_at,
+            )
+            for d in matter.documents
+        ],
+        audit_log=[
+            AuditEntryResponse(
+                id=entry.id,
+                matter_id=entry.matter_id,
+                action=entry.action,
+                actor=entry.actor,
+                ip_address=entry.ip_address,
+                user_agent=entry.user_agent,
+                timestamp=entry.timestamp,
+                diff=entry.diff,
+            )
+            for entry in matter.audit_log
+        ],
     )
 
 
@@ -74,7 +130,7 @@ async def create_matter(
     actor = Actor(
         id=uuid.uuid4(),
         matter_id=matter.id,
-        actor_type="system",
+        actor_type="SYSTEM",
         pseudonym="System",
         real_name_encrypted=b"",
         role_in_matter="system",
@@ -101,12 +157,31 @@ async def create_matter(
     }
 
 
+@router.get("/matters", response_model=list[MatterSummaryResponse])
+async def list_matters(db: AsyncSession = Depends(get_db)) -> list[MatterSummaryResponse]:
+    result = await db.execute(select(Matter).order_by(Matter.created_at.desc()))
+    matters = result.scalars().all()
+    return [MatterSummaryResponse(matter_id=m.id, display_id=m.display_id) for m in matters]
+
+
 @router.get("/matters/{matter_id}", response_model=MatterResponse)
 async def get_matter(
     matter_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
 ) -> MatterResponse:
-    matter = await _get_matter_or_404(db, matter_id)
+    result = await db.execute(
+        select(Matter)
+        .where(Matter.id == matter_id)
+        .options(
+            selectinload(Matter.actors),
+            selectinload(Matter.events),
+            selectinload(Matter.documents),
+            selectinload(Matter.audit_log),
+        )
+    )
+    matter = result.scalar_one_or_none()
+    if matter is None:
+        raise HTTPException(status_code=404, detail="Matter not found")
     return _matter_to_response(matter)
 
 
@@ -126,13 +201,33 @@ async def create_document(
     content = await file.read()
     checksum = hashlib.sha256(content).hexdigest()
 
+    # MemPalace classification enforcement (graceful degradation if offline)
+    preview = content[:2048].decode("utf-8", errors="ignore")
+    mp_result = await mp.classify_document(
+        filename=file.filename or "unnamed",
+        content_preview=preview,
+        matter_tier=classification.split("_")[0] if "_" in classification else "T3",
+    )
+    # Only override if MemPalace is enabled; otherwise respect user classification
+    enforced_class = (
+        mp_result.get("classification", classification) if mp.MEMPALACE_ENABLED else classification
+    )
+
+    # Upload to MinIO
+    storage_key = await storage.upload_document(
+        str(matter_id),
+        file.filename or "unnamed",
+        io.BytesIO(content),
+        content_type=file.content_type or "application/octet-stream",
+    )
+
     doc = Document(
         id=uuid.uuid4(),
         matter_id=matter_id,
         filename=file.filename or "unnamed",
-        storage_key=f"matters/{matter_id}/{uuid.uuid4()}",
+        storage_key=storage_key,
         checksum_sha256=checksum,
-        classification=classification,
+        classification=enforced_class,
         ocr_text="",
         extracted_entities={},
         redacted_version_key=None,

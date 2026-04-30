@@ -2,28 +2,34 @@ from crewai import Crew, Process
 
 from misjustice_crews.agents.factory import AgentFactory
 from misjustice_crews.tasks.advocacy_tasks import (
-    DeadlineTrackingTask,
-    FilingPrepTask,
-    FormCompletionTask,
+    CampaignDraftTask,
+    PublicNarrativeTask,
+    PublishTask,
 )
 
 
 class AdvocacyCrew:
-    """Advocacy crew: Ollie (paralegal), Rae (rights advocate), Lex (senior analyst)."""
+    """Advocacy crew: Rae, Social Media Manager, Webmaster.
+
+    Process: sequential → Rae frames rights narrative,
+    then Social Media Manager drafts campaign,
+    then Webmaster publishes.
+    """
 
     def __init__(self, factory: AgentFactory | None = None):
         self.factory = factory or AgentFactory()
-        self.ollie = self.factory.load_agent("ollie")
         self.rae = self.factory.load_agent("rae")
-        self.lex = self.factory.load_agent("lex")
+        self.smm = self.factory.load_agent("social_media_manager")
+        self.webmaster = self.factory.load_agent("webmaster")
 
     def build(self) -> Crew:
-        t1 = FilingPrepTask(agent=self.ollie)
-        t2 = DeadlineTrackingTask(agent=self.rae)
-        t3 = FormCompletionTask(agent=self.lex)
+        t1 = PublicNarrativeTask(agent=self.rae)
+        t2 = CampaignDraftTask(agent=self.smm)
+        t3 = PublishTask(agent=self.webmaster)
         return Crew(
-            agents=[self.ollie, self.rae, self.lex],
+            agents=[self.rae, self.smm, self.webmaster],
             tasks=[t1, t2, t3],
             process=Process.sequential,
             verbose=True,
+            memory=False,
         )

@@ -28,6 +28,11 @@ class Settings(BaseSettings):
     search_default_limit: int = 20
     search_max_limit: int = 100
 
+    # Object storage
+    minio_endpoint: str = os.getenv("MCAS_MINIO_ENDPOINT", "minio:9000")
+    minio_access_key: str = os.getenv("MCAS_MINIO_ACCESS_KEY", "minioadmin")
+    minio_secret_key: str = os.getenv("MCAS_MINIO_SECRET_KEY", "minioadmin")
+
     class Config:
         env_prefix = "MCAS_"
 
