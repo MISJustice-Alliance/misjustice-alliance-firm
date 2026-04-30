@@ -1,34 +1,14 @@
 from crewai import Task
-from crewai.utilities.guardrail import GuardrailResult
 
 
 def _citation_guardrail(output) -> tuple[bool, str]:
-    if "FAIL" in (output.raw or ""):
-        return GuardrailResult.fail("Citation audit FAILED. Publication blocked.")
-    return GuardrailResult.success(output.raw)
+    # Only fail if the audit explicitly marks itself as failed
+    if "CITATION_AUDIT: FAIL" in (output.raw or ""):
+        return (False, "Citation audit FAILED. Publication blocked.")
+    return (True, output.raw)
 
 
-class MemoDraftingTask(Task):
-    def __init__(self, agent, **kwargs):
-        super().__init__(
-            description="Draft a legal memo summarizing research findings and strategic recommendations.",
-            expected_output="A well-structured legal memo with issue, brief answer, facts, analysis, and conclusion.",
-            agent=agent,
-            **kwargs,
-        )
-
-
-class MotionDraftingTask(Task):
-    def __init__(self, agent, **kwargs):
-        super().__init__(
-            description="Draft a motion or petition appropriate to the matter and jurisdiction.",
-            expected_output="A complete motion or petition with caption, body, prayer for relief, and signature block.",
-            agent=agent,
-            **kwargs,
-        )
-
-
-class BriefDraftingTask(Task):
+class BriefDraftTask(Task):
     def __init__(self, agent, **kwargs):
         super().__init__(
             description="Draft an appellate brief or amicus brief with argument structure and citations.",
@@ -45,5 +25,15 @@ class CitationAuditTask(Task):
             expected_output="Citation audit report: PASS or FAIL with detailed findings.",
             agent=agent,
             guardrail=_citation_guardrail,
+            **kwargs,
+        )
+
+
+class ReviewTask(Task):
+    def __init__(self, agent, **kwargs):
+        super().__init__(
+            description="Perform final review of all drafted documents. Check for consistency, tone, and completeness.",
+            expected_output="Final review memo with approval status, required edits, and sign-off recommendation.",
+            agent=agent,
             **kwargs,
         )

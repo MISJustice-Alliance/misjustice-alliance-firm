@@ -3,24 +3,63 @@
 # =============================================================================
 # Architecture:
 #   - Model Groups (logical names): default, fast, reasoning, coding, local-only
-#   - Physical Backends: Ollama, OpenRouter, Anthropic, OpenAI, Google, Venice.ai
+#   - Physical Backends: Venice.ai (primary), Ollama (fallback), OpenRouter, Anthropic, OpenAI, Google
 #   - Fallbacks: local → cloud; cloud → alternative cloud
 #   - Rate Limits: per-provider RPM/TPM to prevent quota exhaustion
 #   - Tier Access: T0/T1 privileged matters restricted to local-only
 #
 # Provider Quick Reference:
-#   ollama/llama3.2          → Local (host.docker.internal:11434)
-#   openrouter/openai/...    → OpenRouter (aggregates 100+ providers)
-#   anthropic/claude-...     → Anthropic API direct
-#   openai/gpt-4o            → OpenAI API direct
-#   openai/o3-mini           → OpenAI reasoning models
-#   gemini/gemini-1.5-pro    → Google Gemini direct
-#   openai/* + api_base      → Venice.ai (OpenAI-compatible)
+#   openai/* + api_base=https://api.venice.ai/v1  → Venice.ai (OpenAI-compatible, primary)
+#   ollama/llama3.2                               → Local (host.docker.internal:11434)
+#   openrouter/openai/...                         → OpenRouter (aggregates 100+ providers)
+#   anthropic/claude-...                          → Anthropic API direct
+#   openai/gpt-4o                                 → OpenAI API direct
+#   openai/o3-mini                                → OpenAI reasoning models
+#   gemini/gemini-1.5-pro                         → Google Gemini direct
 # =============================================================================
 
 model_list:
   # ============================================================================
-  # LOCAL PROVIDER — Ollama (misjustice-ollama:11434)
+  # PRIMARY: VENICE.AI — Uncensored, private inference (OpenAI-compatible API)
+  # ============================================================================
+  - model_name: fast
+    litellm_params:
+      model: openai/llama-3.3-70b
+      api_base: https://api.venice.ai/v1
+      api_key: os.environ/VENICE_API_KEY
+      timeout: 60
+      rpm: 120
+      tpm: 240000
+    model_info:
+      tier_allowed: [T0, T2, T3]
+      tags: ["cloud", "uncensored", "fast", "private"]
+
+  - model_name: reasoning
+    litellm_params:
+      model: openai/deepseek-v4-pro
+      api_base: https://api.venice.ai/v1
+      api_key: os.environ/VENICE_API_KEY
+      timeout: 180
+      rpm: 60
+      tpm: 120000
+    model_info:
+      tier_allowed: [T0, T2, T3]
+      tags: ["cloud", "uncensored", "reasoning", "private"]
+
+  - model_name: default
+    litellm_params:
+      model: openai/llama-3.3-70b
+      api_base: https://api.venice.ai/v1
+      api_key: os.environ/VENICE_API_KEY
+      timeout: 60
+      rpm: 120
+      tpm: 240000
+    model_info:
+      tier_allowed: [T0, T2, T3]
+      tags: ["cloud", "uncensored", "fast", "private"]
+
+  # ============================================================================
+  # FALLBACK: LOCAL — Ollama (misjustice-ollama:11434)
   # ============================================================================
   - model_name: local-only
     litellm_params:
@@ -42,6 +81,26 @@ model_list:
       tier_allowed: [T0, T1, T2, T3]
       tags: ["local", "privacy-first"]
 
+  - model_name: fast
+    litellm_params:
+      model: ollama/llama3.2:1b
+      api_base: http://ollama:11434
+      timeout: 120
+      rpm: 60
+    model_info:
+      tier_allowed: [T0, T1, T2, T3]
+      tags: ["local", "privacy-first"]
+
+  - model_name: reasoning
+    litellm_params:
+      model: ollama/llama3.2:1b
+      api_base: http://ollama:11434
+      timeout: 120
+      rpm: 60
+    model_info:
+      tier_allowed: [T0, T1, T2, T3]
+      tags: ["local", "privacy-first"]
+
   - model_name: local-embeddings
     litellm_params:
       model: ollama/nomic-embed-text
@@ -53,79 +112,7 @@ model_list:
       tags: ["local", "embeddings"]
 
   # ============================================================================
-  # OPENROUTER — Aggregated cloud access (cheap, fast models)
-  # ============================================================================
-  - model_name: default
-    litellm_params:
-      model: openrouter/openai/gpt-4o-mini
-      api_key: os.environ/OPENROUTER_API_KEY
-      timeout: 60
-      rpm: 100
-      tpm: 200000
-    model_info:
-      tier_allowed: [T0, T2, T3]
-      tags: ["cloud", "cheap", "fast"]
-
-  - model_name: fast
-    litellm_params:
-      model: openrouter/openai/gpt-4o-mini
-      api_key: os.environ/OPENROUTER_API_KEY
-      timeout: 30
-      rpm: 200
-      tpm: 400000
-    model_info:
-      tier_allowed: [T0, T2, T3]
-      tags: ["cloud", "cheap", "fast"]
-
-  - model_name: reasoning
-    litellm_params:
-      model: openrouter/anthropic/claude-3.5-sonnet
-      api_key: os.environ/OPENROUTER_API_KEY
-      timeout: 120
-      rpm: 50
-      tpm: 100000
-    model_info:
-      tier_allowed: [T0, T2, T3]
-      tags: ["cloud", "reasoning", "expensive"]
-
-  - model_name: coding
-    litellm_params:
-      model: openrouter/openai/gpt-4o
-      api_key: os.environ/OPENROUTER_API_KEY
-      timeout: 90
-      rpm: 60
-      tpm: 150000
-    model_info:
-      tier_allowed: [T0, T2, T3]
-      tags: ["cloud", "coding"]
-
-  # ============================================================================
-  # ANTHROPIC — Claude direct (strong reasoning, long context)
-  # ============================================================================
-  - model_name: reasoning
-    litellm_params:
-      model: anthropic/claude-3-5-sonnet-20241022
-      api_key: os.environ/ANTHROPIC_API_KEY
-      timeout: 120
-      rpm: 40
-      tpm: 80000
-    model_info:
-      tier_allowed: [T0, T2, T3]
-      tags: ["cloud", "reasoning", "long-context"]
-
-  - model_name: coding
-    litellm_params:
-      model: anthropic/claude-3-5-sonnet-20241022
-      api_key: os.environ/ANTHROPIC_API_KEY
-      timeout: 90
-      rpm: 40
-      tpm: 80000
-    model_info:
-      tier_allowed: [T0, T2, T3]
-      tags: ["cloud", "coding", "long-context"]
-
-  # ============================================================================
-  # OPENAI — GPT-4o, o3-mini direct (coding, general purpose)
+  # SECONDARY CLOUD: OpenAI, Anthropic, Google (requires valid API keys)
   # ============================================================================
   - model_name: default
     litellm_params:
@@ -149,20 +136,17 @@ model_list:
       tier_allowed: [T0, T2, T3]
       tags: ["cloud", "cheap", "fast"]
 
-  - model_name: coding
+  - model_name: reasoning
     litellm_params:
-      model: openai/o3-mini
-      api_key: os.environ/OPENAI_API_KEY
+      model: anthropic/claude-3-5-sonnet-20241022
+      api_key: os.environ/ANTHROPIC_API_KEY
       timeout: 120
-      rpm: 50
-      tpm: 100000
+      rpm: 40
+      tpm: 80000
     model_info:
       tier_allowed: [T0, T2, T3]
-      tags: ["cloud", "coding", "reasoning"]
+      tags: ["cloud", "reasoning", "long-context"]
 
-  # ============================================================================
-  # GOOGLE — Gemini 1.5 Pro (multimodal, large context)
-  # ============================================================================
   - model_name: reasoning
     litellm_params:
       model: gemini/gemini-1.5-pro
@@ -174,59 +158,101 @@ model_list:
       tier_allowed: [T0, T2, T3]
       tags: ["cloud", "reasoning", "multimodal", "large-context"]
 
-  # ============================================================================
-  # VENICE.AI — Uncensored, private inference (OpenAI-compatible API)
-  # ============================================================================
-  - model_name: fast
+  - model_name: coding
     litellm_params:
-      model: openai/llama-3.3-70b
-      api_base: https://api.venice.ai/v1
-      api_key: os.environ/VENICE_API_KEY
-      timeout: 60
-      rpm: 120
-      tpm: 240000
-    model_info:
-      tier_allowed: [T0, T2, T3]
-      tags: ["cloud", "uncensored", "fast", "private"]
-
-  - model_name: reasoning
-    litellm_params:
-      model: openai/deepseek-r1-671b
-      api_base: https://api.venice.ai/v1
-      api_key: os.environ/VENICE_API_KEY
-      timeout: 180
-      rpm: 60
-      tpm: 120000
-    model_info:
-      tier_allowed: [T0, T2, T3]
-      tags: ["cloud", "uncensored", "reasoning", "private"]
-
-  # ============================================================================
-  # MOONSHOT (Kimi) — Long-context reasoning & coding
-  # ============================================================================
-  - model_name: kimi-code
-    litellm_params:
-      model: openai/kimi-k2.5
-      api_base: https://api.kimi.com/coding/v1
-      api_key: os.environ/KIMI_API_KEY
+      model: openai/o3-mini
+      api_key: os.environ/OPENAI_API_KEY
       timeout: 120
-      rpm: 60
-      tpm: 120000
+      rpm: 50
+      tpm: 100000
     model_info:
       tier_allowed: [T0, T2, T3]
-      tags: ["cloud", "coding", "reasoning", "long-context"]
+      tags: ["cloud", "coding", "reasoning"]
 
   - model_name: coding
     litellm_params:
-      model: openai/kimi-k2.5
-      api_base: https://api.kimi.com/coding/v1
-      api_key: os.environ/KIMI_API_KEY
-      timeout: 120
-      rpm: 60
-      tpm: 120000
+      model: anthropic/claude-3-5-sonnet-20241022
+      api_key: os.environ/ANTHROPIC_API_KEY
+      timeout: 90
+      rpm: 40
+      tpm: 80000
     model_info:
       tier_allowed: [T0, T2, T3]
-      tags: ["cloud", "coding", "reasoning", "long-context"]
+      tags: ["cloud", "coding", "long-context"]
+
+  # ============================================================================
+  # DISABLED: OpenRouter — Privacy guardrails blocking (404); re-enable when fixed
+  # ============================================================================
+  # - model_name: default
+  #   litellm_params:
+  #     model: openrouter/openai/gpt-4o-mini
+  #     api_key: os.environ/OPENROUTER_API_KEY
+  #     timeout: 60
+  #     rpm: 100
+  #     tpm: 200000
+  #   model_info:
+  #     tier_allowed: [T0, T2, T3]
+  #     tags: ["cloud", "cheap", "fast"]
+
+  # - model_name: fast
+  #   litellm_params:
+  #     model: openrouter/openai/gpt-4o-mini
+  #     api_key: os.environ/OPENROUTER_API_KEY
+  #     timeout: 30
+  #     rpm: 200
+  #     tpm: 400000
+  #   model_info:
+  #     tier_allowed: [T0, T2, T3]
+  #     tags: ["cloud", "cheap", "fast"]
+
+  # - model_name: reasoning
+  #   litellm_params:
+  #     model: openrouter/anthropic/claude-3.5-sonnet
+  #     api_key: os.environ/OPENROUTER_API_KEY
+  #     timeout: 120
+  #     rpm: 50
+  #     tpm: 100000
+  #   model_info:
+  #     tier_allowed: [T0, T2, T3]
+  #     tags: ["cloud", "reasoning", "expensive"]
+
+  # - model_name: coding
+  #   litellm_params:
+  #     model: openrouter/openai/gpt-4o
+  #     api_key: os.environ/OPENROUTER_API_KEY
+  #     timeout: 90
+  #     rpm: 60
+  #     tpm: 150000
+  #   model_info:
+  #     tier_allowed: [T0, T2, T3]
+  #     tags: ["cloud", "coding"]
+
+  # ============================================================================
+  # DISABLED: Kimi — Key invalid (401) + coding endpoint agent-restricted (403)
+  # ============================================================================
+  # - model_name: kimi-code
+  #   litellm_params:
+  #     model: openai/kimi-k2.5
+  #     api_base: https://api.kimi.com/coding/v1
+  #     api_key: os.environ/KIMI_API_KEY
+  #     timeout: 120
+  #     rpm: 60
+  #     tpm: 120000
+  #   model_info:
+  #     tier_allowed: [T0, T2, T3]
+  #     tags: ["cloud", "coding", "reasoning", "long-context"]
+
+  # - model_name: coding
+  #   litellm_params:
+  #     model: openai/kimi-k2.5
+  #     api_base: https://api.kimi.com/coding/v1
+  #     api_key: os.environ/KIMI_API_KEY
+  #     timeout: 120
+  #     rpm: 60
+  #     tpm: 120000
+  #   model_info:
+  #     tier_allowed: [T0, T2, T3]
+  #     tags: ["cloud", "coding", "reasoning", "long-context"]
 
 # =============================================================================
 # General Settings
@@ -243,46 +269,38 @@ general_settings:
 # =============================================================================
 router_settings:
   timeout: 120
-  # Routing strategy: simple-shuffle = round-robin across model group members
-  routing_strategy: simple-shuffle
+  # Routing strategy: least-busy = pick first healthy provider in group order
+  # This ensures Venice (first in each group) is tried before Ollama fallback
+  routing_strategy: least-busy
 
   # ---------------------------------------------------------------------------
   # FALLBACKS: When ALL members of a model group fail, try these groups next.
-  # Keys are model_name values from model_list above.
   # ---------------------------------------------------------------------------
   fallbacks:
-    # Local-only fails → try default (local+cloud load-balanced) → fast → reasoning
     - local-only:
         - default
         - fast
         - reasoning
 
-    # Default group fails (all backends down) → fast → reasoning → coding
     - default:
         - fast
         - reasoning
         - coding
 
-    # Fast group fails → default → reasoning → coding
     - fast:
         - default
         - reasoning
         - coding
 
-    # Reasoning group fails → coding → default → fast
     - reasoning:
         - coding
         - default
         - fast
 
-    # Coding group fails → reasoning → default → fast
     - coding:
         - reasoning
         - default
         - fast
-
-    # Embeddings fail → no fallback (embedding models are incompatible)
-    # - local-embeddings: []
 
   # ---------------------------------------------------------------------------
   # CONTEXT WINDOW FALLBACKS: If prompt exceeds model context, fallback
@@ -302,10 +320,10 @@ router_settings:
   # MODEL GROUP ALIASES: Short names clients can use
   # ---------------------------------------------------------------------------
   model_group_alias:
-    default: default       # Load-balanced local + cloud
-    fast: fast             # Low-latency, cost-optimized
-    reasoning: reasoning   # Strong reasoning, higher latency
-    coding: coding         # Code generation and review
+    default: default       # Venice primary → Ollama fallback
+    fast: fast             # Venice primary → Ollama fallback
+    reasoning: reasoning   # Venice primary → Ollama fallback
+    coding: coding         # OpenAI/Anthropic (requires keys)
     local: local-only      # Privacy-first, no cloud
     embeddings: local-embeddings
 

@@ -539,6 +539,8 @@ services:
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       LOG_LEVEL: ${CREWAI_LOG_LEVEL:-INFO}
     command: ["python", "-m", "uvicorn", "misjustice_crews.bridge.server:app", "--host", "0.0.0.0", "--port", "8002"]
+    volumes:
+      - ./agents:/app/agents:ro
     ports:
       - "8002:8002"
     networks:

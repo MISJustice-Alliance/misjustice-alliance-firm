@@ -29,5 +29,5 @@ class SupportCrew:
             tasks=[t1, t2, t3],
             process=Process.sequential,
             verbose=True,
-            memory=True,
+            memory=False,
         )

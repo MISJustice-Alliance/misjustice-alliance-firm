@@ -1,41 +1,53 @@
 from crewai import Task
 
 
-class LegalResearchTask(Task):
+class StatuteResearchTask(Task):
     def __init__(self, agent, **kwargs):
         super().__init__(
             description=(
-                "Conduct comprehensive legal research on the matter. Identify applicable statutes, "
-                "regulations, case law, and precedents. Provide full source attribution."
+                "Identify applicable statutes, regulations, and administrative rules for the matter. "
+                "Provide full text, jurisdiction, and effective dates."
             ),
-            expected_output="A legal research memo with statutes, case law, precedents, and source URLs.",
+            expected_output="A statute research memo with applicable laws, jurisdictions, effective dates, and source URLs.",
             agent=agent,
             **kwargs,
         )
 
 
-class RightsFramingTask(Task):
+class CaseLawRetrievalTask(Task):
     def __init__(self, agent, **kwargs):
         super().__init__(
             description=(
-                "Frame the legal issues in terms of constitutional and civil rights. "
-                "Identify violations, affected rights, and advocacy angles."
+                "Retrieve relevant case law and precedents. Analyze holdings, reasoning, "
+                "and distinguishability from the current matter."
             ),
-            expected_output="A rights framing analysis with constitutional provisions, violation mappings, and advocacy recommendations.",
+            expected_output="A case law memo with precedents, holdings, reasoning summaries, and distinguishability analysis.",
             agent=agent,
             **kwargs,
         )
 
 
-class StrategicAnalysisTask(Task):
+class DocumentAnalysisTask(Task):
     def __init__(self, agent, **kwargs):
         super().__init__(
             description=(
-                "Perform strategic analysis of the matter. Assess risks, opportunities, jurisdictional trends, "
-                "and forecast outcomes. This is T3 data — requires human review."
+                "Analyze all documents in the matter file. Identify anomalies, inconsistencies, "
+                "and key evidence. Flag any missing or incomplete documentation."
             ),
-            expected_output="A strategic analysis report with risk matrix, opportunity map, and outcome forecast. [HUMAN_REVIEW_REQUIRED]",
+            expected_output="A document analysis report with anomaly flags, evidence summary, and missing document list.",
             agent=agent,
-            human_input=True,
+            **kwargs,
+        )
+
+
+class ChronologyBuildTask(Task):
+    def __init__(self, agent, **kwargs):
+        super().__init__(
+            description=(
+                "Build a comprehensive timeline of events for the matter. Sequence all known dates, "
+                "identify conflicts, and flag gaps requiring investigation."
+            ),
+            expected_output="A chronological timeline with events, dates, sources, conflict flags, and gap analysis.",
+            agent=agent,
             **kwargs,
         )

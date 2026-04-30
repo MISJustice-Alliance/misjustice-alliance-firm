@@ -26,10 +26,9 @@ class DraftingCrew:
         t2 = CitationAuditTask(agent=self.citation)
         t3 = ReviewTask(agent=self.lex)
         return Crew(
-            agents=[self.lex, self.quill, self.citation],
+            agents=[self.quill, self.citation, self.lex],
             tasks=[t1, t2, t3],
-            process=Process.hierarchical,
-            manager_agent=self.lex,
+            process=Process.sequential,
             verbose=True,
-            memory=True,
+            memory=False,
         )

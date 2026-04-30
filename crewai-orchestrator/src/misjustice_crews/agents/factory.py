@@ -13,9 +13,9 @@ from misjustice_crews.tools.registry import resolve_tools
 
 def _find_agents_dir() -> Path:
     """Resolve agents/ directory relative to project root."""
-    # factory.py is at: crewai-orchestrator/src/misjustice_crews/agents/factory.py
-    # project root is 4 levels up from factory.py
-    return Path(__file__).resolve().parents[4] / "agents"
+    # factory.py is at: /app/src/misjustice_crews/agents/factory.py (in container)
+    # project root (/app) is 3 levels up from factory.py
+    return Path(__file__).resolve().parents[3] / "agents"
 
 
 class AgentFactory:
@@ -27,7 +27,12 @@ class AgentFactory:
         if not path.exists():
             return {}
         with open(path, "r") as f:
-            return yaml.safe_load(f) or {}
+            # Some agent configs have trailing --- with footer text;
+            # safe_load_all lets us grab the first valid document.
+            for doc in yaml.safe_load_all(f):
+                if doc is not None:
+                    return doc
+            return {}
 
     def get_agent_config(self, agent_id: str) -> dict[str, Any]:
         """Return raw agent config dict from agent.yaml."""
@@ -145,18 +150,20 @@ class AgentFactory:
                 # Map provider names to LiteLLM aliases
                 if not provider_hint:
                     provider = primary.get("provider", "").lower()
+                    # Infer provider from model name prefix (e.g. "openai/gpt-4o")
+                    if not provider and raw_name and "/" in raw_name:
+                        provider = raw_name.split("/")[0].lower()
                     provider_hint = self._provider_to_hint(provider)
 
         # --- Format 2: list with primary flag ---
         elif isinstance(models, list):
             primary = [m for m in models if m.get("primary")]
-            if primary:
-                raw_name = primary[0].get("id") or primary[0].get("name")
-                provider_hint = primary[0].get("provider_hint")
-            else:
-                # No primary marked — use first entry
-                raw_name = models[0].get("id") or models[0].get("name")
-                provider_hint = models[0].get("provider_hint")
+            entry = primary[0] if primary else models[0]
+            raw_name = entry.get("litellm_model") or entry.get("litellm_alias") or entry.get("id") or entry.get("name")
+            provider_hint = entry.get("provider_hint")
+            if not provider_hint:
+                provider = entry.get("provider", "").lower()
+                provider_hint = self._provider_to_hint(provider)
 
         # If provider_hint is set, use the corresponding LiteLLM alias
         if provider_hint:

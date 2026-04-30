@@ -1,40 +1,40 @@
 from crewai import Task
 
 
-class FilingPrepTask(Task):
+class PublicNarrativeTask(Task):
     def __init__(self, agent, **kwargs):
         super().__init__(
             description=(
-                "Prepare all required filing documents. Assemble signatures, exhibits, "
-                "certificates of service, and cover sheets per court rules."
+                "Frame the matter in terms of civil rights and victim impact. "
+                "Draft a compelling public narrative for advocacy campaigns."
             ),
-            expected_output="A complete filing package ready for submission with all required components.",
+            expected_output="A rights-framed public narrative with key messages, victim impact, and call to action.",
             agent=agent,
             **kwargs,
         )
 
 
-class DeadlineTrackingTask(Task):
+class CampaignDraftTask(Task):
     def __init__(self, agent, **kwargs):
         super().__init__(
             description=(
-                "Track all procedural deadlines for the matter. Generate a deadline calendar "
-                "with statutory limits, court rules, and reminder triggers."
+                "Draft public advocacy campaign materials: social media posts, press releases, "
+                "email newsletters, and talking points aligned with the matter's messaging."
             ),
-            expected_output="A deadline calendar with dates, descriptions, statutory bases, and reminder schedules.",
+            expected_output="Campaign content package with posts, press release, newsletter, and talking points.",
             agent=agent,
             **kwargs,
         )
 
 
-class FormCompletionTask(Task):
+class PublishTask(Task):
     def __init__(self, agent, **kwargs):
         super().__init__(
             description=(
-                "Complete all required court and agency forms. Populate fields from matter data, "
-                "validate formatting, and flag any missing information."
+                "Publish approved advocacy content to the website and social channels. "
+                "Update the public case portal and ensure SEO metadata is set."
             ),
-            expected_output="Completed forms with all fields populated, validation notes, and missing info flags.",
+            expected_output="Published content URLs, site update manifest, and social post schedule.",
             agent=agent,
             **kwargs,
         )

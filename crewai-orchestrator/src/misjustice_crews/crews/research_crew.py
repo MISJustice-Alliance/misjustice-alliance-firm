@@ -32,7 +32,6 @@ class ResearchCrew:
         return Crew(
             agents=[self.mira, self.iris, self.chronology, self.citation],
             tasks=[t1, t2, t3, t4],
-            process=Process.parallel,
             verbose=True,
-            memory=True,
+            memory=False,
         )

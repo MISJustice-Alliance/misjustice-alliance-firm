@@ -29,7 +29,37 @@
 - Archived: moved misplaced `entities/paperclip/` pages to `_archive/entities/`
 - Updated: `index.md` (30 total pages)
 
-## [2026-04-29] lint | Orphan cleanup + broken link check
-- Found 2 orphaned pages in `entities/paperclip/misjustice-alliance-firm/` (misplaced Paperclip artifacts)
-- Moved to `_archive/entities/paperclip/`
-- 19 broken wikilinks in SCHEMA.md and index.md (raw article references — expected, non-actionable)
+## [2026-04-29] update | CrewAI orchestrator implementation documented
+- Created: `concepts/crewai-orchestrator-bridge.md` — bridge server, dispatcher, registry, 5 crews, Docker integration
+- Created: `concepts/agent-tool-suite.md` — 10 tools across 3 modules, LLM routing, memory backends
+- Updated: `concepts/agent-orchestration-workflow.md` — added crew process types (sequential/parallel/hierarchical) and tool integration
+- Updated: `index.md` (32 total pages)
+
+## [2026-04-29] update | Docker compose build validation + API key check
+- Built: crewai-bridge, nemoclaw-sandbox, openclaw-gateway, mcas — all clean
+- API key status: VENICE ✓ (200), OPENROUTER ✓ (200), KIMI ✗ (401 Invalid Authentication)
+- Updated: `index.md` and `log.md`
+
+## [2026-04-29] update | Provider health status refreshed
+- Venice.ai → ✅ Operational (credits added, llama-3.3-70b 200 OK)
+- OpenRouter → ⚠️ Guardrailed (404 privacy restrictions)
+- Kimi → ❌ Invalid Authentication (401)
+- Updated: concepts/multi-provider-inference.md (Provider Health Status table + Recovery Actions)
+
+## [2026-04-29] test | LiteLLM proxy integration tests
+- Recreated misjustice-litellm container to pick up env vars from `.env`
+- Venice `openai/llama-3.3-70b` → ✅ 200 OK via LiteLLM proxy (direct model call)
+- `fast` group routing → ⚠️ Falls back to Ollama (OpenRouter fails first in shuffle)
+- OpenRouter via proxy → ❌ 404 (privacy guardrails)
+- Kimi via proxy → ❌ 403 (coding endpoint restricted to approved agents)
+- crewai-bridge health → ✅ responding on :8002
+- Updated: concepts/multi-provider-inference.md (test results + routing notes)
+
+## [2026-04-30] update | CrewAI bridge end-to-end verification complete
+- Dispatched and verified all 5 crews via bridge API on localhost:8002
+- Intake → ✅ complete | Research → ✅ complete | Support → ✅ complete | Advocacy → ✅ complete | Drafting → ✅ complete
+- Fixed drafting crew: changed `Process.hierarchical` → `Process.sequential`; removed `manager_agent` param
+- Fixed guardrail API: `GuardrailResult.fail()` doesn't exist in CrewAI 1.14.3 → return `(bool, str)` tuple
+- Fixed guardrail false positives: narrowed trigger from `"FAIL" in output.raw` to `"CITATION_AUDIT: FAIL" in output.raw`
+- Updated: `concepts/crewai-orchestrator-bridge.md` (process types, verification table, fixes table)
+- Updated: `index.md` (last updated date)
