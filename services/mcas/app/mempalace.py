@@ -11,7 +11,7 @@ Environment:
 """
 
 import os
-from typing import Any
+from typing import Any, cast
 
 import httpx
 
@@ -38,9 +38,9 @@ async def classify_document(
     if not MEMPALACE_ENABLED:
         # Graceful degradation: return conservative default
         return {
-            "classification": "T2_INTERNAL",
+            "classification": "T2",
             "confidence": 0.0,
-            "reasoning": "MemPalace disabled; defaulting to T2_INTERNAL",
+            "reasoning": "MemPalace disabled; defaulting to T2",
         }
 
     async with _client() as client:
@@ -54,13 +54,13 @@ async def classify_document(
                 },
             )
             resp.raise_for_status()
-            return resp.json()
-        except Exception as exc:
-            # Fail-safe: if MemPalace is unreachable, default to T2_INTERNAL
+            return cast(dict[str, Any], resp.json())
+        except Exception:
+            # Fail-safe: if MemPalace is unreachable, default to T2
             return {
-                "classification": "T2_INTERNAL",
+                "classification": "T2",
                 "confidence": 0.0,
-                "reasoning": f"MemPalace error ({exc}); defaulting to T2_INTERNAL",
+                "reason": "MemPalace unreachable",
             }
 
 
@@ -86,7 +86,7 @@ async def store_matter_summary(
                 },
             )
             resp.raise_for_status()
-            return resp.json()
+            return cast(dict[str, Any], resp.json())
         except Exception as exc:
             return {"status": "error", "reason": str(exc)}
 
@@ -103,6 +103,6 @@ async def recall_precedents(query: str, limit: int = 5) -> list[dict[str, Any]]:
                 json={"query": query, "limit": limit},
             )
             resp.raise_for_status()
-            return resp.json().get("results", [])
+            return cast(list[dict[str, Any]], resp.json().get("results", []))
         except Exception:
             return []

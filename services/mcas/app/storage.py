@@ -1,6 +1,7 @@
 """MinIO S3-compatible object storage client for MCAS."""
 
 import io
+from datetime import timedelta
 from typing import BinaryIO
 
 from minio import Minio
@@ -54,4 +55,5 @@ def get_presigned_url(storage_key: str, expiry: int = 3600) -> str:
     """Generate a presigned GET URL for a stored document."""
     client = _get_client()
     bucket = "mcas-documents"
-    return client.presigned_get_object(bucket, storage_key, expires=expiry)
+    url: str = client.presigned_get_object(bucket, storage_key, expires=timedelta(seconds=expiry))
+    return url

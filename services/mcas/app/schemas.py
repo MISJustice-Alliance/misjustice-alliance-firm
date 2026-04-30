@@ -43,7 +43,7 @@ class DocumentBase(BaseModel):
     checksum_sha256: str
     classification: DocumentClassification
     ocr_text: str | None = ""
-    extracted_entities: dict | None = Field(default_factory=dict)
+    extracted_entities: dict | None = Field(default_factory=lambda: {})
     redacted_version_key: str | None = None
     uploaded_by: UUID
 
@@ -71,7 +71,7 @@ class EventBase(BaseModel):
     actor_id: UUID | None = None
     agent_id: str | None = None
     description: str
-    metadata: dict | None = Field(default_factory=dict)
+    metadata: dict | None = Field(default_factory=lambda: {})
 
 
 class EventCreate(EventBase):
@@ -156,7 +156,7 @@ class SearchRequest(BaseModel):
     # Legacy fields retained for backward compatibility
     tier: str | None = None
     matter_id: UUID | None = None
-    filters: dict | None = Field(default_factory=dict)
+    filters: dict | None = Field(default_factory=lambda: {})
 
 
 class SearchResultItem(BaseModel):

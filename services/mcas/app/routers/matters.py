@@ -130,7 +130,7 @@ async def create_matter(
     actor = Actor(
         id=uuid.uuid4(),
         matter_id=matter.id,
-        actor_type="system",
+        actor_type="SYSTEM",
         pseudonym="System",
         real_name_encrypted=b"",
         role_in_matter="system",
@@ -161,10 +161,7 @@ async def create_matter(
 async def list_matters(db: AsyncSession = Depends(get_db)) -> list[MatterSummaryResponse]:
     result = await db.execute(select(Matter).order_by(Matter.created_at.desc()))
     matters = result.scalars().all()
-    return [
-        MatterSummaryResponse(matter_id=m.id, display_id=m.display_id)
-        for m in matters
-    ]
+    return [MatterSummaryResponse(matter_id=m.id, display_id=m.display_id) for m in matters]
 
 
 @router.get("/matters/{matter_id}", response_model=MatterResponse)
@@ -211,7 +208,10 @@ async def create_document(
         content_preview=preview,
         matter_tier=classification.split("_")[0] if "_" in classification else "T3",
     )
-    enforced_class = mp_result.get("classification", classification)
+    # Only override if MemPalace is enabled; otherwise respect user classification
+    enforced_class = (
+        mp_result.get("classification", classification) if mp.MEMPALACE_ENABLED else classification
+    )
 
     # Upload to MinIO
     storage_key = await storage.upload_document(
