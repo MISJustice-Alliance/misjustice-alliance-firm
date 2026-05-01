@@ -1,0 +1,337 @@
+# =============================================================================
+# agents/it_ops_dev/department.yaml
+# IT Operations & Development — Department / Crew Configuration
+# MISJustice Alliance Firm
+# =============================================================================
+# Defines the IT Ops & Dev department as a CrewAI-compatible crew under the
+# OpenClaw / NemoClaw orchestration layer, registered with Hermes as a
+# delegatable sub-crew. Pairs with team/team-manager.yaml (the inbound entry
+# point) and the role specs under team/.
+# =============================================================================
+
+meta:
+  department: it_ops_dev
+  display_name: "IT Operations & Development"
+  version: "0.1.0"
+  schema_version: "1.0.0"
+  effective_date: "2026-05-01"
+  maintainer: "MISJustice Alliance Platform Team"
+
+# ---------------------------------------------------------------------------
+# Charter Summary
+# ---------------------------------------------------------------------------
+charter:
+  mission: >
+    Deliver, operate, and continuously improve the MISJustice Alliance Firm
+    technology platform — orchestration layer, services, public web
+    properties, internal tools, and observability — under the firm's
+    ZHC dark-factory controls (builder–validator separation, least
+    privilege, human approval for production / security / IAM / external
+    actions, audit-by-default, evidence bundles per delivery).
+  scope:
+    in_scope:
+      - "Engineering of platform code, infrastructure, and tooling"
+      - "Operation of public web properties (via migrated Webmaster role)"
+      - "Operation of public social presence (via migrated Social Media Manager role)"
+      - "Engineering documentation (with Quill handoff for public KB)"
+      - "Reliability, observability, incident response"
+      - "Security engineering for the platform itself"
+      - "Agent evaluation and ML/RAG operations"
+    out_of_scope:
+      - "Legal analysis, advice, or representation"
+      - "Direct case content handling (Tier 0/1) — routed to legal departments"
+      - "External communication on a matter — routed to dedicated agents + HITL"
+      - "Approval of production deploys, security/IAM, or external comms (human-only)"
+
+# ---------------------------------------------------------------------------
+# Crew Configuration (CrewAI)
+# ---------------------------------------------------------------------------
+crew:
+  name: "ITOpsDevCrew"
+  process: "hierarchical"          # Team Manager plans and routes
+  manager_agent: "it_ops_dev_team_manager"
+  verbose: true
+  memory: false                    # Department-level memory is held by the
+                                   # Team Manager via memorypalace; per-task
+                                   # memory is scoped to the OpenClaw task id.
+  full_output: true
+  share_crew: false                # Department is not auto-shared with peer crews;
+                                   # cross-department coordination goes via Hermes.
+  cache: true
+  max_rpm: 60
+
+# ---------------------------------------------------------------------------
+# Roster
+# Specialist roles authored under team/<role>.yaml.
+# Migrated existing agents retain their canonical home directory and are
+# referenced by ID; this department gains a non-breaking dotted-line
+# reporting relationship to the Team Manager for IT-Ops-Dev-related work
+# (public web, public social, public KB / docs).
+# ---------------------------------------------------------------------------
+roster:
+  manager:
+    - id: "it_ops_dev_team_manager"
+      spec: "agents/it_ops_dev/team/team-manager.yaml"
+
+  architect:
+    - id: "it_ops_dev_architect"
+      spec: "agents/it_ops_dev/team/architect.yaml"
+
+  product:
+    - id: "it_ops_dev_product_manager"
+      spec: "agents/it_ops_dev/team/product-manager.yaml"
+    - id: "it_ops_dev_ux_researcher"
+      spec: "agents/it_ops_dev/team/ux-researcher.yaml"
+
+  engineering:
+    - id: "it_ops_dev_backend_dev"
+      spec: "agents/it_ops_dev/team/backend-dev.yaml"
+    - id: "it_ops_dev_frontend_dev"
+      spec: "agents/it_ops_dev/team/frontend-dev.yaml"
+    - id: "it_ops_dev_developer"
+      spec: "agents/it_ops_dev/team/developer.yaml"
+    - id: "it_ops_dev_ml_engineer"
+      spec: "agents/it_ops_dev/team/ml-engineer.yaml"
+    - id: "it_ops_dev_data_scientist"
+      spec: "agents/it_ops_dev/team/data-scientist.yaml"
+
+  reliability:
+    - id: "it_ops_dev_devops_engineer"
+      spec: "agents/it_ops_dev/team/devops-engineer.yaml"
+    - id: "it_ops_dev_sre"
+      spec: "agents/it_ops_dev/team/sre.yaml"
+    - id: "it_ops_dev_ops_engineer"
+      spec: "agents/it_ops_dev/team/ops-engineer.yaml"
+
+  security:
+    - id: "it_ops_dev_security_engineer"
+      spec: "agents/it_ops_dev/team/security-engineer.yaml"
+
+  quality:
+    - id: "it_ops_dev_qa_tester"
+      spec: "agents/it_ops_dev/team/qa-tester.yaml"
+
+  research_and_docs:
+    - id: "it_ops_dev_technical_research"
+      spec: "agents/it_ops_dev/team/technical-research.yaml"
+    - id: "it_ops_dev_technical_writer"
+      spec: "agents/it_ops_dev/team/technical-writer.yaml"
+
+  templates:
+    - id: "it_ops_dev_dynamic_worker_template"
+      spec: "agents/it_ops_dev/team/dynamic-worker-template.yaml"
+      role_type: "transient_template"
+      not_a_standing_agent: true
+
+# ---------------------------------------------------------------------------
+# Migrated Existing Agents
+# Webmaster, Social Media Manager, and Quill keep their canonical directories
+# (agents/webmaster/, agents/social_media_manager/, agents/quill/) and their
+# existing agent.yaml / config.yaml / tools.yaml unchanged. The department
+# adds non-breaking dotted-line metadata so the Team Manager can route
+# IT-Ops-Dev-related work to them.
+# ---------------------------------------------------------------------------
+migrated_agents:
+  - id: "webmaster"
+    canonical_path: "agents/webmaster/"
+    department_function: "Frontend / Web Infrastructure"
+    dotted_line_to: "it_ops_dev_team_manager"
+    coordinates_with:
+      - "it_ops_dev_frontend_dev"
+      - "it_ops_dev_devops_engineer"
+      - "it_ops_dev_security_engineer"
+      - "sol"            # Public-content QA (existing)
+    delegation_path: "hermes -> it_ops_dev_team_manager -> webmaster"
+    breaking_changes: false
+    notes: >
+      Webmaster remains canonically owned by the bridge team for case-related
+      publication workflows. The IT Ops & Dev Team Manager may delegate
+      web-infrastructure tasks (sitemap, redirects, TLS, build pipelines for
+      misjusticealliance.org and the YWCA GitBook) under the department's
+      autonomy boundaries. Existing Webmaster HITL gates are preserved; this
+      adds a parallel coordination channel, not a replacement.
+
+  - id: "social_media_manager"
+    canonical_path: "agents/social_media_manager/"
+    department_function: "Public Presence & Comms"
+    dotted_line_to: "it_ops_dev_team_manager"
+    coordinates_with:
+      - "it_ops_dev_product_manager"
+      - "it_ops_dev_security_engineer"
+      - "sol"            # Public-content QA (existing)
+    delegation_path: "hermes -> it_ops_dev_team_manager -> social_media_manager"
+    breaking_changes: false
+    notes: >
+      Social Media Manager remains canonically owned by the external team for
+      campaign content. The department coordinates on platform-impacting
+      changes (account hardening, link tracking, takedown response). All
+      existing posting HITL gates are preserved.
+
+  - id: "quill"
+    canonical_path: "agents/quill/"
+    department_function: "Documentation & Knowledge Base"
+    dotted_line_to: "it_ops_dev_team_manager"
+    coordinates_with:
+      - "it_ops_dev_technical_writer"
+      - "it_ops_dev_frontend_dev"
+      - "sol"
+    delegation_path: "hermes -> it_ops_dev_team_manager -> quill"
+    breaking_changes: false
+    notes: >
+      Quill remains canonical owner of the public GitBook. The department's
+      Technical Writer focuses on internal engineering documentation; any
+      public-KB-bound content is handed to Quill, which retains its existing
+      Sol QA + human-approval pipeline.
+
+# ---------------------------------------------------------------------------
+# Workflow Model
+# ---------------------------------------------------------------------------
+workflow:
+  process: "hierarchical"
+  manager: "it_ops_dev_team_manager"
+  default_lifecycle:
+    - "intake_validation"        # Team Manager validates Hermes envelope
+    - "planning"                 # Manager plans and assigns Builder
+    - "builder_implementation"   # One specialist role implements
+    - "validator_review"         # Distinct role validates (QA / SRE / Security)
+    - "evidence_bundle_assembly" # Manager assembles evidence
+    - "hitl_gate_if_required"    # Human approval for production / security / external
+    - "delivery"                 # Status returned to Hermes
+  builder_validator_separation:
+    enforced: true
+    rule: >
+      The role that authors a change MUST NOT be the role that validates it.
+      For functional changes the Validator is QA Tester. For reliability-
+      impacting changes the Validator is the SRE. For security-sensitive
+      changes the Validator is the Security Engineer. Architecture changes
+      additionally require Architect signoff.
+  evidence_bundle:
+    required_components:
+      - "audit_log"
+      - "artifacts"             # PRs, diffs, generated reports
+      - "test_results"
+      - "security_scan_results"
+      - "reviewer_signoffs"
+      - "hitl_gate_records"
+    archival: "openclaw_audit_stream"
+
+# ---------------------------------------------------------------------------
+# Hermes Delegation Metadata
+# Machine-readable contract Hermes uses to register and dispatch to this
+# department.
+# ---------------------------------------------------------------------------
+hermes_delegation:
+  registered_as: "ITOpsDevCrew"
+  routing_key: "it_ops_dev"
+  inbound_entry_point: "it_ops_dev_team_manager"
+  inbound_envelope_schema: "agents/it_ops_dev/schemas/inbound_task.schema.json"
+  outbound_status_schema: "agents/it_ops_dev/schemas/outbound_status.schema.json"
+  delegatable_intents:
+    - "platform_engineering_change"
+    - "ci_cd_or_pipeline_change"
+    - "infrastructure_or_observability_change"
+    - "agent_eval_or_rag_pipeline_change"
+    - "internal_documentation_change"
+    - "platform_security_review"
+    - "incident_response_coordination"
+    - "research_spike_or_poc"
+    - "ux_research_or_design_spec"
+    - "web_infrastructure_task"            # Routes through Webmaster
+    - "public_presence_platform_task"      # Routes through Social Media Manager
+    - "knowledge_base_engineering_task"    # Routes through Quill + Technical Writer
+  hitl_gates_owned_by_department:
+    - "it_ops_dev_prod_deploy_approval"
+    - "it_ops_dev_security_approval"
+    - "it_ops_dev_iam_approval"
+    - "it_ops_dev_secret_rotation_approval"
+    - "it_ops_dev_supply_chain_anomaly_review"
+    - "it_ops_dev_adr_approval"
+
+# ---------------------------------------------------------------------------
+# Autonomy Boundaries (Department-Level)
+# Department-wide ceilings; individual role specs may restrict further but
+# never exceed these.
+# ---------------------------------------------------------------------------
+autonomy_boundaries:
+  may_open_pr: true
+  may_merge_pr_with_validator: true        # Builder + distinct Validator both required
+  may_deploy_to_staging_via_ci: true
+  may_deploy_to_production: false          # ALWAYS HITL gate
+  may_modify_iam: false                    # ALWAYS HITL gate
+  may_modify_secrets: false                # ALWAYS HITL gate
+  may_send_external_communication: false   # ALWAYS HITL gate
+  may_publish_to_public_web: false         # Routed via Webmaster + Sol + HITL
+  may_publish_to_public_kb: false          # Routed via Quill + Sol + HITL
+  may_post_to_social: false                # Routed via Social Media Manager + HITL
+  may_handle_tier_0_or_tier_1_data: false  # Hard limit
+  audit_log_required: true
+  evidence_bundle_required: true
+
+# ---------------------------------------------------------------------------
+# ZHC / Dark-Factory Controls
+# ---------------------------------------------------------------------------
+zhc_controls:
+  builder_validator_separation: true
+  least_privilege: true
+  human_approval_required_for:
+    - "production_deploy"
+    - "security_change"
+    - "iam_change"
+    - "secret_rotation"
+    - "external_communication"
+    - "legal_review_action"
+    - "supply_chain_dependency_addition_above_severity_threshold"
+  audit_log_required: true
+  evidence_bundle_required: true
+  scenario_harness:
+    enabled: true
+    location: "tests/scenarios/it_ops_dev/"
+    runner: "agent_eval_harness"
+    fail_closed: true
+  ci_gates:
+    - "lint"
+    - "type_check"
+    - "unit_tests"
+    - "integration_tests"
+    - "sast_scanner"
+    - "sca_scanner"
+    - "secrets_scanner"
+    - "yaml_schema_validation"
+    - "agent_eval_scenario_harness"
+  supply_chain_controls:
+    - "pinned_dependencies"
+    - "sbom_per_release"
+    - "image_signing_cosign"
+    - "container_image_scan"
+    - "dependency_review_on_pr"
+    - "license_compliance_check"
+
+# ---------------------------------------------------------------------------
+# Architecture Decision (Summary; full ADR in docs/architecture/)
+# ---------------------------------------------------------------------------
+architecture_decision:
+  decision: >
+    Hermes (LangChain-based) remains the operator-facing supervisor and
+    control plane. CrewAI / OpenClaw / NemoClaw remains the department
+    interface and execution layer. YAML schemas at agents/<agent>/agent.yaml
+    and agents/it_ops_dev/team/<role>.yaml remain the canonical interface.
+    Pi (if adopted) is introduced as an OPTIONAL coding-task execution
+    backend behind the Team Manager / tool broker — never as the primary
+    org orchestration layer — and only when evidence from a benchmarked POC
+    by the Technical Research role demonstrates a clear advantage over the
+    current stack while preserving ZHC controls.
+  rationale_summary:
+    - "Hermes already enforces HITL gates, hard limits, and audit logging."
+    - "CrewAI/OpenClaw YAML schema is already established across all agents."
+    - "Replacing Hermes/CrewAI org-wide would invalidate existing controls and audit posture."
+    - "A Pi coding backend can be wrapped behind the Team Manager without breaking the contract."
+  full_adr: "docs/architecture/ADR-0001-it-ops-dev-orchestration.md"
+
+# ---------------------------------------------------------------------------
+# Compliance
+# ---------------------------------------------------------------------------
+compliance:
+  ethics_policy: "https://raw.githubusercontent.com/enuno/zhc-firm/refs/heads/main/docs/legal/ethics_policy.md"
+  data_classification_policy: "https://raw.githubusercontent.com/enuno/zhc-firm/refs/heads/main/policies/DATA_CLASSIFICATION.md"
+  search_token_policy: "policies/SEARCH_TOKEN_POLICY.md"
+  osint_use_policy: "policies/OSINT_USE_POLICY.md"

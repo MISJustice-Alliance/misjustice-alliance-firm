@@ -1,0 +1,126 @@
+# =============================================================================
+# agents/it_ops_dev/team/dynamic-worker-template.yaml
+# IT Operations & Development — Dynamic Worker (Template)
+# MISJustice Alliance Firm
+# =============================================================================
+# This is a TEMPLATE used by the Team Manager (via Hermes -> NemoClaw) to
+# spawn transient subagents for one-shot, parallelizable tasks. It is NOT
+# loaded as a standing agent. The Team Manager fills the "TEMPLATE_*" slots
+# at spawn time. Dynamic workers are bounded by the autonomy/HITL rules
+# below and may NEVER inherit a higher autonomy level than the role they
+# are spawned to assist.
+# =============================================================================
+
+name: it_ops_dev_dynamic_worker_template
+display_name: "IT Ops & Dev — Dynamic Worker (Template)"
+version: "0.1.0"
+type: "transient_template"
+
+owner: "zhc-firm"
+team: "it_ops_dev"
+department: "it_ops_dev"
+reports_to: "it_ops_dev_team_manager"
+
+# CrewAI schema — concrete values are filled in by the Team Manager at spawn time
+role: "TEMPLATE_ROLE"                   # e.g. "Backend Worker (transient)"
+goal: >
+  TEMPLATE_GOAL — One-shot, narrowly scoped task delegated by the Team
+  Manager, executed within a sandboxed lifetime.
+backstory: >
+  TEMPLATE_BACKSTORY — A transient worker spawned by the Team Manager via
+  NemoClaw. Inherits the policy posture of its parent role and is destroyed
+  at the end of its TTL. Cannot self-extend, cannot escalate privilege,
+  cannot persist memory beyond its scope.
+allow_delegation: false
+verbose: true
+
+description: >
+  Template definition for transient subagents spawned by the Team Manager.
+  Concrete instances of this template live for the duration of a single
+  task and are then destroyed.
+
+goals:
+  - "Execute exactly one delegated subtask within scope"
+  - "Return a structured result and audit trail to the Team Manager"
+  - "Self-destruct on TTL expiry or task completion"
+  - "Comply with ZHC Firm's Ethics and Data Classification Policies"
+
+capabilities:
+  - "TEMPLATE_CAPABILITY_LIST"          # Filled at spawn time, must be a strict
+                                        # subset of the parent role's capabilities
+
+constraints:
+  - "no_self_extension_of_ttl"
+  - "no_privilege_escalation_above_parent"
+  - "no_memorypalace_write"
+  - "no_persistent_state_beyond_scope"
+  - "must_emit_audit_event_on_start_and_end"
+  - "must_pass_evidence_bundle_back_to_team_manager"
+
+human_handoff:
+  enabled: true
+  mechanism: "n8n"
+  webhooks:
+    escalation: "it-ops-dev-escalation"
+    approval_required: "it-ops-dev-approval"
+  reasons:
+    - "task_exceeded_scope"
+    - "ttl_about_to_expire_with_unfinished_work"
+    - "encountered_classification_above_authorization"
+
+recommended_models:
+  primary: "openai/gpt-4o"
+  fallback: "anthropic/claude-3-5-sonnet-20241022"
+  notes: "Workers default to a fast model unless the task requires reasoning-tier."
+
+tools:
+  - name: "TEMPLATE_TOOL_LIST"
+    allowed: true
+    usage: >
+      Filled at spawn time. Must be a strict subset of the parent role's
+      tool bindings. Production-impacting tools (deploy, IAM, secrets,
+      external comms, gitbook publish, social post) are NEVER granted to a
+      dynamic worker.
+
+llm:
+  provider: "litellm"
+  primary_model: "openai/gpt-4o"
+  fallback_model: "anthropic/claude-3-5-sonnet-20241022"
+  temperature: 0.2
+  max_tokens: 4096
+
+io_policy:
+  log_level: "full_audit"
+  retention_days: 90
+
+# ---------------------------------------------------------------------------
+# Spawn / Lifetime Controls
+# ---------------------------------------------------------------------------
+spawn:
+  provisioner: "nemoclaw"
+  sandbox_base_image: "openclaw"
+  default_ttl_seconds: 120
+  max_ttl_seconds: 600
+  paperclip_register: false
+  parent_role_required: true             # Must be spawned on behalf of a defined role
+  inherit_autonomy_from_parent: true     # And never exceed it
+  audit_log_on_spawn_and_destroy: true
+
+autonomy:
+  may_open_pr: false
+  may_merge_pr: false
+  may_deploy_to_staging: false
+  may_deploy_to_production: false
+  may_modify_iam: false
+  may_modify_secrets: false
+  may_send_external_communication: false
+  builder_validator_separation: true
+  audit_log_required: true
+  notes: >
+    A dynamic worker NEVER exceeds the autonomy of the role that spawned it.
+    Default posture is read/sandbox only. The Team Manager may grant
+    parent-equivalent PR-open authority case by case, but production-tier
+    actions are ALWAYS denied to transient workers regardless of parent.
+
+ethics_policy: "https://raw.githubusercontent.com/enuno/zhc-firm/refs/heads/main/docs/legal/ethics_policy.md"
+data_classification_policy: "https://raw.githubusercontent.com/enuno/zhc-firm/refs/heads/main/policies/DATA_CLASSIFICATION.md"
