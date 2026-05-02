@@ -66,9 +66,7 @@ function initializeServices(): void {
     port: parseInt(process.env.DATABASE_PORT || '5432', 10),
     database: isDocker ? 'misjustice_dev' : (process.env.DATABASE_NAME || 'misjustice_dev'),
     user: process.env.DATABASE_USER || 'postgres',
-    // TODO: Fix Bitwarden DATABASE_PASSWORD secret - currently incorrect
-    // Using hardcoded password that matches actual database
-    password: '7RME8FLVPfTEe9ozwD4rgbR7f29Rs9y8',
+    password: process.env.DATABASE_PASSWORD || process.env.POSTGRES_PASSWORD || '',
   });
   analysisService = new DocumentAnalysisService();
 }

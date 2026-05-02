@@ -33,9 +33,10 @@ async function main() {
     const dbPort = parseInt(process.env.DATABASE_PORT || '5432', 10);
     const dbName = process.env.DATABASE_NAME || 'misjustice_dev';
     const dbUser = process.env.DATABASE_USER || 'postgres';
-    // TODO: Fix Bitwarden DATABASE_PASSWORD secret - currently incorrect
-    // For now, use the hardcoded password that matches the actual database
-    const dbPassword = '7RME8FLVPfTEe9ozwD4rgbR7f29Rs9y8';
+    const dbPassword = process.env.DATABASE_PASSWORD || process.env.POSTGRES_PASSWORD;
+    if (!dbPassword) {
+      throw new Error('DATABASE_PASSWORD or POSTGRES_PASSWORD environment variable is required');
+    }
 
     console.log(`🔗 Database config: host=${dbHost}, port=${dbPort}, database=${dbName}, user=${dbUser}`);
     console.log(`🔐 Password source: DATABASE_PASSWORD=${!!process.env.DATABASE_PASSWORD ? '***' : 'not set'}, POSTGRES_PASSWORD=${!!process.env.POSTGRES_PASSWORD ? '***' : 'not set'}, using='***'`);
