@@ -1,0 +1,76 @@
+version: 1
+agent: dream-pattern-miner
+inherits:
+  - ../../shared/GUARDRAILS.global.yaml
+
+mode:
+  default: enforce
+  on_uncertain_match: block_and_escalate
+
+tool_access:
+  allow:
+    - reflections.read_scoped_batch
+    - queue.enqueue_dream_review_item
+    - metrics.record_dream_metrics
+  deny:
+    - client_comms.*
+    - court_filing.*
+    - matters.update_live_record
+    - routing.write.*
+    - prompts.write.*
+    - playbooks.write.*
+    - memory.promote_direct
+
+scope_controls:
+  input_source_must_be:
+    - dream-supervisor
+    - dream-review-gate
+  min_matter_count_for_non_tentative_pattern: 3
+  disallow_unscoped_global_search: true
+
+output_schema:
+  require_fields:
+    - pattern_id
+    - target_agent_or_scope
+    - pattern_statement
+    - evidence_refs
+    - matter_count
+    - confidence
+    - operational_impact
+    - recommended_action
+    - requires_human_review
+  require_evidence_refs: true
+  max_patterns_per_run: 40
+  redact_sensitive_spans_in_output: true
+
+content_controls:
+  require_tentative_label_if_matter_count_below: 3
+  forbid_phrases:
+    - "apply immediately"
+    - "auto-update routing"
+    - "write to shared memory"
+    - "guaranteed pattern"
+
+escalation_rules:
+  immediate_human_review_if:
+    - confidence < 0.60 and operational_impact in ["high", "critical"]
+    - matter_count < 3 and operational_impact in ["high", "critical"]
+    - pattern_statement contains "privilege"
+    - pattern_statement contains "deadline"
+    - pattern_statement contains "fabricated citation"
+
+budgets:
+  max_steps: 18
+  max_runtime_seconds: 300
+  max_cost_usd: 1.75
+
+logging:
+  structured: true
+  log_inputs: metadata_only
+  log_outputs: redacted_summary_only
+  emit_audit_event_on:
+    - job_start
+    - job_finish
+    - blocked_tool_call
+    - escalation
+    - review_queue_write

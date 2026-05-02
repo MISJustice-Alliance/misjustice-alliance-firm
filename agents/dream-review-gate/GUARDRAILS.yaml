@@ -1,0 +1,94 @@
+version: 1
+agent: dream-review-gate
+inherits:
+  - ../../shared/GUARDRAILS.global.yaml
+
+mode:
+  default: enforce
+  on_uncertain_match: block_and_escalate
+
+tool_access:
+  allow:
+    - queue.read_dream_review_items
+    - queue.write_reviewer_tasks
+    - memory.write_approved_candidate
+    - evals.write_approved_candidate
+    - incidents.write_approved_candidate
+    - metrics.record_dream_metrics
+    - audit.write_review_event
+  deny:
+    - client_comms.*
+    - court_filing.*
+    - matters.update_live_record
+    - prompts.write.*
+    - policy.write.*
+    - routing.write.*
+    - playbooks.write.*
+
+scope_controls:
+  accepted_input_sources:
+    - dream-reflector
+    - dream-pattern-miner
+    - dream-risk-auditor
+    - dream-eval-writer
+    - dream-supervisor
+  require_provenance_fields:
+    - source_agent
+    - source_item_id
+    - matter_id_or_scope
+    - timestamp
+    - review_class
+  require_approval_metadata_for_promotion: true
+
+promotion_controls:
+  allowed_destinations:
+    memory_candidate:
+      - shared/MEMORY.global.md
+      - agents/*/MEMORY.md
+      - shared/memory/*.md
+      - agents/*/memory/*.md
+    eval_candidate:
+      - agents/*/EVALS.yaml
+      - agents/*/evals/*
+    incident_candidate:
+      - shared/memory/incidents.md
+  deny_direct_promotion_if_review_class_in:
+    - pattern_candidate
+    - risk_candidate
+  require_human_approval_if:
+    - impact in ["medium", "high", "critical"]
+    - review_class in ["pattern_candidate", "risk_candidate"]
+    - destination contains "shared/"
+    - tags contains "privilege"
+    - tags contains "deadline"
+    - tags contains "confidentiality"
+
+validation:
+  block_if_missing:
+    - provenance
+    - disposition
+    - reviewer_id
+  block_if_output_contains:
+    - "auto-approved"
+    - "approval inferred"
+    - "skip review"
+
+rejections:
+  require_reason_code: true
+  preserve_rejected_artifacts_for_audit: true
+
+budgets:
+  max_steps: 24
+  max_runtime_seconds: 420
+  max_cost_usd: 2.00
+
+logging:
+  structured: true
+  log_inputs: metadata_only
+  log_outputs: redacted_summary_only
+  emit_audit_event_on:
+    - review_received
+    - review_routed
+    - promotion_blocked
+    - promotion_completed
+    - rejection_recorded

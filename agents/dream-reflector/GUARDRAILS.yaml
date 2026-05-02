@@ -1,0 +1,75 @@
+version: 1
+agent: dream-reflector
+inherits:
+  - ../../shared/GUARDRAILS.global.yaml
+
+mode:
+  default: enforce
+  on_uncertain_match: escalate
+
+tool_access:
+  allow:
+    - traces.read_scoped_bundle
+    - queue.enqueue_dream_review_item
+    - metrics.record_dream_metrics
+  deny:
+    - client_comms.*
+    - court_filing.*
+    - drafting.write.*
+    - matters.update_live_record
+    - memory.promote_direct
+    - policy.write.*
+    - prompts.write.*
+    - routing.write.*
+
+scope_controls:
+  input_source_must_be:
+    - dream-supervisor
+  require_trace_bundle_signature: true
+  permitted_matter_states:
+    - closed
+    - checkpointed
+    - review_approved_snapshot
+  denied_matter_states:
+    - active_live
+    - litigation_hold_restricted
+
+output_schema:
+  require_fields:
+    - summary_id
+    - matter_id
+    - checkpoint_id
+    - source_trace_ids
+    - narrative_summary
+    - what_worked
+    - what_failed
+    - unresolved_questions
+    - candidate_actions
+    - confidence
+  max_excerpt_chars_total: 1600
+  redact_sensitive_spans_in_output: true
+  require_provenance_fields: true
+
+content_controls:
+  forbid_phrases:
+    - "send to client"
+    - "file with court"
+    - "final legal advice"
+    - "auto-promote to memory"
+  require_uncertainty_language_below_confidence: 0.80
+
+budgets:
+  max_steps: 16
+  max_runtime_seconds: 240
+  max_cost_usd: 1.25
+
+logging:
+  structured: true
+  log_inputs: metadata_only
+  log_outputs: redacted_summary_only
+  emit_audit_event_on:
+    - job_start
+    - job_finish
+    - blocked_tool_call
+    - escalation
+    - review_queue_write

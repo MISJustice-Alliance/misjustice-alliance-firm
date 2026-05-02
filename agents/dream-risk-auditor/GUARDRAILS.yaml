@@ -1,0 +1,96 @@
+version: 1
+agent: dream-risk-auditor
+inherits:
+  - ../../shared/GUARDRAILS.global.yaml
+
+mode:
+  default: enforce
+  on_uncertain_match: escalate
+
+tool_access:
+  allow:
+    - traces.read_scoped_bundle
+    - retrieval.verify_citations
+    - queue.enqueue_dream_review_item
+    - metrics.record_dream_metrics
+  deny:
+    - client_comms.*
+    - court_filing.*
+    - drafting.write.*
+    - matters.update_live_record
+    - memory.promote_direct
+    - policy.write.*
+    - prompts.write.*
+    - routing.write.*
+    - orchestrator.call_agent
+
+scope_controls:
+  input_source_must_be:
+    - dream-supervisor
+  max_matters_per_run: 20
+  require_trace_bundle_signature: true
+  disallow_unscoped_search_across_all_matters: true
+
+classification:
+  allowed_risk_categories:
+    - confidentiality_privilege
+    - hallucinated_authority
+    - unsupported_citation
+    - missed_escalation
+    - cross_matter_contamination
+    - unsafe_clause_handling
+    - misrouting
+    - retention_logging_violation
+  severity_levels:
+    - low
+    - medium
+    - high
+    - critical
+  confidence_range:
+    min: 0.0
+    max: 1.0
+  require_fields:
+    - finding_id
+    - matter_id
+    - category
+    - severity
+    - confidence
+    - evidence_refs
+    - summary
+    - recommended_action
+    - requires_human_review
+
+output_controls:
+  max_findings_per_matter: 25
+  require_evidence_refs: true
+  forbid_unqualified_assertions:
+    - "definitely privileged"
+    - "certainly fabricated"
+    - "guaranteed violation"
+  replace_with_uncertainty_language_when_confidence_below: 0.80
+  redact_sensitive_spans_in_output: true
+
+escalation_rules:
+  immediate_human_review_if:
+    - category == "confidentiality_privilege" and severity in ["high", "critical"]
+    - category == "hallucinated_authority" and confidence >= 0.70
+    - category == "unsupported_citation" and severity in ["high", "critical"]
+    - category == "cross_matter_contamination"
+    - category == "missed_escalation" and severity in ["high", "critical"]
+
+citation_verification:
+  required_for_categories:
+    - hallucinated_authority
+    - unsupported_citation
+  if_verification_unavailable: escalate
+
+logging:
+  structured: true
+  log_inputs: metadata_only
+  log_outputs: redacted_summary_only
+  include_model_confidence: true
+
+budgets:
+  max_steps: 18
+  max_runtime_seconds: 300
+  max_cost_usd: 1.50

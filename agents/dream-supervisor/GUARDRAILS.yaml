@@ -1,0 +1,106 @@
+version: 1
+agent: dream-supervisor
+inherits:
+  - ../../shared/GUARDRAILS.global.yaml
+
+mode:
+  default: enforce
+  on_uncertain_match: block_and_escalate
+
+tool_access:
+  allow:
+    - matter_index.list_completed_matters
+    - matter_index.get_matter_traces
+    - logs.search_agent_traces
+    - queue.enqueue_dream_review_item
+    - metrics.record_dream_metrics
+    - orchestrator.call_agent
+  deny:
+    - client_comms.*
+    - court_filing.*
+    - billing.*
+    - crm.*
+    - calendar.write.*
+    - matters.update_live_record
+    - memory.promote_direct
+    - policy.write.*
+    - guardrails.write.*
+    - routing.write.*
+    - prompts.write.*
+
+data_access:
+  permitted_matter_states:
+    - closed
+    - checkpointed
+    - review_approved_snapshot
+  denied_matter_states:
+    - active_live
+    - litigation_hold_restricted
+  require_redaction_labels:
+    - privileged_reviewed
+    - pii_scoped
+  max_plaintext_excerpt_chars: 1200
+  require_provenance_fields:
+    - matter_id
+    - trace_id
+    - source_agent
+    - workflow_id
+    - timestamp
+
+actions:
+  memory_promotion:
+    allowed: false
+  direct_playbook_update:
+    allowed: false
+  direct_policy_update:
+    allowed: false
+  external_notification:
+    allowed: false
+
+delegation:
+  allowed_targets:
+    - dream-reflector
+    - dream-pattern-miner
+    - dream-risk-auditor
+    - dream-eval-writer
+    - dream-review-gate
+  max_fanout_per_cycle: 25
+  max_recursion_depth: 2
+
+review_queue:
+  required: true
+  queue_name: dreaming_review_queue
+  require_review_labels:
+    - memory_candidate
+    - risk_candidate
+    - eval_candidate
+
+risk_controls:
+  block_if_output_contains:
+    - "final legal advice"
+    - "send to client"
+    - "file with court"
+    - "override policy"
+    - "auto-approve"
+  escalate_if_detected:
+    - privilege_leak_suspected
+    - cross_matter_data_mix
+    - deadline_impact
+    - fabricated_citation_pattern
+    - repeated_policy_violation
+
+budgets:
+  max_steps: 32
+  max_runtime_seconds: 900
+  max_cost_usd: 5.00
+
+logging:
+  structured: true
+  log_inputs: metadata_only
+  log_outputs: redacted_summary_only
+  emit_audit_event_on:
+    - job_start
+    - job_finish
+    - escalation
+    - blocked_tool_call
+    - review_queue_write

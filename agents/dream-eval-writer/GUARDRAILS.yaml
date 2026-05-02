@@ -1,0 +1,80 @@
+version: 1
+agent: dream-eval-writer
+inherits:
+  - ../../shared/GUARDRAILS.global.yaml
+
+mode:
+  default: enforce
+  on_uncertain_match: escalate
+
+tool_access:
+  allow:
+    - reflections.read_scoped_batch
+    - findings.read_scoped_batch
+    - queue.enqueue_dream_review_item
+    - metrics.record_dream_metrics
+  deny:
+    - evals.write.*
+    - prompts.write.*
+    - routing.write.*
+    - policy.write.*
+    - memory.promote_direct
+    - client_comms.*
+    - court_filing.*
+    - matters.update_live_record
+
+scope_controls:
+  input_source_must_be:
+    - dream-supervisor
+    - dream-review-gate
+  require_evidence_for_every_eval: true
+  prefer_redacted_or_synthetic_inputs: true
+
+output_schema:
+  require_fields:
+    - eval_id
+    - target_agent_or_workflow
+    - scenario_description
+    - input_spec
+    - expected_behaviors
+    - forbidden_behaviors
+    - source_evidence_refs
+    - priority
+    - rationale
+    - requires_human_review
+  max_eval_candidates_per_run: 50
+  redact_sensitive_spans_in_output: true
+
+content_controls:
+  forbid_phrases:
+    - "merge directly"
+    - "auto-enable in CI"
+    - "policy conclusion"
+    - "legal advice"
+  require_behavioral_language: true
+  reject_if_missing:
+    - expected_behaviors
+    - forbidden_behaviors
+    - source_evidence_refs
+
+escalation_rules:
+  immediate_human_review_if:
+    - scenario_description contains "privileged"
+    - scenario_description contains "deadline"
+    - priority in ["high", "critical"] and rationale == ""
+
+budgets:
+  max_steps: 20
+  max_runtime_seconds: 360
+  max_cost_usd: 1.75
+
+logging:
+  structured: true
+  log_inputs: metadata_only
+  log_outputs: redacted_summary_only
+  emit_audit_event_on:
+    - job_start
+    - job_finish
+    - blocked_tool_call
+    - escalation
+    - review_queue_write
