@@ -61,6 +61,39 @@ crewai:
   spawns_subagents: true        # Hermes may spawn transient subagents via
                                 # OpenClaw/NemoClaw for parallelized one-shot tasks.
 
+  # ---------------------------------------------------------------------
+  # Sub-crew registry (delegatable departments)
+  # Each entry declares a department-level CrewAI crew that Hermes may
+  # dispatch to via OpenClaw. Entry-point roles validate the inbound
+  # envelope and own all department-internal routing and HITL gates.
+  # ---------------------------------------------------------------------
+  subcrews:
+    - id: ITOpsDevCrew
+      department: it_ops_dev
+      department_spec: agents/it_ops_dev/department.yaml
+      readme: agents/it_ops_dev/README.md
+      routing_key: it_ops_dev
+      entry_point_agent: it_ops_dev_team_manager
+      inbound_envelope_schema: agents/it_ops_dev/schemas/inbound_task.schema.json
+      outbound_status_schema: agents/it_ops_dev/schemas/outbound_status.schema.json
+      delegatable_intents:
+        - platform_engineering_change
+        - ci_cd_or_pipeline_change
+        - infrastructure_or_observability_change
+        - agent_eval_or_rag_pipeline_change
+        - internal_documentation_change
+        - platform_security_review
+        - incident_response_coordination
+        - research_spike_or_poc
+        - ux_research_or_design_spec
+        - web_infrastructure_task
+        - public_presence_platform_task
+        - knowledge_base_engineering_task
+      forbidden_classifications:
+        - T0-restricted
+        - T1-confidential
+      adr: docs/architecture/ADR-0001-it-ops-dev-orchestration.md
+
 # -----------------------------------------------------------------------------
 # Paperclip Control Plane
 # -----------------------------------------------------------------------------
@@ -397,6 +430,88 @@ hitl:
       approval_channels: [hermes_cli, telegram]
       timeout_hours: 8
       on_timeout: escalate_to_operator_again
+
+    # -- IT Ops & Dev department gates ------------------------------------
+    - id: it_ops_dev_prod_deploy_approval
+      source_agent: it_ops_dev_team_manager
+      webhook_path: /webhook/it-ops-dev-prod-deploy-approval
+      approval_channels: [hermes_cli, telegram]
+      timeout_hours: 12
+      on_timeout: hold_deploy
+
+    - id: it_ops_dev_security_approval
+      source_agent: it_ops_dev_security_engineer
+      webhook_path: /webhook/it-ops-dev-security-approval
+      approval_channels: [hermes_cli, telegram, discord_hob_channel]
+      timeout_hours: 8
+      on_timeout: lock_change_pending_review
+      priority: high
+
+    - id: it_ops_dev_iam_approval
+      source_agent: it_ops_dev_team_manager
+      webhook_path: /webhook/it-ops-dev-iam-approval
+      approval_channels: [hermes_cli, telegram, discord_hob_channel]
+      timeout_hours: 24
+      on_timeout: hold_iam_change
+      priority: high
+
+    - id: it_ops_dev_secret_rotation_approval
+      source_agent: it_ops_dev_team_manager
+      webhook_path: /webhook/it-ops-dev-secret-rotation-approval
+      approval_channels: [hermes_cli, telegram]
+      timeout_hours: 24
+      on_timeout: hold_rotation
+
+    - id: it_ops_dev_supply_chain_anomaly_review
+      source_agent: it_ops_dev_security_engineer
+      webhook_path: /webhook/it-ops-dev-supply-chain-anomaly-review
+      approval_channels: [hermes_cli, discord_hob_channel]
+      timeout_hours: 4
+      on_timeout: block_release
+      priority: critical
+
+    - id: it_ops_dev_adr_approval
+      source_agent: it_ops_dev_architect
+      webhook_path: /webhook/it-ops-dev-adr-approval
+      approval_channels: [hermes_cli]
+      timeout_hours: 168
+      on_timeout: leave_adr_pending
+
+    - id: it_ops_dev_research_approval
+      source_agent: it_ops_dev_ux_researcher
+      webhook_path: /webhook/it-ops-dev-research-approval
+      approval_channels: [hermes_cli]
+      timeout_hours: 72
+      on_timeout: hold_research_publication
+
+    - id: it_ops_dev_doc_approval
+      source_agent: it_ops_dev_technical_writer
+      webhook_path: /webhook/it-ops-dev-doc-approval
+      approval_channels: [hermes_cli]
+      timeout_hours: 72
+      on_timeout: hold_doc_publication
+
+    - id: it_ops_dev_roadmap_approval
+      source_agent: it_ops_dev_product_manager
+      webhook_path: /webhook/it-ops-dev-roadmap-approval
+      approval_channels: [hermes_cli]
+      timeout_hours: 72
+      on_timeout: hold_roadmap_change
+
+    - id: it_ops_dev_prompt_or_route_approval
+      source_agent: it_ops_dev_ml_engineer
+      webhook_path: /webhook/it-ops-dev-prompt-or-route-approval
+      approval_channels: [hermes_cli]
+      timeout_hours: 24
+      on_timeout: hold_promotion
+
+    - id: it_ops_dev_escalation
+      source_agent: it_ops_dev_team_manager
+      webhook_path: /webhook/it-ops-dev-escalation
+      approval_channels: [hermes_cli, telegram, discord_hob_channel]
+      timeout_hours: 4
+      on_timeout: notify_operator_again
+      priority: high
 
 # -----------------------------------------------------------------------------
 # Messaging / Notification Channels

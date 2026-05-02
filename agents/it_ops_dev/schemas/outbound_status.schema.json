@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://misjusticealliance.org/schemas/it_ops_dev/outbound_status.schema.json",
+  "title": "IT Ops & Dev — Outbound Status Event (Team Manager -> Hermes)",
+  "description": "Status event the IT Ops & Dev Team Manager emits to Hermes during and after task execution.",
+  "type": "object",
+  "required": [
+    "task_id",
+    "event_type",
+    "event_timestamp",
+    "audit_event_id"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "task_id": {
+      "type": "string",
+      "pattern": "^TASK-[A-Za-z0-9-]+$"
+    },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "task_received",
+        "task_planned",
+        "task_assigned",
+        "task_in_progress",
+        "task_blocked_on_hitl",
+        "task_validated",
+        "task_completed",
+        "task_failed"
+      ]
+    },
+    "event_timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "audit_event_id": {
+      "type": "string",
+      "description": "Foreign key into openclaw_audit_stream."
+    },
+    "assigned_builder_role": {
+      "type": ["string", "null"]
+    },
+    "assigned_validator_role": {
+      "type": ["string", "null"]
+    },
+    "blocking_hitl_gate": {
+      "type": ["string", "null"]
+    },
+    "evidence_bundle_partial": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Partial evidence bundle for in-progress / failed tasks."
+    },
+    "evidence_bundle_final": {
+      "type": "object",
+      "required": [
+        "audit_log",
+        "artifacts",
+        "test_results",
+        "security_scan_results",
+        "reviewer_signoffs",
+        "hitl_gate_records"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "audit_log": {"type": "array", "items": {"type": "object"}},
+        "artifacts": {"type": "array", "items": {"type": "object"}},
+        "test_results": {"type": "object"},
+        "security_scan_results": {"type": "object"},
+        "reviewer_signoffs": {"type": "array", "items": {"type": "object"}},
+        "hitl_gate_records": {"type": "array", "items": {"type": "object"}}
+      }
+    },
+    "failure_reason": {
+      "type": ["string", "null"]
+    },
+    "human_readable_summary": {
+      "type": "string",
+      "description": "Short summary suitable for surfacing to the operator."
+    }
+  }
+}

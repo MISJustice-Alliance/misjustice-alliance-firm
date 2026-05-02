@@ -166,6 +166,10 @@ openclaw:
     ComplianceCrew:      compliance
     SchedulingCrew:      scheduling
     CommunicationsCrew:  communications
+    ITOpsDevCrew:        it_ops_dev      # IT Operations & Development department
+                                          # Entry point: it_ops_dev_team_manager
+                                          # Spec: agents/it_ops_dev/department.yaml
+                                          # ADR:  docs/architecture/ADR-0001-it-ops-dev-orchestration.md
 
 # =============================================================================
 # N8N HITL WORKFLOW ENGINE
@@ -199,6 +203,18 @@ n8n:
     social_campaign_approval:      /webhook/social-approval
     violation_escalation:          /webhook/violation-escalation
     deadline_escalation:           /webhook/deadline-escalation
+    # IT Ops & Dev department gates
+    it_ops_dev_prod_deploy_approval:        /webhook/it-ops-dev-prod-deploy-approval
+    it_ops_dev_security_approval:           /webhook/it-ops-dev-security-approval
+    it_ops_dev_iam_approval:                /webhook/it-ops-dev-iam-approval
+    it_ops_dev_secret_rotation_approval:    /webhook/it-ops-dev-secret-rotation-approval
+    it_ops_dev_supply_chain_anomaly_review: /webhook/it-ops-dev-supply-chain-anomaly-review
+    it_ops_dev_adr_approval:                /webhook/it-ops-dev-adr-approval
+    it_ops_dev_research_approval:           /webhook/it-ops-dev-research-approval
+    it_ops_dev_doc_approval:                /webhook/it-ops-dev-doc-approval
+    it_ops_dev_roadmap_approval:            /webhook/it-ops-dev-roadmap-approval
+    it_ops_dev_prompt_or_route_approval:    /webhook/it-ops-dev-prompt-or-route-approval
+    it_ops_dev_escalation:                  /webhook/it-ops-dev-escalation
 
   # Gate timeout configuration (mirrors agent.yaml hitl.gates)
   gate_timeouts_hours:
@@ -212,6 +228,18 @@ n8n:
     social_campaign_approval:      24
     violation_escalation:          4
     deadline_escalation:           8
+    # IT Ops & Dev department gates
+    it_ops_dev_prod_deploy_approval:        12
+    it_ops_dev_security_approval:           8
+    it_ops_dev_iam_approval:                24
+    it_ops_dev_secret_rotation_approval:    24
+    it_ops_dev_supply_chain_anomaly_review: 4
+    it_ops_dev_adr_approval:                168
+    it_ops_dev_research_approval:           72
+    it_ops_dev_doc_approval:                72
+    it_ops_dev_roadmap_approval:            72
+    it_ops_dev_prompt_or_route_approval:    24
+    it_ops_dev_escalation:                  4
 
 # =============================================================================
 # MEMORYPALACE MCP

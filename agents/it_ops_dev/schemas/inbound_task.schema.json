@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://misjusticealliance.org/schemas/it_ops_dev/inbound_task.schema.json",
+  "title": "IT Ops & Dev — Inbound Task Envelope (Hermes -> Team Manager)",
+  "description": "Envelope Hermes sends to the IT Ops & Dev Team Manager via OpenClaw dispatch (routing_key=it_ops_dev).",
+  "type": "object",
+  "required": [
+    "task_id",
+    "intent",
+    "scope_summary",
+    "data_classification",
+    "priority",
+    "hitl_gates_required",
+    "requesting_operator",
+    "origin_session_id"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "task_id": {
+      "type": "string",
+      "pattern": "^TASK-[A-Za-z0-9-]+$",
+      "description": "Globally unique task ID assigned by Hermes."
+    },
+    "matter_id": {
+      "type": ["string", "null"],
+      "description": "MCAS matter ID, or null for platform-only tasks."
+    },
+    "intent": {
+      "type": "string",
+      "enum": [
+        "platform_engineering_change",
+        "ci_cd_or_pipeline_change",
+        "infrastructure_or_observability_change",
+        "agent_eval_or_rag_pipeline_change",
+        "internal_documentation_change",
+        "platform_security_review",
+        "incident_response_coordination",
+        "research_spike_or_poc",
+        "ux_research_or_design_spec",
+        "web_infrastructure_task",
+        "public_presence_platform_task",
+        "knowledge_base_engineering_task"
+      ]
+    },
+    "scope_summary": {
+      "type": "string",
+      "minLength": 5,
+      "maxLength": 2000,
+      "description": "Plain-language summary of the task scope, suitable for human review."
+    },
+    "data_classification": {
+      "type": "string",
+      "enum": ["T0-restricted", "T1-confidential", "T2-internal", "T3-public"],
+      "description": "Highest classification of any data the task is permitted to touch. T0 and T1 are not permitted in this department."
+    },
+    "priority": {
+      "type": "string",
+      "enum": ["low", "normal", "high", "urgent"]
+    },
+    "hitl_gates_required": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "it_ops_dev_prod_deploy_approval",
+          "it_ops_dev_security_approval",
+          "it_ops_dev_iam_approval",
+          "it_ops_dev_secret_rotation_approval",
+          "it_ops_dev_supply_chain_anomaly_review",
+          "it_ops_dev_adr_approval",
+          "it_ops_dev_research_approval",
+          "it_ops_dev_doc_approval",
+          "it_ops_dev_roadmap_approval",
+          "it_ops_dev_prompt_or_route_approval"
+        ]
+      },
+      "description": "Gate IDs that the Team Manager must satisfy before delivery."
+    },
+    "requesting_operator": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Operator or upstream agent identifier."
+    },
+    "origin_session_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Hermes session ID for traceability."
+    },
+    "deadline_iso8601": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Optional deadline."
+    },
+    "evidence_bundle_required": {
+      "type": "boolean",
+      "default": true
+    },
+    "delegatable_intent": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether the Team Manager may delegate further within the department."
+    },
+    "context_refs": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Optional list of related task IDs, ADR IDs, or PR URLs."
+    }
+  }
+}
