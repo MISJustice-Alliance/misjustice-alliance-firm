@@ -1,0 +1,23 @@
+title = "MISJustice Alliance Firm Gitleaks Config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Allow test fixtures, dummy keys, public tokens, and internal URLs"
+paths = [
+  '''\.test\.ts$''',
+  '''\.spec\.ts$''',
+  '''PROVIDERS\.md$''',
+  '''wiki/''',
+  '''index\.html$''',
+  '''src/n8n/workflows/''',
+]
+regexes = [
+  '''test-signing-key-12345''',
+  '''abc123def456''',
+  '''sk-local-dev''',
+  '''sk-test''',
+  '''data-cf-beacon''',
+  '''zhc-firm-api''',
+]

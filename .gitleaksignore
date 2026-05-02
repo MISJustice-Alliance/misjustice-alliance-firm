@@ -1,0 +1,6 @@
+# Baseline — historical findings in commits that predate secret removal.
+# These lines were fixed in the working tree; fingerprints prevent CI from failing on history.
+97986b46eacfe452f6dccc071d874e33d0ba20e5:apps/website/backend/src/scripts/archiveDocumentsFixed.ts:generic-api-key:38
+97986b46eacfe452f6dccc071d874e33d0ba20e5:apps/website/backend/src/scripts/analyzeExistingDocuments.ts:generic-api-key:71
+a28ac8a2f1f902e1888882eb2bc78232f25be852:apps/website/backend/src/scripts/analyzeExistingDocuments.ts:generic-api-key:71
+a28ac8a2f1f902e1888882eb2bc78232f25be852:apps/website/backend/src/scripts/archiveDocumentsFixed.ts:generic-api-key:38

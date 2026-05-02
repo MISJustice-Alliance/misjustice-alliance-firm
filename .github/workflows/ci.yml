@@ -27,6 +27,28 @@ env:
 
 jobs:
   # ---------------------------------------------------------------------------
+  # Job 0: Secrets scan (gitleaks)
+  # ---------------------------------------------------------------------------
+  secrets:
+    name: Secrets Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout with full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run gitleaks
+        run: |
+          docker run --rm \
+            -v "$(pwd):/code" \
+            zricethezav/gitleaks:latest detect \
+            --source=/code \
+            --config=/code/.gitleaks.toml \
+            --verbose \
+            --redact
+
+  # ---------------------------------------------------------------------------
   # Job 1: Lint (ruff)
   # ---------------------------------------------------------------------------
   lint:
