@@ -182,3 +182,22 @@ class SearchResponse(BaseModel):
     confidence: float | None = None
     backends: list[BackendMetadata] = Field(default_factory=list)
     total: int = 0
+
+
+# ---------- Approval ----------
+
+
+class ApprovalItemResponse(BaseModel):
+    id: UUID
+    matter_id: UUID
+    matter_display_id: str
+    matter_title: str
+    gate_type: str
+    summary: str
+    requested_by: str
+    created_at: datetime
+    deadline: datetime | None = None
+    status: str
+
+    class Config:
+        from_attributes = True

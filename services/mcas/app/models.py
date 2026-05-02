@@ -58,6 +58,21 @@ class EventType(enum.StrEnum):
     ESCALATION = "ESCALATION"
 
 
+class ApprovalGate(enum.StrEnum):
+    INTAKE = "INTAKE"
+    RESEARCH = "RESEARCH"
+    DRAFT = "DRAFT"
+    PUBLICATION = "PUBLICATION"
+    REFERRAL = "REFERRAL"
+    SOCIAL = "SOCIAL"
+
+
+class ApprovalStatus(enum.StrEnum):
+    PENDING = "PENDING"
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
+
+
 class Matter(Base):
     __tablename__ = "matters"
 
@@ -140,3 +155,20 @@ class AuditEntry(Base):
     diff = Column(JSONB, nullable=True)
 
     matter = relationship("Matter", back_populates="audit_log")
+
+
+class Approval(Base):
+    __tablename__ = "approvals"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    matter_id = Column(UUID(as_uuid=True), ForeignKey("matters.id"), nullable=False, index=True)
+    gate_type = Column(String, nullable=False)
+    summary = Column(Text, nullable=False)
+    requested_by = Column(String, nullable=False)
+    deadline = Column(DateTime(timezone=True), nullable=True)
+    status = Column(String, nullable=False, default=ApprovalStatus.PENDING.value)
+    decided_at = Column(DateTime(timezone=True), nullable=True)
+    decided_by = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+
+    matter = relationship("Matter")

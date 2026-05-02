@@ -5,7 +5,7 @@ from fastapi import FastAPI
 
 from app.config import settings
 from app.database import get_engine
-from app.routers import matters, search
+from app.routers import approvals, matters, search
 
 
 @asynccontextmanager
@@ -28,6 +28,7 @@ app = FastAPI(
 
 app.include_router(matters.router, prefix="/api/v1")
 app.include_router(search.router, prefix="/api/v1")
+app.include_router(approvals.router, prefix="/api/v1")
 
 
 @app.get("/health")
