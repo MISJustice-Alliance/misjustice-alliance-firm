@@ -63,3 +63,11 @@
 - Fixed guardrail false positives: narrowed trigger from `"FAIL" in output.raw` to `"CITATION_AUDIT: FAIL" in output.raw`
 - Updated: `concepts/crewai-orchestrator-bridge.md` (process types, verification table, fixes table)
 - Updated: `index.md` (last updated date)
+
+## [2026-04-30] update | DeepAgents transition plan documented
+- Ingested: DeepAgents architecture audit → `raw/articles/misjustice-deepagents-architecture-audit.md` (already existed)
+- Created: `concepts/langchain-deepagents.md` — DeepAgents concept page with 7-layer stack fit, dreaming subagents, MCAS approval gates, migration roadmap
+- Updated: `concepts/crewai-orchestrator-bridge.md` — added Transition to DeepAgents section with feature flag and migration phases
+- Updated: `index.md` (33 total pages)
+- DEVELOPMENT_PLAN.md: added Section 5 — LangChain DeepAgents Transition (309 lines)
+- Transition artifacts: `docs/deepagents-transition/audit-delta.md`, `target-architecture.md`, `implementation-plan.md`

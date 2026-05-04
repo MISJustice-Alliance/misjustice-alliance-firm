@@ -2,7 +2,7 @@
 
 > Content catalog. Every wiki page listed under its type with a one-line summary.
 > Read this first to find relevant pages for any query.
-> Last updated: 2026-04-30 | Total pages: 32
+> Last updated: 2026-04-30 | Total pages: 33
 
 ## Entities
 - [[avery-intake-coordinator]] — Avery (Intake Coordinator)
@@ -25,6 +25,7 @@
 - [[crewai-orchestrator-bridge]] — CrewAI Orchestrator Bridge
 - [[data-classification]] — Data Classification Model
 - [[hitl-governance]] — Human-in-the-Loop Governance
+- [[langchain-deepagents]] — LangChain DeepAgents (target runtime)
 - [[legal-source-gateway]] — Legal Source Gateway
 - [[mcas-case-management]] — MCAS (MISJustice Case & Advocacy Server)
 - [[memorypalace-agent-memory]] — MemoryPalace Agent Memory
@@ -40,6 +41,7 @@
 - [[raw/articles/claude-ai-policy-router]]
 - [[raw/articles/docker-compose-main]]
 - [[raw/articles/infra-litellm-providers]]
+- [[raw/articles/misjustice-deepagents-architecture-audit]]
 - [[raw/articles/readme-project-overview]]
 - [[raw/articles/spec-architecture-spec]]
 

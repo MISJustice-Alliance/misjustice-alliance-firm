@@ -62,3 +62,13 @@ All 5 crews dispatched via `POST /dispatch` and verified to completion.
 - [[agent-tool-suite]]
 - [[mcas-case-management]]
 - [[paperclip-control-plane]]
+- [[langchain-deepagents]] — Target runtime for migration (behind feature flag)
+
+## Transition to DeepAgents
+
+The bridge is scheduled for migration to [[langchain-deepagents|LangChain DeepAgents]] via `MISJUSTICE_AGENT_RUNTIME=crewai|deepagents` feature flag. Key changes:
+- CrewAI `kickoff(...)` → LangGraph `CompiledStateGraph.ainvoke(...)`
+- In-memory `_jobs` → Postgres checkpointer + `StoreBackend`
+- Tool registry gains `tools/langchain_registry.py` wrapper for LangChain `BaseTool`
+- HITL moves from n8n webhooks to `interrupt_on` at tool nodes
+- Research crew is the first migration target (Phase 3); Drafting is last (Phase 5)
