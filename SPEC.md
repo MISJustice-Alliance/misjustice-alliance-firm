@@ -22,20 +22,26 @@
 9. [Human Interface Layer — Hermes Agent](#9-human-interface-layer--hermes-agent)
 10. [Sandbox Runtime — OpenShell](#10-sandbox-runtime--openshell)
 11. [Research Engine — AutoResearchClaw + researchclaw-skill](#11-research-engine--autoresearchclaw--researchclaw-skill)
-12. [Agent Memory — MemoryPalace](#12-agent-memory--memorypalace)
-13. [HITL Workflow Automation — Multica Inbox](#13-hitl-workflow-automation--multica-inbox)
-14. [Search and Retrieval Architecture](#14-search-and-retrieval-architecture)
-15. [RAG Backend](#15-rag-backend)
-    - [15.3 Legal Source Gateway — Open Legal Data Access Layer](#153-legal-source-gateway--open-legal-data-access-layer)
-16. [Case Management Backend — MCAS](#16-case-management-backend--mcas)
-17. [Agent Roster and Role Contracts](#17-agent-roster-and-role-contracts)
-18. [Data Classification Model](#18-data-classification-model)
-19. [Security and Zero-Trust Model](#19-security-and-zero-trust-model)
-20. [Infrastructure and Deployment](#20-infrastructure-and-deployment)
-21. [Inter-Service Communication](#21-inter-service-communication)
-22. [Configuration Reference](#22-configuration-reference)
-23. [Design Decisions and Rationale](#23-design-decisions-and-rationale)
-24. [Known Gaps and Future Work](#24-known-gaps-and-future-work)
+12. [Research Intelligence Stack (v2)](#12-research-intelligence-stack-v2)
+    - [12.1 GPT Researcher + LangGraph Multi-Agent](#121-gpt-researcher--langgraph-multi-agent)
+    - [12.2 gptr-mcp MCP Server](#122-gptr-mcp-mcp-server)
+    - [12.3 Tovana — Ephemeral Agent Memory](#123-tovana--ephemeral-agent-memory)
+    - [12.4 Morphic — Generative Search Middleware](#124-morphic--generative-search-middleware)
+    - [12.5 Scrapling — Distributed Web Scraping](#125-scrapling--distributed-web-scraping)
+13. [Agent Memory — MemoryPalace](#13-agent-memory--memorypalace)
+14. [HITL Workflow Automation — Multica Inbox](#14-hitl-workflow-automation--multica-inbox)
+15. [Search and Retrieval Architecture](#15-search-and-retrieval-architecture)
+16. [RAG Backend](#16-rag-backend)
+    - [16.3 Legal Source Gateway — Open Legal Data Access Layer](#163-legal-source-gateway--open-legal-data-access-layer)
+17. [Case Management Backend — MCAS](#17-case-management-backend--mcas)
+18. [Agent Roster and Role Contracts](#18-agent-roster-and-role-contracts)
+19. [Data Classification Model](#19-data-classification-model)
+20. [Security and Zero-Trust Model](#20-security-and-zero-trust-model)
+21. [Infrastructure and Deployment](#21-infrastructure-and-deployment)
+22. [Inter-Service Communication](#22-inter-service-communication)
+23. [Configuration Reference](#23-configuration-reference)
+24. [Design Decisions and Rationale](#24-design-decisions-and-rationale)
+25. [Known Gaps and Future Work](#25-known-gaps-and-future-work)
 
 ---
 
@@ -73,6 +79,11 @@ This SPEC does **not** cover:
 | **Human Interface** | Hermes Agent (NousResearch) + Multica Web UI | Primary operator CLI/TUI, web-based approval inbox, subagent spawning, Skill Factory |
 | **Sandbox Runtime** | OpenShell (NVIDIA) | Filesystem, network, process, and inference isolation per agent |
 | **Research Engine** | AutoResearchClaw + researchclaw-skill | Autonomous multi-stage legal and OSINT research loops |
+| **Deep Research Engine (v2)** | GPT Researcher + LangGraph Multi-Agent | Multi-source legal research with Chief Editor → Researcher → Reviewer → Revisor → Writer pipeline |
+| **Research MCP Bridge (v2)** | gptr-mcp | MCP server exposing GPTR capabilities as callable tools |
+| **Ephemeral Memory (v2)** | Tovana | Lightweight belief-store memory for narrow single-workflow runs |
+| **Generative Search (v2)** | Morphic | AI-powered search middleware with generative synthesis over SearXNG |
+| **Distributed Scraping (v2)** | Scrapling | Stealth web scraping for court portals, PACER, JS-heavy sources |
 | **Agent Memory** | MemoryPalace | Verbatim cross-session memory via MCP |
 | **HITL Automation** | Multica Inbox (self-hosted) | Approval routing, escalation, task review queues |
 | **Search Gateway** | SearXNG + LiteLLM Proxy | Private tiered search with role-scoped tokens |
@@ -925,6 +936,113 @@ Defined in `policies/MEMORY_POLICY.md`. Summary:
 - `per-matter` entries: retained until matter is archived (human-initiated).
 - `cross-matter` entries: retained indefinitely; subject to annual human review.
 - All deletions are audit-logged in the Veritas stream.
+
+---
+
+## 12. Research Intelligence Stack (v2)
+
+The Research Intelligence Stack is a comprehensive multi-agent research pipeline introduced in v2. It wraps around Multica's HITL core to provide deep legal research capabilities with built-in human feedback loops.
+
+### 12.1 GPT Researcher + LangGraph Multi-Agent
+
+**Repository:** https://github.com/assafelovic/gpt-researcher  
+**Multi-Agent:** https://github.com/assafelovic/gpt-researcher/tree/main/multi_agents
+
+GPT Researcher (GPTR) provides a LangGraph-based multi-agent research pipeline with five specialized roles:
+
+| Role | Function | Mapped Agent |
+|---|---|---|
+| **Chief Editor** | Plans research, delegates subtasks, reviews outputs | Lex |
+| **Researcher** | Executes parallel subtopic research | Mira |
+| **Reviewer** | Validates sources, checks accuracy | Citation + Iris |
+| **Revisor** | Revises content based on review feedback | Mira (revision pass) |
+| **Writer** | Produces final structured output | Quill |
+| **Publisher** | Prepares output for filing/publication | Ollie + Webmaster |
+| **Human** | HITL approval gates | Multica inbox |
+
+**Key Configuration:**
+- `include_human_feedback: true` — Mandatory for all case research tasks; routes Chief Editor pause points to Multica inbox
+- `follow_guidelines: true` — Enforces MISJustice legal research standards (Bluebook format, source citation, jurisdictional limits)
+- `publish_formats: { markdown: true, pdf: true, docx: true }` — Multi-format output
+
+**Service Topology:**
+- GPTR Backend (FastAPI): port 8000
+- GPTR Frontend (Next.js): port 3001 (mapped from default 3000 to avoid Multica conflict)
+
+**Integration:** GPTR is added as a submodule at `gpt-researcher/` with service config at `services/gpt-researcher/`.
+
+### 12.2 gptr-mcp — MCP Bridge
+
+**Repository:** https://github.com/assafelovic/gptr-mcp
+
+gptr-mcp exposes GPTR capabilities as MCP tools callable by any agent via Sol's MCP routing:
+
+| Tool | Purpose |
+|---|---|
+| `gptr_research` | Deep multi-source research with full pipeline |
+| `gptr_quick_search` | Rapid fact-checking and source retrieval |
+| `gptr_write_report` | Structured report generation from research |
+
+**Service:** Docker Compose service on port 4000  
+**Registration:** Tools registered in Sol's MCP tool manifest  
+**Env Vars:** `GPTR_MCP_PORT`, `OPENAI_API_KEY`, `TAVILY_API_KEY`, `BRAVE_API_KEY`, `EXA_API_KEY`, `DOC_PATH`
+
+### 12.3 Tovana — Ephemeral Agent Memory
+
+**Repository:** https://github.com/assafelovic/tovana
+
+Tovana provides lightweight belief-store memory for narrow single-workflow runs — stateful within a session but not persisted across sessions.
+
+**Assigned Agents:**
+- **Avery** — Intake triage context within a session
+- **Citation** — Hallucination-check context within a single audit pass
+- **Chronology** — Event sequence context within a single timeline build
+
+**Memory Architecture (Two-Tier):**
+
+| Tier | Technology | Agents | Persistence |
+|---|---|---|---|
+| **Persistent** | MemoryPalace | Lex, Mira, Casey, Rae, Quill | Cross-case, cross-session |
+| **Ephemeral** | Tovana | Avery, Citation, Chronology, Ollie | Within-run only |
+| **Implicit** | Multica inbox history | All agents with HITL gates | Short-term task context |
+
+### 12.4 Morphic — Generative Search Middleware
+
+**Repository:** https://github.com/miurla/morphic
+
+Morphic acts as both a human-facing generative search interface and an API middleware between agents/humans and SearXNG.
+
+**Capabilities:**
+- Natural-language search with AI-synthesized summaries
+- Structured search results via API (`/api/search`)
+- Fallback chain: SearXNG → Tavily → Brave → Exa
+
+**Service:** Docker Compose service on port 3002  
+**MCP Tool:** `morphic_search` registered with Sol  
+**Fallback Configuration:**
+- Primary: SearXNG (internal instance at http://searxng:8888)
+- Threshold: < 5 results OR > 8s response time triggers fallback
+- Fallback order: Tavily → Brave → Exa
+- All fallback calls logged to Multica audit trail
+
+**Env Vars:** `MORPHIC_PORT`, `SEARXNG_API_URL`, `BRAVE_SEARCH_API_KEY`, `TAVILY_API_KEY`, `EXA_API_KEY`, `MORPHIC_FALLBACK_ENABLED`, `MORPHIC_FALLBACK_THRESHOLD`
+
+### 12.5 Scrapling — Distributed Web Scraping
+
+**Repository:** https://github.com/D4Vinci/Scrapling
+
+Scrapling handles JavaScript-rendered and anti-bot-protected sources that SearXNG cannot scrape reliably.
+
+**Use Cases:**
+- Court docket scraping (PACER, state court portals, CourtListener)
+- Document retrieval from JS-heavy URLs
+- Anti-bot bypass for public records
+
+**Service:** Docker Compose service on port 5000  
+**MCP Tool:** `scrapling_fetch` registered with Sol for on-demand URL scraping  
+**Env Vars:** `SCRAPLING_STEALTH=true`
+
+**Note:** Scrapling is NOT part of the Morphic fallback chain. It is invoked explicitly by agents for specific URLs, not as a general search backend.
 
 ---
 

@@ -6,6 +6,14 @@
 > **Status:** Draft — Ready for Review
 >
 > **⚠️ MIGRATION NOTICE (2026-05-08):** This plan references crewAI, Paperclip, and n8n as primary orchestration components. These have been **deprecated** and superseded by the **Multica HITL Platform**. See SPEC.md §5 for the new architecture. crewAI (§6) and Paperclip (§7) sections in SPEC.md are preserved for historical reference with strikethrough formatting.
+>
+> **🆕 V2 ARCHITECTURE UPDATE (2026-05-08):** The Research Intelligence Stack v2 has been added, comprising:
+> - **GPT Researcher + LangGraph Multi-Agent** — Deep legal research with Chief Editor → Researcher → Reviewer → Revisor → Writer pipeline
+> - **gptr-mcp** — MCP bridge exposing GPTR as callable tools via Sol's MCP routing
+> - **Tovana** — Ephemeral memory for narrow single-workflow runs (Avery, Citation, Chronology, Ollie)
+> - **Morphic** — Generative search middleware with SearXNG → Tavily → Brave → Exa fallback chain
+> - **Scrapling** — Distributed scraping for court dockets and JavaScript-heavy sources
+> See SPEC.md §12 and docs/ARCHITECTURE.md for full details.
 
 ---
 
@@ -27,9 +35,9 @@ All components are modular, run in Docker containers, and are deployable via Ans
 | Phase | Duration | Deliverable | Owner | Dependencies |
 |---|---|---|---|---|
 | **P0** — Foundation | 2 weeks | Docker Compose stack running locally; MCAS + PostgreSQL + Redis | DevOps | — |
-| **P1** — Agent Framework | 3 weeks | CrewAI orchestrator with 5 crews; all 13 agent definitions; tool wrappers | Backend | P0 |
-| **P1.5** — DeepAgents Transition | 6 weeks | LangChain DeepAgents runtime; tool contract normalization; Research workflow migration; HITL interrupts | Backend | P1 |
-| **P2** — Platform Layer | 2 weeks | ~~Paperclip~~ Multica company configured; ~~heartbeat adapters~~ HITL approval gates; Hermes integration | Integration | P1.5 |
+| **P1.6** — Research Intelligence Stack (v2) | 4 weeks | GPT Researcher + LangGraph multi-agent; gptr-mcp; Tovana; Morphic; Scrapling integration | Backend | P1.5 |
+| **P2** — Platform Layer | 2 weeks | ~~Paperclip~~ Multica company configured; ~~heartbeat adapters~~ HITL approval gates; Hermes integration | Integration | P1.6 |
+|| **P2** — Platform Layer | 2 weeks | ~~Paperclip~~ Multica company configured; ~~heartbeat adapters~~ HITL approval gates; Hermes integration | Integration | P1.6 |
 | **P3** — Hardening | 2 weeks | Ansible playbooks; Tailscale ACLs; secret rotation; audit trails | DevOps | P2 |
 | **P4** — E2E Validation | 2 weeks | Integration test suite; staging deployment; operator runbooks | QA / All | P3 |
 | **P5** — Production | 1 week | Production cutover; monitoring; backup verification | DevOps | P4 |
@@ -64,10 +72,10 @@ All components are modular, run in Docker containers, and are deployable via Ans
 | **SearXNG** | ✅ Configured | L3 — Defined | Config in `infra/searxng/`; not yet wired into compose |
 | **nginx** | ✅ Configured | L3 — Defined | Config in `infra/nginx/`; ready for TLS termination |
 || **n8n Workflows** | ⚠️ Stubs | L1 — Initial | Workflow directory exists in `src/n8n/workflows/` but no executable definitions | ~~**DEPRECATED — replaced by Multica HITL workflows (SPEC.md §13)**~~ |
-| **LawGlance** | ⚠️ Partial | L2 — Managed | Dockerfile present; tests exist; needs integration testing |
-| **Legal Source Gateway** | ⚠️ Partial | L2 — Managed | Dockerfile + connectors; needs upstream data provider credentials |
-| **Vane** | ⚠️ Partial | L2 — Managed | Dockerfile present; needs search-tier token integration |
-| **CI/CD** | ⚠️ Broken | L1 — Initial | `.github/workflows/ci.yml` has failing smoke-test assertion per QA report |
+|| **LawGlance** | ⚠️ Partial | L2 — Managed | Dockerfile present; tests exist; needs integration testing | ~~**DEPRECATED — superseded by Morphic + SearXNG (SPEC.md §12.4)**~~ |
+|| **Legal Source Gateway** | ⚠️ Partial | L2 — Managed | Dockerfile + connectors; needs upstream data provider credentials | ~~**DEPRECATED — superseded by gptr-mcp (SPEC.md §12.2)**~~ |
+|| **Vane** | ⚠️ Partial | L2 — Managed | Dockerfile present; needs search-tier token integration | **Superseded by Morphic generative search UI (SPEC.md §12.4)** |
+|| **CI/CD** | ⚠️ Broken | L1 — Initial | `.github/workflows/ci.yml` has failing smoke-test assertion per QA report |
 
 ### Critical Gaps (from prior assessments + current inspection)
 
@@ -141,8 +149,13 @@ All components are modular, run in Docker containers, and are deployable via Ans
 | **Vane** | Minimal | L1 — Initial | `main.py` exists; basic health endpoint |
 | **Backend (Node.js/TS)** | Functional | L2 — Managed | 61 TS files; Bitwarden secrets; RBAC; 19 tests |
 | **Frontend (React/Vite)** | Functional | L2 — Managed | 52 files; Vite + Tailwind; hardcoded API fallback |
-| **CI/CD** | Configured | L2 — Managed | ruff + mypy + pytest + docker build; smoke test may fail |
-| **NemoClaw** | Unintegrated | L1 — Initial | Dockerfiles exist; not in compose stack |
+|| **CI/CD** | Configured | L2 — Managed | ruff + mypy + pytest + docker build; smoke test may fail |
+|| **NemoClaw** | Unintegrated | L1 — Initial | Dockerfiles exist; not in compose stack |
+|| **GPT Researcher (v2)** | ❌ Missing | L0 — Vapor | New component: LangGraph multi-agent deep research engine |
+|| **gptr-mcp (v2)** | ❌ Missing | L0 — Vapor | New component: MCP bridge for GPTR tool exposure |
+|| **Tovana (v2)** | ❌ Missing | L0 — Vapor | New component: Ephemeral memory for narrow workflows |
+|| **Morphic (v2)** | ❌ Missing | L0 — Vapor | New component: Generative search middleware with fallback chain |
+|| **Scrapling (v2)** | ❌ Missing | L0 — Vapor | New component: Distributed scraping for court dockets |
 
 ### New Critical Findings (from direct analysis)
 
@@ -193,9 +206,10 @@ All components are modular, run in Docker containers, and are deployable via Ans
 
 - [Section 1 — System Architecture](docs/plan-sections/01-architecture.md)
 - [Section 2 — Ansible Deployment Framework](docs/plan-sections/02-deployment.md)
-- [Section 3 — CrewAI Agent Development](docs/plan-sections/03-agents.md) *(Deprecated — see SPEC.md §5 for Multica)*
+- [~~Section 3 — CrewAI Agent Development~~](docs/plan-sections/03-agents.md) *(Deprecated — see SPEC.md §5 for Multica)*
 - [~~Section 4 — Paperclip Control Plane Integration~~](docs/plan-sections/04-integration.md) *(Deprecated — replaced by Multica)*
 - [Section 5 — LangChain DeepAgents Transition](docs/plan-sections/05-deepagents.md)
+- [Section 6 — Research Intelligence Stack (v2)](docs/plan-sections/06-research-intelligence.md) *(New — GPT Researcher, gptr-mcp, Tovana, Morphic, Scrapling)*
 
 ---
 
@@ -219,13 +233,13 @@ The MISJustice Alliance Firm operates as a **seven-layer autonomous legal resear
 
 | Layer | Name | Primary Components |
 |---|---|---|
-| L1 | Human Interface | Hermes Agent, Vane, Open Web UI, n8n HITL |
-| L2 | Control Plane | Paperclip — org chart, budgets, approvals, audit |
-| L3 | Orchestration | OpenClaw Gateway, CrewAI AMP Suite |
-| L4 | Runtime / Sandbox | NemoClaw (NVIDIA-sandboxed agents), OpenShell |
-| L5 | Agent Framework | LangChain / LangSmith, agent skill modules |
-| L6 | Memory · Research · Search | MemoryPalace, SearXNG, AutoResearchClaw |
-| L7 | Data Plane | MCAS, OpenRAG, LawGlance, LiteLLM, Ollama |
+|| L1 | Human Interface | Hermes Agent, ~~Vane~~ Morphic, Open Web UI, ~~n8n HITL~~ Multica HITL |
+|| L2 | Control Plane | ~~Paperclip~~ Multica — org chart, budgets, approvals, audit |
+|| L3 | Orchestration | OpenClaw Gateway, ~~CrewAI AMP Suite~~ GPT Researcher + LangGraph |
+|| L4 | Runtime / Sandbox | NemoClaw (NVIDIA-sandboxed agents), OpenShell |
+|| L5 | Agent Framework | LangChain / LangSmith, agent skill modules |
+|| L6 | Memory · Research · Search | MemoryPalace + Tovana, ~~SearXNG~~ Morphic + SearXNG, ~~AutoResearchClaw~~ GPT Researcher, gptr-mcp, Scrapling |
+|| L7 | Data Plane | MCAS, OpenRAG, ~~LawGlance~~ gptr-mcp, LiteLLM, Ollama |
 
 All layers communicate across **Docker bridge networks** inside the host and egress through a **Tailscale overlay** (100.106.20.102/32) for encrypted site-to-site connectivity. No component relies on hardcoded credentials; all secrets are injected at runtime via environment variables or Docker secrets.
 

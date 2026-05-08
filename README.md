@@ -5,10 +5,13 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Status: Early Architecture](https://img.shields.io/badge/status-early--architecture-yellow)](https://github.com/MISJustice-Alliance/misjustice-alliance-firm)
 [![Orchestration: OpenClaw / NemoClaw](https://img.shields.io/badge/orchestration-OpenClaw%20%2F%20NemoClaw-blueviolet)](https://github.com/NemoGuard/openclaw)
+[![Research: GPT Researcher + LangGraph](https://img.shields.io/badge/research-GPT%20Researcher%20%2B%20LangGraph-success)](https://github.com/assafelovic/gpt-researcher)
+[![Memory: MemoryPalace + Tovana](https://img.shields.io/badge/memory-MemoryPalace%20%2B%20Tovana-green)](https://www.mempalace.tech)
+[![Search: Morphic + SearXNG](https://img.shields.io/badge/search-Morphic%20%2B%20SearXNG-blue)](https://github.com/miurla/morphic)
+[![Scraping: Scrapling](https://img.shields.io/badge/scraping-Scrapling-orange)](https://github.com/D4Vinci/Scrapling)
 [![Interface: Hermes](https://img.shields.io/badge/interface-Hermes%20Agent-orange)](https://github.com/NousResearch/hermes-agent)
-[![Memory: MemoryPalace](https://img.shields.io/badge/memory-MemoryPalace-green)](https://www.mempalace.tech)
 [![Sandbox: OpenShell](https://img.shields.io/badge/sandbox-OpenShell-blue)](https://github.com/NVIDIA/OpenShell)
-[![Workflows: n8n](https://img.shields.io/badge/workflows-n8n-red)](https://n8n.io)
+[![Workflows: Multica HITL](https://img.shields.io/badge/workflows-Multica%20HITL-red)](https://github.com/MulticaAI/multica)
 
 ---
 
@@ -23,17 +26,23 @@ MISJustice Alliance Firm is an advanced, AI-native legal research and advocacy e
 5. [Control Interface Layer](#5-control-interface-layer)
 6. [Search and Retrieval Architecture](#6-search-and-retrieval-architecture)
    - [6.1 Legal Data Source & Agent Access Layer](#61-legal-data-source--agent-access-layer)
-7. [Agent Memory Architecture](#7-agent-memory-architecture)
-8. [Case Management Backend](#8-case-management-backend)
-9. [Example Workflow Diagram](#9-example-workflow-diagram)
-10. [System Architecture Diagram](#10-system-architecture-diagram)
-11. [Repository Structure](#11-repository-structure)
-12. [Getting Started](#12-getting-started)
-13. [Security and Privacy Model](#13-security-and-privacy-model)
-14. [Organizational Strategy & Hiring](#14-organizational-strategy--hiring)
-15. [Project Resources and Links](#15-project-resources-and-links)
-16. [Contributing](#16-contributing)
-17. [Disclaimer](#17-disclaimer)
+7. [Research Intelligence Stack (v2)](#7-research-intelligence-stack-v2)
+   - [7.1 GPT Researcher + LangGraph Multi-Agent](#71-gpt-researcher--langgraph-multi-agent)
+   - [7.2 gptr-mcp — Research MCP Bridge](#72-gptr-mcp--research-mcp-bridge)
+   - [7.3 Tovana — Ephemeral Memory](#73-tovana--ephemeral-memory)
+   - [7.4 Morphic — Generative Search](#74-morphic--generative-search)
+   - [7.5 Scrapling — Distributed Scraping](#75-scrapling--distributed-scraping)
+8. [Agent Memory Architecture](#8-agent-memory-architecture)
+9. [Case Management Backend](#9-case-management-backend)
+10. [Example Workflow Diagram](#10-example-workflow-diagram)
+11. [System Architecture Diagram](#11-system-architecture-diagram)
+12. [Repository Structure](#12-repository-structure)
+13. [Getting Started](#13-getting-started)
+14. [Security and Privacy Model](#14-security-and-privacy-model)
+15. [Organizational Strategy & Hiring](#15-organizational-strategy--hiring)
+16. [Project Resources and Links](#16-project-resources-and-links)
+17. [Contributing](#17-contributing)
+18. [Disclaimer](#18-disclaimer)
 
 ---
 
@@ -94,7 +103,7 @@ The MISJustice Alliance Firm operates a modular multi-agent staff. Each agent is
 
 > **Note on Hermes:** Hermes is the **primary human-facing interface** for the entire platform. Operators interact with the agent stack through Hermes' CLI/TUI, which translates natural-language commands into OpenClaw task dispatches. Hermes also supports **self-evolution**: its built-in Skill Factory allows the platform to create, test, and load new agent skills as capabilities and workflows expand — without requiring a full redeployment. OpenClaw and NemoClaw may also use Hermes to **spawn transient subagents** for parallelized tasks that don't require a persistent named agent role. See [Section 5](#5-control-interface-layer) for the full interface model.
 
-> **Note on MemoryPalace:** Every agent with a persistent role (Avery, Mira, Rae, Lex, Iris, Atlas, Casey, and others) uses **MemoryPalace** as its cross-session memory substrate. MemoryPalace provides verbatim-accurate memory storage with MCP integration, ensuring agents retain context across sessions — matter history, operator preferences, research findings, and workflow state — without hallucinating recall. See [Section 7](#7-agent-memory-architecture) for the full memory model.
+> **Note on MemoryPalace:** Every agent with a persistent role (Avery, Mira, Rae, Lex, Iris, Atlas, Casey, and others) uses **MemoryPalace** as its cross-session memory substrate. MemoryPalace provides verbatim-accurate memory storage with MCP integration, ensuring agents retain context across sessions — matter history, operator preferences, research findings, and workflow state — without hallucinating recall. See [Section 8](#8-agent-memory-architecture) for the full memory model.
 
 > **Note on OpenShell:** All agent tool execution runs inside **OpenShell** sandboxes, which provide filesystem, network, process, and inference isolation via declarative YAML policies. NemoClaw provisions and governs these sandboxes. The OpenShell community sandbox catalog includes a native OpenClaw sandbox (`openshell sandbox create --from openclaw`). See [Section 5](#5-control-interface-layer) for the sandbox governance model.
 
@@ -393,7 +402,99 @@ The gateway ships an internal operator web UI (`apps/legal-research-console/`) w
 
 ---
 
-## 7. Agent Memory Architecture
+## 7. Research Intelligence Stack (v2)
+
+### Stack Overview
+
+| Component | Technology | Purpose | Port |
+|---|---|---|---|
+| **Deep Research Engine** | GPT Researcher + LangGraph Multi-Agent | Autonomous research with editor-reviewer-gatekeeper workflow | 8005 |
+| **Research MCP Bridge** | gptr-mcp | MCP-native tool bindings for GPT Researcher | 4000 |
+| **Ephemeral Memory** | Tovana | Session-scoped memory with implicit extraction | 8006 |
+| **Generative Search** | Morphic | AI-powered search with generative UI | 3002 |
+| **Distributed Scraping** | Scrapling | High-performance distributed web scraping | 5000 |
+
+### 7.1 GPT Researcher + LangGraph Multi-Agent
+
+**GPT Researcher** provides autonomous, multi-step research capabilities with a LangGraph-based multi-agent architecture. The system maps research roles to MISJustice agents:
+
+| GPT Researcher Role | MISJustice Agent | Responsibility |
+|---|---|---|
+| Chief Editor | Lex | Research planning, strategy, final approval |
+| Reviewer | Mira | Quality assurance, factual verification |
+| Citation Verifier | Citation Agent | Source validation, citation formatting |
+| OSINT Specialist | Iris | Public records, actor investigation |
+| Draft Writer | Quill | Document drafting, memo generation |
+| Outreach Coordinator | Ollie | External communication drafting |
+| Web Publisher | Webmaster | Public content publication |
+| Human Gate | Multica HITL | Approval workflows, escalation handling |
+
+**Key Capabilities:**
+- Multi-step research with iterative refinement
+- Parallel sub-task execution via LangGraph
+- Human-in-the-loop interrupts for high-stakes decisions
+- Automatic citation generation and source verification
+- Integration with Legal Source Gateway for normalized legal data
+
+### 7.2 gptr-mcp — Research MCP Bridge
+
+**gptr-mcp** provides MCP-native tool bindings for GPT Researcher, enabling seamless integration with the broader MISJustice agent ecosystem.
+
+**Exposed Tools:**
+- `research_task` — Submit research tasks with scope and constraints
+- `get_report` — Retrieve completed research reports
+- `verify_citation` — Validate citations against source documents
+- `search_legal_sources` — Query Legal Source Gateway via MCP
+- `extract_entities` — Named entity extraction from research outputs
+
+### 7.3 Tovana — Ephemeral Memory
+
+**Tovana** provides session-scoped memory with implicit fact extraction, complementing MemoryPalace's persistent storage.
+
+**Architecture:**
+- **Persistent Memory Tier**: Long-term facts, preferences, entity relationships
+- **Ephemeral Memory Tier**: Session-scoped working memory with TTL
+- **Implicit Extraction**: Automatic fact extraction without explicit tool calls
+
+**Use Cases:**
+- Multi-turn research sessions
+- Temporary working hypotheses
+- Draft iteration history
+- Cross-reference tracking during research
+
+### 7.4 Morphic — Generative Search
+
+**Morphic** replaces Vane as the primary operator search interface, providing generative AI-powered search with a modern React-based UI.
+
+**Features:**
+- Generative search results with source citations
+- Multi-provider search fallback (SearXNG → Tavily → Brave → Exa)
+- Document upload and Q&A
+- Search history and session management
+- Tier-aware access control (T4-admin for operators)
+
+**Search Chain:**
+```
+User Query → Morphic → SearXNG (primary)
+                    ↓
+              Tavily (fallback)
+                    ↓
+              Brave Search (fallback)
+                    ↓
+              Exa (fallback)
+```
+
+### 7.5 Scrapling — Distributed Scraping
+
+**Scrapling** provides high-performance, distributed web scraping for research data acquisition.
+
+**Capabilities:**
+- Distributed scraping across multiple nodes
+- Automatic retry and rate limiting
+- Content extraction and normalization
+- Integration with gptr-mcp for research pipelines
+
+
 
 All persistent platform agents carry cross-session memory through **[MemoryPalace](https://www.mempalace.tech)** (mempalace.tech) — an open-source, locally-run AI memory substrate designed for verbatim-accurate recall with MCP (Model Context Protocol) integration.
 
@@ -402,10 +503,19 @@ All persistent platform agents carry cross-session memory through **[MemoryPalac
 Standard LLM context windows are ephemeral: when a session ends, everything is lost. For a platform handling ongoing legal matters — where agents need to remember prior research, operator preferences, matter history, and workflow state across days and weeks — reliable persistent memory is a hard requirement. MemoryPalace solves this by:
 
 - **Verbatim storage:** Memory entries are stored and recalled as-written, without compression or paraphrase — eliminating the hallucinated-recall problem common to vector-embedding-only memory systems.
-- **MCP integration:** MemoryPalace exposes a standard MCP server interface, allowing any MCP-compatible agent (including Hermes, OpenClaw-dispatched agents, and AutoResearchClaw) to read and write memories using standard tool calls.
+- **MCP integration:** MemoryPalace exposes a standard MCP server interface, allowing any MCP-compatible agent (including Hermes, OpenClaw-dispatched agents, and GPT Researcher) to read and write memories using standard tool calls.
 - **Local-first:** MemoryPalace runs fully on-premises. No memory data leaves the platform. This is non-negotiable for a platform handling potentially sensitive legal research and case context.
 - **Selective recall:** Agents retrieve memories by relevance, recency, or explicit key — not just cosine similarity. This supports structured recall patterns (e.g., "what did Rae find on Defendant X in Matter 42?") without needing a full embedding search.
 
+### MemoryPalace + Tovana Two-Tier Architecture (v2)
+
+> **Version 2.0 Update:** MemoryPalace is now complemented by **Tovana** for ephemeral, session-scoped memory. Together they provide a complete memory solution:
+
+| Tier | Technology | Scope | Persistence |
+|---|---|---|---|
+| **Persistent** | MemoryPalace | Long-term facts, preferences, entity relationships | Permanent |
+| **Ephemeral** | Tovana | Session working memory, draft iterations, hypotheses | TTL-based |
+| **Implicit** | Tovana | Automatically extracted facts without tool calls | Session |
 
 ### Memory Scope per Agent
 
@@ -425,7 +535,7 @@ Memory entries are never written for Tier-0 or Tier-1 content. All memory writes
 
 ---
 
-## 8. Case Management Backend
+## 9. Case Management Backend
 
 The **MISJustice Case \& Advocacy Server (MCAS)** is the authoritative system of record — a LegalServer-inspired, self-hosted, configurable case management platform adapted for civil rights research and advocacy.
 
@@ -442,7 +552,7 @@ MCAS exposes a REST/JSON API with OAuth2/PAT tokens, scoped per agent role. Webh
 
 ---
 
-## 9. Example Workflow Diagram
+## 10. Example Workflow Diagram
 
 The following Mermaid diagram illustrates a representative MISJustice workflow from human-initiated intake through to public publication. Hermes is shown as the primary human interface layer. n8n handles all HITL approval routing. MemoryPalace provides persistent memory to agents throughout the pipeline.
 
@@ -518,7 +628,7 @@ flowchart TD
 
 ---
 
-## 10. System Architecture Diagram
+## 11. System Architecture Diagram
 
 ```mermaid
 graph TB
@@ -666,7 +776,7 @@ graph TB
 
 ---
 
-## 11. Repository Structure
+## 12. Repository Structure
 
 The following is the proposed scaffold for this repository. Some directories are stubbed for future implementation and are marked accordingly.
 
@@ -940,7 +1050,7 @@ misjustice-alliance-firm/
 
 ***
 
-## 12. Getting Started
+## 13. Getting Started
 
 > ⚠️ This platform is in early architecture phase. Full installation automation is not yet available. The following steps outline the intended setup path.
 
@@ -1059,7 +1169,7 @@ Full configuration documentation is maintained in `docs/architecture/` and servi
 
 ***
 
-## 13. Security and Privacy Model
+## 14. Security and Privacy Model
 
 The MISJustice Alliance Firm is designed under a **zero-trust, layered privacy** model. Key principles:
 
@@ -1086,7 +1196,7 @@ Encryption at rest and in transit are baseline requirements for all services. Ke
 
 ***
 
-## 14. Organizational Strategy & Hiring
+## 15. Organizational Strategy & Hiring
 
 MISJustice Alliance is building a lean, AI-first organization to implement this platform and conduct civil rights legal research and advocacy.
 
@@ -1099,7 +1209,7 @@ MISJustice Alliance is building a lean, AI-first organization to implement this 
 
 ---
 
-## 15. Project Resources and Links
+## 16. Project Resources and Links
 
 | Resource | URL |
 | :-- | :-- |
@@ -1156,7 +1266,7 @@ MISJustice Alliance is building a lean, AI-first organization to implement this 
 
 ***
 
-## 16. Contributing
+## 17. Contributing
 
 MISJustice Alliance Firm is a **private, mission-driven project**. Contributions are by invitation only. If you are a legal technologist, DevOps engineer, civil rights attorney, or researcher interested in contributing, please reach out through official MISJustice Alliance channels.
 
@@ -1168,7 +1278,7 @@ All contributors must:
 
 ***
 
-## 17. Disclaimer
+## 18. Disclaimer
 
 > MISJustice Alliance and this platform do not provide legal advice and do not constitute an attorney-client relationship. All research, analysis, and publications produced by this platform are for educational, research, and public advocacy purposes only. Nothing in this platform or its outputs should be construed as legal advice. Persons with legal matters should consult a licensed attorney in the relevant jurisdiction.
 
