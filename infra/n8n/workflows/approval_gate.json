@@ -1,26 +1,26 @@
 {
-  "name": "MISJustice Intake Gate",
+  "name": "MISJustice Approval Gate",
   "nodes": [
     {
       "parameters": {
         "httpMethod": "POST",
-        "path": "intake-gate",
+        "path": "approval-gate",
         "responseMode": "responseNode",
         "options": {}
       },
       "id": "webhook",
-      "name": "Intake Webhook",
+      "name": "Approval Gate Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 1,
       "position": [250, 300],
-      "webhookId": "intake-gate"
+      "webhookId": "approval-gate"
     },
     {
       "parameters": {
-        "jsCode": "const body = $input.first().json.body;\nreturn {\n  json: {\n    matter_title: body.matter_title || 'Untitled',\n    requested_by: body.requested_by || 'Unknown',\n    summary: body.summary || '',\n    jurisdiction: body.jurisdiction || '',\n    review_url: `${process.env.MISJUSTICE_PORTAL_URL || 'http://localhost:5173'}/approvals`,\n    timestamp: new Date().toISOString()\n  }\n};"
+        "jsCode": "const body = $input.first().json.body;\nreturn {\n  json: {\n    approval_id: body.approval_id,\n    matter_id: body.matter_id,\n    matter_display_id: body.matter_display_id || '',\n    matter_title: body.matter_title || '',\n    gate_type: body.gate_type,\n    summary: body.summary,\n    requested_by: body.requested_by,\n    deadline: body.deadline || '',\n    review_url: `${process.env.MISJUSTICE_PORTAL_URL || 'http://localhost:5173'}/approvals/${body.approval_id}`,\n    timestamp: new Date().toISOString()\n  }\n};"
       },
-      "id": "format",
-      "name": "Format Request",
+      "id": "format-request",
+      "name": "Format Approval Request",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [450, 300]
@@ -28,20 +28,20 @@
     {
       "parameters": {
         "operation": "sendAndWait",
-        "message": "=**MISJustice Alliance — Intake Approval Gate**\n\n**Matter:** {{ $json.matter_title }}\n**Jurisdiction:** {{ $json.jurisdiction }}\n**Requested By:** {{ $json.requested_by }}\n**Summary:**\n{{ $json.summary }}\n\nReview: {{ $json.review_url }}",
-        "subject": "Intake Approval: {{ $json.matter_title }}",
+        "message": "=**MISJustice Alliance — Approval Gate Request**\n\n**Matter:** {{ $json.matter_display_id }} — {{ $json.matter_title }}\n**Gate Type:** {{ $json.gate_type }}\n**Requested By:** {{ $json.requested_by }}\n**Deadline:** {{ $json.deadline || 'None' }}\n\n**Summary:**\n{{ $json.summary }}\n\nReview: {{ $json.review_url }}",
+        "subject": "Approval Required: {{ $json.gate_type }} — {{ $json.matter_display_id }}",
         "toList": [
           "{{ process.env.MISJUSTICE_APPROVAL_EMAIL || 'legal-director@misjusticealliance.org' }}"
         ],
         "approvalOptions": {
           "values": [
             {
-              "label": "✅ Accept Intake",
+              "label": "✅ Approve",
               "value": "approved",
               "style": "primary"
             },
             {
-              "label": "❌ Reject Intake",
+              "label": "❌ Reject",
               "value": "rejected",
               "style": "danger"
             }
@@ -50,7 +50,7 @@
         "options": {}
       },
       "id": "request-approval",
-      "name": "Request Intake Approval",
+      "name": "Request Human Approval",
       "type": "n8n-nodes-base.email",
       "typeVersion": 2.1,
       "position": [650, 300]
@@ -85,12 +85,11 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://mcas:8000/api/v1/matters",
-        "body": "={\n  \"title\": \"{{ $json.matter_title }}\",\n  \"classification\": \"T2_INTERNAL\",\n  \"jurisdiction\": \"{{ $json.jurisdiction }}\"\n}",
+        "url": "=http://mcas:8000/api/v1/approvals/{{ $json.approval_id }}/approve",
         "options": {}
       },
-      "id": "create-matter",
-      "name": "Create Matter",
+      "id": "confirm-approval",
+      "name": "Confirm Approval",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [1050, 200]
@@ -98,12 +97,11 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://mcas:8000/api/v1/approvals",
-        "body": "={\n  \"gate_type\": \"INTAKE\",\n  \"entity_id\": \"{{ $json.matter_title }}\",\n  \"entity_type\": \"matter\",\n  \"payload\": { \"decision\": \"rejected\" }\n}",
+        "url": "=http://mcas:8000/api/v1/approvals/{{ $json.approval_id }}/reject",
         "options": {}
       },
-      "id": "log-rejected",
-      "name": "Log Rejected",
+      "id": "reject-approval",
+      "name": "Reject Approval",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [1050, 400]
@@ -111,7 +109,7 @@
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={\n  \"status\": \"processed\",\n  \"decision\": \"{{ $json.approved ? 'approved' : 'rejected' }}\",\n  \"timestamp\": \"{{ new Date().toISOString() }}\"\n}",
+        "responseBody": "={\n  \"status\": \"processed\",\n  \"approval_id\": \"{{ $json.approval_id }}\",\n  \"decision\": \"{{ $json.approved ? 'approved' : 'rejected' }}\",\n  \"timestamp\": \"{{ new Date().toISOString() }}\"\n}",
         "options": {}
       },
       "id": "respond",
@@ -122,29 +120,29 @@
     }
   ],
   "connections": {
-    "Intake Webhook": {
+    "Approval Gate Webhook": {
       "main": [
         [
           {
-            "node": "Format Request",
+            "node": "Format Approval Request",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Format Request": {
+    "Format Approval Request": {
       "main": [
         [
           {
-            "node": "Request Intake Approval",
+            "node": "Request Human Approval",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Request Intake Approval": {
+    "Request Human Approval": {
       "main": [
         [
           {
@@ -159,21 +157,21 @@
       "main": [
         [
           {
-            "node": "Create Matter",
+            "node": "Confirm Approval",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Log Rejected",
+            "node": "Reject Approval",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Create Matter": {
+    "Confirm Approval": {
       "main": [
         [
           {
@@ -184,7 +182,7 @@
         ]
       ]
     },
-    "Log Rejected": {
+    "Reject Approval": {
       "main": [
         [
           {
@@ -199,5 +197,5 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "tags": ["misjustice", "intake", "gate"]
+  "tags": ["misjustice", "approval", "hitl"]
 }

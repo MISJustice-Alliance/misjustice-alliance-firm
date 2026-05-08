@@ -13,14 +13,23 @@
 #   litellm-proxy LiteLLM — unified LLM routing, tier-based blocking
 #   redis         Redis 7 — task queue, caching, session store
 #   minio         MinIO — S3-compatible object store for documents
-#   n8n           n8n — HITL workflow orchestration
+#   multica-*     Multica HITL Platform — approval gates, task queue, Web UI
 #   nginx         nginx — TLS termination, rate limiting, static portal
+#
+# Deprecated (commented out):
+#   n8n           n8n — HITL workflow orchestration (replaced by Multica)
 #
 # Usage:
 #   cp .env.example .env
 #   docker compose up -d
 #   docker compose logs -f mcas
 # -----------------------------------------------------------------------------
+#
+# MIGRATION NOTICE (2026-05-08):
+#   - n8n service has been deprecated and replaced by Multica HITL Platform
+#   - Multica API runs on host port 8081 (container port 8080)
+#   - Multica Web UI runs on host port 3000
+#   - Multica DB runs on host port 5433 (to avoid conflict with postgres:5432)
 
 x-logging: &default-logging
   driver: "json-file"
@@ -330,46 +339,123 @@ services:
       start_period: 10s
 
   # ---------------------------------------------------------------------------
-  # n8n — HITL Workflow Orchestration
+  # n8n — HITL Workflow Orchestration (DEPRECATED — superseded by Multica)
   # ---------------------------------------------------------------------------
-  n8n:
-    image: n8nio/n8n:1.70.0
-    container_name: misjustice-n8n
+  # n8n:
+  #   image: n8nio/n8n:1.70.0
+  #   container_name: misjustice-n8n
+  #   <<: *restart-policy
+  #   logging: *default-logging
+  #   environment:
+  #     N8N_BASIC_AUTH_ACTIVE: "true"
+  #     N8N_BASIC_AUTH_USER: ${N8N_BASIC_AUTH_USER:-admin}
+  #     N8N_BASIC_AUTH_PASSWORD: ${N8N_BASIC_AUTH_PASSWORD:-admin}
+  #     N8N_HOST: ${N8N_HOST:-localhost}
+  #     N8N_PORT: 5678
+  #     N8N_PROTOCOL: http
+  #     WEBHOOK_URL: ${N8N_WEBHOOK_URL:-http://localhost/n8n/}
+  #     DB_TYPE: postgresdb
+  #     DB_POSTGRESDB_HOST: postgres
+  #     DB_POSTGRESDB_PORT: 5432
+  #     DB_POSTGRESDB_DATABASE: n8n
+  #     DB_POSTGRESDB_USER: ${POSTGRES_USER:-mcas}
+  #     DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD:-mcas}
+  #     N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:-change-me-in-production}
+  #     N8N_RUNNERS_ENABLED: "true"
+  #   volumes:
+  #     - n8n_data:/home/node/.n8n
+  #     - ./infra/n8n/workflows:/home/node/.n8n/workflows:ro
+  #   ports:
+  #     - "5678:5678"
+  #   networks:
+  #     - backend
+  #     - frontend
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:5678/healthz || exit 1"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+  #     start_period: 20s
+
+  # ---------------------------------------------------------------------------
+  # Multica HITL Platform — Human-in-the-Loop Orchestration
+  # ---------------------------------------------------------------------------
+  multica-db:
+    image: pgvector/pgvector:pg17
+    container_name: misjustice-multica-db
     <<: *restart-policy
     logging: *default-logging
     environment:
-      N8N_BASIC_AUTH_ACTIVE: "true"
-      N8N_BASIC_AUTH_USER: ${N8N_BASIC_AUTH_USER:-admin}
-      N8N_BASIC_AUTH_PASSWORD: ${N8N_BASIC_AUTH_PASSWORD:-admin}
-      N8N_HOST: ${N8N_HOST:-localhost}
-      N8N_PORT: 5678
-      N8N_PROTOCOL: http
-      WEBHOOK_URL: ${N8N_WEBHOOK_URL:-http://localhost/n8n/}
-      DB_TYPE: postgresdb
-      DB_POSTGRESDB_HOST: postgres
-      DB_POSTGRESDB_PORT: 5432
-      DB_POSTGRESDB_DATABASE: n8n
-      DB_POSTGRESDB_USER: ${POSTGRES_USER:-mcas}
-      DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD:-mcas}
-      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:-change-me-in-production}
-      N8N_RUNNERS_ENABLED: "true"
+      POSTGRES_USER: ${MULTICA_DB_USER:-multica}
+      POSTGRES_PASSWORD: ${MULTICA_DB_PASSWORD:-multica}
+      POSTGRES_DB: ${MULTICA_DB_NAME:-multica}
     volumes:
-      - n8n_data:/home/node/.n8n
-      - ./infra/n8n/workflows:/home/node/.n8n/workflows:ro
+      - multica_data:/var/lib/postgresql/data
     ports:
-      - "5678:5678"
+      - "5433:5432"  # Host port 5433 to avoid conflict with postgres:5432
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${MULTICA_DB_USER:-multica} -d ${MULTICA_DB_NAME:-multica}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  multica-api:
+    image: ghcr.io/multica/multica-api:latest
+    container_name: misjustice-multica-api
+    <<: *restart-policy
+    logging: *default-logging
+    environment:
+      DATABASE_URL: postgresql://multica:${MULTICA_DB_PASSWORD:-multica}@multica-db:5432/multica
+      REDIS_URL: redis://redis:6379/1
+      MULTICA_API_KEY: ${MULTICA_API_KEY:-change-me-in-production}
+      MULTICA_JWT_SECRET: ${MULTICA_JWT_SECRET:-change-me-in-production}
+      HERMES_ENDPOINT: ${HERMES_ENDPOINT:-http://hermes:7860}
+      MCAS_ENDPOINT: ${MCAS_ENDPOINT:-http://mcas:8000}
+      OPENCLAW_ENDPOINT: ${OPENCLAW_ENDPOINT:-http://openclaw-gateway:8080}
+    ports:
+      - "8081:8080"  # Host port 8081 (avoiding conflict with openclaw-gateway:8080)
     networks:
       - backend
       - frontend
     depends_on:
-      postgres:
+      multica-db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:5678/healthz || exit 1"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:8080/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 20s
+
+  multica-web:
+    image: ghcr.io/multica/multica-web:latest
+    container_name: misjustice-multica-web
+    <<: *restart-policy
+    logging: *default-logging
+    environment:
+      MULTICA_API_URL: http://multica-api:8080
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    networks:
+      - frontend
+    depends_on:
+      multica-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:3000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   # ---------------------------------------------------------------------------
   # nginx — Reverse Proxy & Static File Server
@@ -394,7 +480,7 @@ services:
         condition: service_healthy
       searxng:
         condition: service_started
-      n8n:
+      multica-api:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:80/health || exit 1"]
@@ -615,6 +701,8 @@ volumes:
   minio_data:
     driver: local
   n8n_data:
+    driver: local
+  multica_data:
     driver: local
   ollama_data:
     driver: local

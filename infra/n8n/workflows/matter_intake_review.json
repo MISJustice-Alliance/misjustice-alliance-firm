@@ -1,0 +1,96 @@
+{
+  "name": "MISJustice Matter Intake Review",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtInterval": 1
+            }
+          ]
+        }
+      },
+      "id": "schedule",
+      "name": "Weekly Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://mcas:8000/api/v1/matters",
+        "options": {}
+      },
+      "id": "fetch-matters",
+      "name": "Fetch Matters",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const matters = $input.first().json;\nconst intakeMatters = matters.filter(m => m.status === 'INTAKE');\nconst summary = intakeMatters.map(m => `- ${m.display_id}: ${m.title} (${m.jurisdiction})`).join('\\n');\nreturn {\n  json: {\n    count: intakeMatters.length,\n    summary: summary || 'No matters in INTAKE status.',\n    timestamp: new Date().toISOString()\n  }\n};"
+      },
+      "id": "summarize",
+      "name": "Summarize Intake Queue",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ process.env.MISJUSTICE_APPROVAL_EMAIL || 'legal-director@misjusticealliance.org' }}",
+        "subject": "MISJustice Weekly Intake Review — {{ $json.count }} pending",
+        "text": "=Weekly Intake Summary ({{ $json.timestamp }})\n\nPending intake matters: {{ $json.count }}\n\n{{ $json.summary }}",
+        "options": {}
+      },
+      "id": "email",
+      "name": "Send Intake Summary",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [850, 300]
+    }
+  ],
+  "connections": {
+    "Weekly Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Matters",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Matters": {
+      "main": [
+        [
+          {
+            "node": "Summarize Intake Queue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize Intake Queue": {
+      "main": [
+        [
+          {
+            "node": "Send Intake Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": ["misjustice", "intake", "review"]
+}

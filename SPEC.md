@@ -15,26 +15,27 @@
 2. [Technology Stack Summary](#2-technology-stack-summary)
 3. [Architectural Layers](#3-architectural-layers)
 4. [Agent Framework — LangChain + LangSmith Agent Builder](#4-agent-framework--langchain--langsmith-agent-builder)
-5. [Multi-Agent Orchestration — crewAI AMP Suite](#5-multi-agent-orchestration--crewai-amp-suite)
-6. [Control Plane — Paperclip](#6-control-plane--paperclip)
-7. [Primary Orchestration Runtime — OpenClaw / NemoClaw](#7-primary-orchestration-runtime--openclaw--nemoclaw)
-8. [Human Interface Layer — Hermes Agent](#8-human-interface-layer--hermes-agent)
-9. [Sandbox Runtime — OpenShell](#9-sandbox-runtime--openShell)
-10. [Research Engine — AutoResearchClaw + researchclaw-skill](#10-research-engine--autoresearchclaw--researchclaw-skill)
-11. [Agent Memory — MemoryPalace](#11-agent-memory--memorypalace)
-12. [HITL Workflow Automation — n8n](#12-hitl-workflow-automation--n8n)
-13. [Search and Retrieval Architecture](#13-search-and-retrieval-architecture)
-14. [RAG Backend](#14-rag-backend)
-    - [14.3 Legal Source Gateway — Open Legal Data Access Layer](#143-legal-source-gateway--open-legal-data-access-layer)
-15. [Case Management Backend — MCAS](#15-case-management-backend--mcas)
-16. [Agent Roster and Role Contracts](#16-agent-roster-and-role-contracts)
-17. [Data Classification Model](#17-data-classification-model)
-18. [Security and Zero-Trust Model](#18-security-and-zero-trust-model)
-19. [Infrastructure and Deployment](#19-infrastructure-and-deployment)
-20. [Inter-Service Communication](#20-inter-service-communication)
-21. [Configuration Reference](#21-configuration-reference)
-22. [Design Decisions and Rationale](#22-design-decisions-and-rationale)
-23. [Known Gaps and Future Work](#23-known-gaps-and-future-work)
+5. [Orchestration Architecture — Multica HITL Platform](#5-orchestration-architecture--multica-hitl-platform)
+6. [Multi-Agent Orchestration — crewAI AMP Suite (Deprecated)](#6-multi-agent-orchestration--crewai-amp-suite-deprecated)
+7. [Control Plane — Paperclip (Deprecated)](#7-control-plane--paperclip-deprecated)
+8. [Primary Orchestration Runtime — OpenClaw / NemoClaw](#8-primary-orchestration-runtime--openclaw--nemoclaw)
+9. [Human Interface Layer — Hermes Agent](#9-human-interface-layer--hermes-agent)
+10. [Sandbox Runtime — OpenShell](#10-sandbox-runtime--openshell)
+11. [Research Engine — AutoResearchClaw + researchclaw-skill](#11-research-engine--autoresearchclaw--researchclaw-skill)
+12. [Agent Memory — MemoryPalace](#12-agent-memory--memorypalace)
+13. [HITL Workflow Automation — Multica Inbox](#13-hitl-workflow-automation--multica-inbox)
+14. [Search and Retrieval Architecture](#14-search-and-retrieval-architecture)
+15. [RAG Backend](#15-rag-backend)
+    - [15.3 Legal Source Gateway — Open Legal Data Access Layer](#153-legal-source-gateway--open-legal-data-access-layer)
+16. [Case Management Backend — MCAS](#16-case-management-backend--mcas)
+17. [Agent Roster and Role Contracts](#17-agent-roster-and-role-contracts)
+18. [Data Classification Model](#18-data-classification-model)
+19. [Security and Zero-Trust Model](#19-security-and-zero-trust-model)
+20. [Infrastructure and Deployment](#20-infrastructure-and-deployment)
+21. [Inter-Service Communication](#21-inter-service-communication)
+22. [Configuration Reference](#22-configuration-reference)
+23. [Design Decisions and Rationale](#23-design-decisions-and-rationale)
+24. [Known Gaps and Future Work](#24-known-gaps-and-future-work)
 
 ---
 
@@ -44,9 +45,9 @@ This document defines the full application architecture of the **MISJustice Alli
 
 This SPEC covers:
 - How agents are built (LangChain / LangSmith Agent Builder)
-- How agent crews are composed and coordinated (crewAI AMP Suite)
-- How the control plane governs agent lifecycles and policy (Paperclip)
-- How human operators interact with and control the stack (Hermes, n8n)
+- How agent tasks are orchestrated with human-in-the-loop approval (Multica HITL Platform)
+- How the control plane governs agent lifecycles and policy (Multica — supersedes Paperclip/crewAI)
+- How human operators interact with and control the stack (Hermes, Multica Web UI)
 - How research tasks are executed autonomously (AutoResearchClaw + researchclaw-skill)
 - How agents retain memory across sessions (MemoryPalace)
 - How sandboxing and isolation are enforced (OpenShell / NemoClaw)
@@ -65,14 +66,15 @@ This SPEC does **not** cover:
 | Layer | Primary Technology | Role |
 |---|---|---|
 | **Agent Framework** | LangChain + LangSmith Agent Builder | Agent construction, tool binding, chain composition, tracing |
-| **Multi-Agent Coordination** | crewAI AMP Suite | Crew composition, role assignment, task routing, inter-agent messaging |
-| **Control Plane** | Paperclip | Agent lifecycle management, policy enforcement, deployment control |
+| **HITL Orchestration** | Multica | Task orchestration, approval gates, inbox-based review, MCP integration |
+| **Multi-Agent Coordination** | crewAI AMP Suite | ~~Crew composition, role assignment, task routing~~ **DEPRECATED — superseded by Multica** |
+| **Control Plane** | Multica | Agent lifecycle, policy enforcement, approval workflows |
 | **Orchestration Runtime** | OpenClaw / NemoClaw | Task dispatch, agent protection layer, sandbox provisioning |
-| **Human Interface** | Hermes Agent (NousResearch) | Primary operator CLI/TUI, subagent spawning, Skill Factory |
+| **Human Interface** | Hermes Agent (NousResearch) + Multica Web UI | Primary operator CLI/TUI, web-based approval inbox, subagent spawning, Skill Factory |
 | **Sandbox Runtime** | OpenShell (NVIDIA) | Filesystem, network, process, and inference isolation per agent |
 | **Research Engine** | AutoResearchClaw + researchclaw-skill | Autonomous multi-stage legal and OSINT research loops |
 | **Agent Memory** | MemoryPalace | Verbatim cross-session memory via MCP |
-| **HITL Automation** | n8n (self-hosted) | Approval routing, escalation webhooks, scheduled workflows |
+| **HITL Automation** | Multica Inbox (self-hosted) | Approval routing, escalation, task review queues |
 | **Search Gateway** | SearXNG + LiteLLM Proxy | Private tiered search with role-scoped tokens |
 | **Legal RAG** | LawGlance (LangChain + ChromaDB) | Public legal information retrieval |
 | **Open Legal Data Gateway** | Legal Source Gateway (internal microservice) | Normalized agent-callable API abstracting CourtListener, CAP, GovInfo, eCFR, Federal Register, Open States, and LegiScan behind a single task-oriented interface; Elasticsearch full-text index, Qdrant vector store (Inception embeddings), Neo4j citation knowledge graph |
@@ -95,14 +97,14 @@ The platform is organized into seven distinct layers. Data and control flow stri
 
 ┌─────────────────────────────────────────────────────────────────┐
 │  LAYER 1 — Human Interface                                      │
-│  Hermes CLI/TUI · n8n UI · Telegram · Discord · Open Web UI     │
+│  Hermes CLI/TUI · Multica Web UI · Telegram · Discord · Open Web│
 │  Vane AI Search · Open Notebook · iMessage                      │
 ├─────────────────────────────────────────────────────────────────┤
 │  LAYER 2 — Control Plane                                        │
-│  Paperclip (agent lifecycle, policy, deployment control)        │
+│  Multica (agent lifecycle, policy, approval workflows)          │
 ├─────────────────────────────────────────────────────────────────┤
 │  LAYER 3 — Orchestration                                        │
-│  crewAI AMP Suite (crew composition, inter-agent coordination)  │
+│  Multica Task Queue (HITL approval gates, inbox routing)        │
 │  OpenClaw / NemoClaw (task dispatch, sandbox provisioning)      │
 ├─────────────────────────────────────────────────────────────────┤
 │  LAYER 4 — Agent Runtime                                        │
@@ -137,7 +139,7 @@ All platform agents are built using **[LangChain](https://python.langchain.com/)
 
 LangChain provides:
 - **Agent construction:** Tool-calling agents built with `langchain.agents.create_tool_calling_agent` or `create_react_agent` depending on role complexity.
-- **Tool binding:** All agent tools (MCAS API client, SearXNG search tools, OpenRAG retriever, MemoryPalace MCP client, LawGlance retriever, n8n webhook triggers) are defined as LangChain `BaseTool` subclasses and bound to agents at initialization.
+- **Tool binding:** All agent tools (MCAS API client, SearXNG search tools, OpenRAG retriever, MemoryPalace MCP client, LawGlance retriever, Multica inbox triggers) are defined as LangChain `BaseTool` subclasses and bound to agents at initialization.
 - **Chain composition:** Complex multi-step workflows (intake → OCR → classification → MCAS write) are composed as LangChain `RunnableSequence` pipelines.
 - **LLM abstraction:** All agents use LangChain's `ChatLiteLLM` wrapper to route LLM calls through the LiteLLM proxy — enabling model swapping, local/remote routing, and unified observability without changing agent code.
 - **Retrieval chains:** LangChain `RetrievalQA` and `ConversationalRetrievalChain` patterns are used for RAG-backed agents (Rae, Lex, Citation Agent) querying OpenRAG and LawGlance.
@@ -233,17 +235,134 @@ class MCASCreateMatterTool(BaseTool):
 
 ---
 
-## 5. Multi-Agent Orchestration — crewAI AMP Suite
+## 5. Orchestration Architecture — Multica HITL Platform
 
 ### Overview
 
-**[crewAI AMP Suite](https://github.com/crewAIInc/crewAI)** is the platform's multi-agent coordination layer. It sits above the individual LangChain agent runtime and handles:
+**[Multica](https://github.com/multica-ai/multica)** is the platform's primary HITL (Human-In-The-Loop) task orchestration platform. It replaces the previous paperclip/crewAI stack with a purpose-built approval-gated workflow system designed for legal advocacy where accuracy, privilege, and strategy decisions require attorney or researcher sign-off.
 
-- **Crew composition:** Grouping agents into task-specific crews (e.g., a Research Crew of Rae + Lex + Citation Agent; a Publication Crew of Sol + Webmaster + Quill).
-- **Role assignment and task routing:** crewAI's `Task` and `Agent` primitives map directly to the platform's named agent roles. Each platform agent is registered as a crewAI `Agent` with a defined `role`, `goal`, `backstory`, and `tools` list.
-- **Sequential and parallel execution:** Research workflows run Rae, Lex, and Iris in a hierarchical crew with parallel sub-tasks where permitted. Publication workflows run Sol → Webmaster → Quill sequentially with HITL gates between stages.
-- **Inter-agent messaging:** crewAI's built-in delegation and messaging bus allows Lex to request additional research from Rae, or for the Orchestrator to reassign tasks mid-workflow based on intermediate outputs.
-- **Process types:** The platform uses both `Process.sequential` (intake, publication) and `Process.hierarchical` (research, PI investigation) depending on workflow requirements.
+Multica provides:
+
+- **Native approval gates:** Tasks pause at defined gate points and await explicit human approval via the Multica inbox before proceeding
+- **Inbox-based task review:** All agent outputs requiring review are queued in the Multica web UI for human reviewers (Lex, Mira, or designated attorneys)
+- **MCP server integration:** Native Model Context Protocol support allows agents to register tools directly with Multica, replacing Sol's custom MCP wiring
+- **Full Docker self-hosting:** Complete deployment via `docker-compose.selfhost.yml` with no external dependencies
+- **Broad agent support:** OpenClaw, Hermes, Claude, Gemini, Codex, and Cursor agents configured via environment variables
+
+### Self-Hosted Deployment
+
+Multica runs as two containerized services:
+
+| Service | Image | Port | Purpose |
+|---|---|---|---|
+| `multica-api` | `ghcr.io/multica-ai/multica-server:latest` | 8080 | Task queue, approval API, agent registration, MCP routing |
+| `multica-web` | `ghcr.io/multica-ai/multica-web:latest` | 3000 | Human approval inbox, task review UI, admin dashboard |
+
+Both services connect to a **Postgres 17 + pgvector** database for task persistence and vector search. This can share the existing PostgreSQL instance or run as a dedicated service.
+
+### Approval Gate Model
+
+The MISJustice Alliance legal workflow requires human review at critical stages. Multica implements this as an **approval gate model**:
+
+```
+Agent proposes output → Multica inbox queue → Human reviewer approves → Agent proceeds
+```
+
+**Gate points defined:**
+
+| Stage | Gate | Reviewer | Action on Approval |
+|---|---|---|---|
+| Post-Research | Research outputs → Drafting | Lex / Mira | Quill begins drafting |
+| Post-Drafting | Draft brief → Filing/Publication | Lex | Output committed to MCAS or published |
+| Pre-External | Any output to external parties | Lex | Social Media Manager / Webmaster execute |
+
+**No agent bypasses the approval inbox for outputs that are:**
+- Filed with a court
+- Published publicly
+- Sent to external parties
+- Contain legal citations (must pass Citation audit gate)
+
+### Agent Registration
+
+Agents are registered in Multica via environment variables:
+
+```bash
+# Agent binary paths (must be executable)
+MULTICA_HERMES_PATH=/usr/local/bin/hermes
+MULTICA_OPENCLAW_PATH=/usr/local/bin/openclaw
+MULTICA_CLAUDE_PATH=/usr/local/bin/claude
+MULTICA_GEMINI_PATH=/usr/local/bin/gemini
+
+# Model routing (via LiteLLM proxy)
+MULTICA_HERMES_MODEL=openai/gpt-4o
+MULTICA_OPENCLAW_MODEL=anthropic/claude-3-5-sonnet
+MULTICA_CLAUDE_MODEL=anthropic/claude-3-5-sonnet
+MULTICA_GEMINI_MODEL=google/gemini-pro
+```
+
+### MCP Server Integration
+
+Multica provides native MCP server support, replacing Sol's custom MCP tool wiring:
+
+```python
+# Sol agent configuration — now routes through Multica MCP
+class SolAgent:
+    def __init__(self):
+        self.mcp_client = MulticaMCPClient(
+            server_url="http://multica-api:8080/mcp",
+            tools=["legal_research", "citation_verify", "mcas_read", "mcas_write"]
+        )
+```
+
+MCP tools available via Multica:
+- `legal_research` — Query Legal Source Gateway, LawGlance, SearXNG
+- `citation_verify` — Validate citations against CourtListener/CAP
+- `mcas_read` / `mcas_write` — Case management system access
+- `memorypalace_rw` — Cross-session agent memory
+
+### Database Backend
+
+Multica uses **PostgreSQL 17 with pgvector** for:
+- Task queue persistence
+- Approval state management
+- Agent output embedding (for semantic search)
+- Audit trail storage
+
+```yaml
+# docker-compose.yml excerpt
+multica-db:
+  image: pgvector/pgvector:pg17
+  environment:
+    POSTGRES_DB: multica
+    POSTGRES_USER: ${MULTICA_DB_USER}
+    POSTGRES_PASSWORD: ${MULTICA_DB_PASSWORD}
+  volumes:
+    - multica_data:/var/lib/postgresql/data
+```
+
+---
+
+## 6. Multi-Agent Orchestration — crewAI AMP Suite (Deprecated)
+
+> **Status:** Deprecated — superseded by Multica HITL Platform (Section 5)
+> 
+> The crewAI AMP Suite was the platform's original multi-agent coordination layer. It has been replaced by Multica to provide native HITL approval gates required for legal advocacy workflows.
+
+### Overview (Historical)
+
+~~**[crewAI AMP Suite](https://github.com/crewAIInc/crewAI)** was the platform's multi-agent coordination layer. It handled:~~
+
+- ~~**Crew composition:** Grouping agents into task-specific crews~~
+- ~~**Role assignment and task routing:** crewAI's `Task` and `Agent` primitives mapped to platform agent roles~~
+- ~~**Sequential and parallel execution:** Research workflows ran agents in hierarchical crews~~
+
+### Migration Notes
+
+**Sections below retain crewAI documentation for reference during migration.**
+
+**⚠️ All new development should use Multica (Section 5).**
+
+**⚠️ crewAI task decorators (`@task`, `@crew`, `@agent`) require refactoring for Multica task types.**
 
 
 ### Crew Definitions
@@ -302,30 +421,52 @@ Hermes (operator input)
     → OpenClaw (selects crew + workflow)
         → crewAI AMP (composes and runs crew)
             → LangChain agents (execute individual tasks)
-                → Tools (MCAS, SearXNG, OpenRAG, MemoryPalace, n8n webhooks)
+                → Tools (MCAS, SearXNG, OpenRAG, MemoryPalace, Multica inbox)
         → crewAI output → OpenClaw audit log
-    → n8n HITL webhook (if gate required)
+    → Multica HITL approval gate (if gate required)
 → Human approval → next crew invocation
 ```
 
 
 ---
 
-## 6. Control Plane — Paperclip
+## 7. Control Plane — Paperclip (Deprecated)
 
-### Overview
+> **Status:** Deprecated — superseded by Multica HITL Platform (Section 5)
+>
+> Paperclip was the platform's original agent control plane. Its functionality (agent lifecycle, policy enforcement, deployment control) has been consolidated into Multica, which provides HITL-native governance.
 
-**[Paperclip](https://docs.paperclip.ing/start/what-is-paperclip)** is the platform's agent control plane. It manages:
+### Overview (Historical)
 
-- **Agent lifecycle:** Deployment, versioning, rollback, and retirement of agent instances.
-- **Policy enforcement:** Declarative policies governing what agents can and cannot do — complementing OpenShell's sandbox policies with higher-level behavioral constraints.
-- **Observability:** Unified dashboard for agent status, task queues, error rates, and policy violation alerts across the full platform.
-- **Deployment control:** Paperclip manages which version of each agent definition (system prompt, tool set, LangChain config) is active in each environment (dev, staging, production).
+~~**[Paperclip](https://docs.paperclip.ing/start/what-is-paperclip)** was the platform's agent control plane. It managed:~~
 
+- ~~**Agent lifecycle:** Deployment, versioning, rollback, and retirement of agent instances~~
+- ~~**Policy enforcement:** Declarative policies governing what agents can and cannot do~~
+- ~~**Observability:** Unified dashboard for agent status, task queues, error rates~~
+- ~~**Deployment control:** Managing which agent definition version is active per environment~~
 
-### Paperclip Agent Registration
+### Migration Notes
 
-Each named platform agent is registered in Paperclip with a declarative agent manifest stored in `agents/{role}/agent.yaml`:
+**Paperclip functionality migrated to Multica:**
+
+| Paperclip Feature | Multica Equivalent |
+|---|---|
+| Agent registration | `MULTICA_*_PATH` env vars + agent binary registration |
+| Policy enforcement | Multica approval gates + OpenShell sandbox policies |
+| Task queues | Multica inbox queue with Postgres persistence |
+| Audit trails | Multica audit log + MCAS event logging |
+| Deployment control | Docker Compose service definitions + image tags |
+
+**⚠️ Paperclip agent manifests (`agents/{role}/agent.yaml`) are deprecated.**
+**⚠️ Paperclip policy YAMLs should migrate to OpenShell sandbox policies.**
+
+### Historical Documentation (Reference Only)
+
+The following sections retain Paperclip documentation for reference during migration.
+
+#### Paperclip Agent Registration (Deprecated)
+
+~~Each named platform agent was registered in Paperclip with a declarative agent manifest stored in `agents/{role}/agent.yaml`:~~
 
 ```yaml
 # agents/rae/agent.yaml
@@ -428,7 +569,7 @@ escalation:
 
 ---
 
-## 7. Primary Orchestration Runtime — OpenClaw / NemoClaw
+## 8. Primary Orchestration Runtime — OpenClaw / NemoClaw
 
 ### OpenClaw
 
@@ -438,8 +579,8 @@ escalation:
 - Maintains a task queue with priority, matter ID, and assigned crew.
 - Tracks task state (pending → running → awaiting-hitl → complete → failed).
 - Emits audit events for every state transition to the Veritas audit log.
-- Triggers n8n webhooks at configured HITL gate points.
-- Interfaces with Paperclip for agent health checks and deployment status before dispatching tasks.
+- Triggers Multica inbox events at configured HITL gate points.
+- Interfaces with Multica for agent health checks and deployment status before dispatching tasks.
 
 
 ### NemoClaw
@@ -475,7 +616,7 @@ escalation:
 
 ---
 
-## 8. Human Interface Layer — Hermes Agent
+## 9. Human Interface Layer — Hermes Agent
 
 **[Hermes](https://github.com/NousResearch/hermes-agent)** (NousResearch) is the primary human-agent interface. Every operator interaction with the platform flows through Hermes.
 
@@ -549,7 +690,7 @@ Each Hermes instance loads a `SOUL.md` identity constitution from `agents/hermes
 
 ---
 
-## 9. Sandbox Runtime — OpenShell
+## 10. Sandbox Runtime — OpenShell
 
 **[OpenShell](https://github.com/NVIDIA/OpenShell)** (NVIDIA) provides hardware-enforced sandbox isolation for all agent tool execution. NemoClaw provisions and governs OpenShell instances.
 
@@ -588,7 +729,7 @@ network:
     - host: litellm.internal  port: 4000   # LiteLLM proxy (search + LLM)
     - host: memorypalace.internal port: 7700  # MemoryPalace MCP
     - host: lawglance.internal port: 8080  # LawGlance RAG
-    - host: n8n.internal      port: 5678   # n8n webhook triggers
+    - host: multica.internal    port: 8080  # Multica API
   denied_egress:
     - host: "*"   # all other egress denied by default
 
@@ -623,7 +764,7 @@ NemoClaw receives task dispatch from OpenClaw
 
 ---
 
-## 10. Research Engine — AutoResearchClaw + researchclaw-skill
+## 11. Research Engine — AutoResearchClaw + researchclaw-skill
 
 ### AutoResearchClaw
 
@@ -722,15 +863,15 @@ Rae (LangChain agent) → calls autoresearchclaw tool
       → MCAS: write Task record (research memo attached)
       → Open Notebook: write memo for human review
 
-Rae → n8n webhook: "Research memo ready for review — TASK-0042"
-n8n → Hermes/Telegram: operator notification
+Rae → Multica inbox: "Research memo ready for review — TASK-0042"
+Multica → Hermes/Telegram: operator notification
 Human: reviews memo → approves → next workflow stage
 ```
 
 
 ---
 
-## 11. Agent Memory — MemoryPalace
+## 12. Agent Memory — MemoryPalace
 
 ### Overview
 
@@ -770,7 +911,7 @@ MemoryPalace exposes the following MCP tools to agents:
 ### Memory Classification Enforcement
 
 - Memory writes include a `classification` tag set by the writing agent.
-- MemoryPalace enforces that the tag does not exceed the agent's `classification_ceiling` (defined in Paperclip agent manifest).
+- MemoryPalace enforces that the tag does not exceed the agent's `classification_ceiling` (defined in Multica agent manifest).
 - Entries tagged `tier0` or `tier1` are rejected with an error and the attempt is logged to Veritas.
 - Memory entries are stored in a local encrypted SQLite database (AES-256 at rest).
 - No memory data is transmitted outside the local network.
@@ -787,27 +928,45 @@ Defined in `policies/MEMORY_POLICY.md`. Summary:
 
 ---
 
-## 12. HITL Workflow Automation — n8n
+## 13. HITL Workflow Automation — Multica Inbox
 
-**[n8n](https://n8n.io)** is the self-hosted workflow automation layer responsible for all human-in-the-loop approval routing. It is not an agent — it is infrastructure that makes human governance reliable, auditable, and multi-channel.
+**[Multica](https://github.com/multica-ai/multica)** provides the platform's native human-in-the-loop (HITL) task orchestration and approval routing. It replaces the previous n8n-based workflow automation with a purpose-built inbox system designed for legal advocacy workflows requiring attorney sign-off, privilege review, and strategic decision gates.
 
-### Webhook Endpoint Map
+### Task Queue Model
 
-All agent-triggered HITL events emit to n8n via HTTP POST webhooks. Endpoints are defined in `services/n8n/README.md`.
+Multica implements a persistent task queue backed by PostgreSQL 17 with pgvector. Tasks flow through three distinct queues:
 
+| Queue | Purpose | SLA |
+| :-- | :-- | :-- |
+| `pending` | Tasks awaiting human review | Review within 4 hours (business) |
+| `approved` | Tasks approved, ready for agent execution | Execute immediately |
+| `deferred` | Tasks requiring additional info | Re-queue when resolved |
+| `rejected` | Tasks denied, with audit trail | Archived for 7 years |
 
-| Workflow | Trigger source | Webhook path | Routing targets |
+### Approval Gate Model
+
+All agent actions requiring human approval flow through Multica's three-gate system:
+
+| Gate | Trigger | Approver Role | Timeout Action |
 | :-- | :-- | :-- | :-- |
-| `hitl_intake_approval` | Avery | `/webhook/intake-approval` | Hermes, Telegram |
-| `hitl_research_scope` | Rae / Iris | `/webhook/research-scope` | Hermes, Telegram |
-| `hitl_referral_approval` | Casey | `/webhook/referral-approval` | Hermes, Open Web UI |
-| `hitl_publication_approval` | Sol / Webmaster | `/webhook/publication-approval` | Hermes, Open Web UI |
-| `hitl_social_approval` | Social Media Manager | `/webhook/social-approval` | Hermes, Telegram |
-| `hitl_violation_escalation` | Veritas | `/webhook/violation-escalation` | Hermes, Discord (HOB channel) |
-| `hitl_deadline_escalation` | Atlas | `/webhook/deadline-escalation` | Hermes, Telegram |
-| `hitl_subagent_spawn` | Hermes / OpenClaw | `/webhook/subagent-spawn` | Hermes |
-| `scheduled_audit_digest` | n8n scheduler | Runs weekly | Hermes, Open Web UI |
-| `scheduled_sol_check` | n8n scheduler | Runs daily | Atlas → Hermes |
+| **Gate 1: Intake** | New case intake, document upload | Intake Coordinator | Auto-escalate to Gate 2 after 24h |
+| **Gate 2: Research** | Research scope expansion, OSINT queries | Lead Counsel | Auto-reject after 48h |
+| **Gate 3: Publication** | External publication, social media, filings | Managing Attorney | Auto-reject after 72h |
+
+### API Endpoint Map
+
+All agent-triggered HITL events submit to Multica via HTTP POST to the inbox API:
+
+| Workflow | Trigger source | API endpoint | Routing targets |
+| :-- | :-- | :-- | :-- |
+| `hitl_intake_approval` | Avery | `POST /api/v1/inbox/intake` | Multica Web UI, Telegram |
+| `hitl_research_scope` | Rae / Iris | `POST /api/v1/inbox/research` | Multica Web UI, Telegram |
+| `hitl_referral_approval` | Casey | `POST /api/v1/inbox/referral` | Multica Web UI, Hermes |
+| `hitl_publication_approval` | Sol / Webmaster | `POST /api/v1/inbox/publication` | Multica Web UI, Hermes |
+| `hitl_social_approval` | Social Media Manager | `POST /api/v1/inbox/social` | Multica Web UI, Telegram |
+| `hitl_violation_escalation` | Veritas | `POST /api/v1/inbox/escalation` | Multica Web UI, Discord (HOB channel) |
+| `hitl_deadline_escalation` | Atlas | `POST /api/v1/inbox/deadline` | Multica Web UI, Telegram |
+| `hitl_subagent_spawn` | Hermes / OpenClaw | `POST /api/v1/inbox/subagent` | Multica Web UI, Hermes |
 
 ### Approval Payload Schema
 
@@ -818,35 +977,71 @@ All agent-triggered HITL events emit to n8n via HTTP POST webhooks. Endpoints ar
   "matter_id": "MCAS-MATTER-042",
   "triggered_by": "avery",
   "triggered_at": "2026-04-09T22:00:00Z",
+  "gate": 1,
+  "priority": "high",
   "summary": "New intake: Excessive force complaint — Officer J. Doe — 2024-03-15",
   "action_required": "Approve, defer, or reject. Confirm Tier classification for uploaded evidence.",
-  "approve_url": "https://n8n.internal:5678/webhook/intake-approval/approve?task_id=TASK-0042&token=...",
-  "defer_url": "https://n8n.internal:5678/webhook/intake-approval/defer?task_id=TASK-0042&token=...",
-  "reject_url": "https://n8n.internal:5678/webhook/intake-approval/reject?task_id=TASK-0042&token=..."
+  "context_url": "https://multica.internal:3000/inbox/task/TASK-0042",
+  "approve_url": "https://multica.internal:8080/api/v1/tasks/TASK-0042/approve",
+  "defer_url": "https://multica.internal:8080/api/v1/tasks/TASK-0042/defer",
+  "reject_url": "https://multica.internal:8080/api/v1/tasks/TASK-0042/reject",
+  "websocket_channel": "ws://multica.internal:8080/ws/tasks/TASK-0042"
 }
 ```
 
+### WebSocket Real-Time Updates
 
-### n8n → MCAS Audit Write
+Multica provides WebSocket endpoints for real-time task status updates:
+
+```javascript
+// Multica Web UI subscription
+const ws = new WebSocket('ws://multica-api:8080/ws/inbox');
+
+ws.onmessage = (event) => {
+  const update = JSON.parse(event.data);
+  // { task_id, status, timestamp, actor, notes }
+  updateInboxUI(update);
+};
+```
+
+WebSocket events:
+- `task.created` — New task submitted to inbox
+- `task.approved` — Task approved, execution proceeding
+- `task.deferred` — Task deferred, pending additional info
+- `task.rejected` — Task rejected, audit logged
+- `task.escalated` — Auto-escalated due to timeout
+
+### Multica → MCAS Audit Write
 
 Every approval action is written back to MCAS as a Task audit record:
 
 ```python
-# n8n Function node — post-approval
+# Multica post-approval webhook handler
 mcas_client.write_task_audit(
     matter_id=payload["matter_id"],
     task_id=payload["task_id"],
     action=approved_action,        # "approved" | "deferred" | "rejected"
-    actor="operator-handle",
+    actor=operator_handle,
     timestamp=datetime.utcnow().isoformat(),
     notes=operator_notes,
+    gate=payload["gate"],
+    platform="multica"
 )
 ```
 
+### Scheduled Workflows
+
+Periodic tasks previously handled by n8n scheduler are now managed via Multica's built-in scheduler or external cron triggering Multica API:
+
+| Schedule | Workflow | API Endpoint |
+| :-- | :-- | :-- |
+| Weekly | Audit digest | `POST /api/v1/scheduler/audit-digest` |
+| Daily | SOL deadline check | `POST /api/v1/scheduler/sol-check` |
+| Hourly | Task queue health | `GET /api/v1/health/queue` |
 
 ---
 
-## 13. Search and Retrieval Architecture
+## 14. Search and Retrieval Architecture
 
 ### SearXNG Instance
 
@@ -893,7 +1088,7 @@ tools:
 
 ---
 
-## 14. RAG Backend
+## 15. RAG Backend
 
 ### OpenRAG / OpenSearch
 
@@ -998,7 +1193,7 @@ All requests follow a normalized envelope:
 | `regulations.current` | Retrieve current eCFR text by title/part/section | eCFR API |
 | `regulations.lookup` | Retrieve annual CFR edition text | GovInfo CFR XML |
 | `regulations.changes` | Fetch Federal Register rulemaking by agency or CFR cite | Federal Register API |
-| `regulations.monitor` | Register a change-watch on a CFR section | Federal Register API + n8n webhook |
+| `regulations.monitor` | Register a change-watch on a CFR section | Federal Register API + Multica webhook |
 | `bills.search` | Search state or federal bills by topic, keyword, state | Open States + LegiScan |
 | `bills.track` | Register a legislative alert on a bill or topic | Open States + LegiScan Push API |
 | `legislators.lookup` | Look up a legislator by name, district, or location | Open States |
@@ -1131,7 +1326,7 @@ The gateway ships an internal operator web UI (`apps/legal-research-console/`) w
 
 ---
 
-## 15. Case Management Backend — MCAS
+## 16. Case Management Backend — MCAS
 
 The **MISJustice Case & Advocacy Server (MCAS)** is the authoritative system of record for all matter data.
 
@@ -1191,9 +1386,9 @@ MCAS emits webhooks to n8n on:
 
 ---
 
-## 16. Agent Roster and Role Contracts
+## 17. Agent Roster and Role Contracts
 
-| Agent | crewAI Crew | LLM | Local fallback | Paperclip registered | Search tier | Memory scope |
+| Agent | crewAI Crew | LLM | Local fallback | Multica registered | Search tier | Memory scope |
 | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
 | **Hermes** | — (interface layer) | gpt-4o | ollama/llama3 | Yes | T4-admin (operator proxy) | Session + cross-session |
 | **Orchestrator** | All crews (manager) | gpt-4o | ollama/llama3 | Yes | None | None |
@@ -1216,14 +1411,14 @@ MCAS emits webhooks to n8n on:
 
 ### Agent Directory Structure
 
-Every agent registered in the `agents/` directory MUST conform to the following directory layout. This structure is the canonical source of truth for Paperclip registration, OpenClaw dispatch, and CrewAI runtime initialization.
+Every agent registered in the `agents/` directory MUST conform to the following directory layout. This structure is the canonical source of truth for Multica registration, OpenClaw dispatch, and CrewAI runtime initialization.
 
 ```
 agents/<name>/
 ├── README.md              # Agent overview, responsibilities, and quick-start
 ├── SPEC.md                # Agent-specific technical specification
 ├── SOUL.md                # Agent identity constitution and values
-├── agent.yaml             # Paperclip agent manifest (canonical runtime definition)
+├── agent.yaml             # Multica agent manifest (canonical runtime definition)
 ├── MEMORY.md              # Memory policy, scope, and retention rules
 ├── tools.yaml             # Tool inventory, bindings, and tier scoping
 ├── models.yaml            # LLM configuration (primary model, fallback, temperature, tokens)
@@ -1241,12 +1436,12 @@ agents/<name>/
 
 **Enforcement:**
 - The CI pipeline validates that every subdirectory under `agents/` contains all required files before allowing registration.
-- Missing mandatory files (`agent.yaml`, `system_prompt.md`, `SOUL.md`) block Paperclip registration and OpenClaw dispatch.
+- Missing mandatory files (`agent.yaml`, `system_prompt.md`, `SOUL.md`) block Multica registration and OpenClaw dispatch.
 - Optional files may be empty stubs during development but must be present in production.
 
 ---
 
-## 17. Data Classification Model
+## 18. Data Classification Model
 
 All platform data is classified at creation and cannot be promoted to a lower tier without human authorization.
 
@@ -1266,7 +1461,7 @@ Classification is enforced at three levels:
 
 ---
 
-## 18. Security and Zero-Trust Model
+## 19. Security and Zero-Trust Model
 
 The platform is built on a **zero-trust, defense-in-depth** model. No component trusts any other by default.
 
@@ -1316,38 +1511,42 @@ A `pre-commit` configuration in `.pre-commit-config.yaml` blocks commits contain
 
 ---
 
-## 19. Infrastructure and Deployment
+## 20. Infrastructure and Deployment
 
 ### Service Topology
 
 ```
 ┌─────────────────────── Host Network (private VLAN) ───────────────────────┐
 │                                                                           │
-│  ┌──────────────┐  ┌──────────────┐   ┌──────────────┐   ┌──────────────┐ │
-│  │   Hermes     │  │   OpenClaw   │   │   crewAI     │   │  Paperclip   │ │
-│  │  :7860 CLI   │  │  :8000 API   │   │  (embedded)  │   │  :9000 API   │ │
-│  └──────┬───────┘  └──────┬───────┘   └──────┬───────┘   └──────┬───────┘ │
-│         │                 │                  │                  │         │
-│  ┌──────▼─────────────────▼──────────────────▼──────────────────▼───────┐ │
-│  │                    Internal Service Mesh (mTLS)                      │ │
-│  └──────────────────────────────────────────────────────────────────────┘ │
-│         │                 │                 │                 │           │
-│  ┌──────▼───────┐  ┌──────▼───────┐  ┌──────▼───────┐  ┌──────▼───────┐   │
-│  │    MCAS      │  │   OpenRAG    │  │   LiteLLM    │  │  SearXNG     │   │
-│  │  :8443 HTTPS │  │  :9200 HTTP  │  │  :4000 HTTP  │  │  :8080 HTTP  │   │
-│  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘   │
+│  ┌──────────────┐  ┌──────────────┐   ┌──────────────────────────────┐   │
+│  │   Hermes     │  │   OpenClaw   │   │   Multica HITL Platform      │   │
+│  │  :7860 CLI   │  │  :8000 API   │   │   :8080 API  :3000 Web UI    │   │
+│  └──────┬───────┘  └──────┬───────┘   └──────────┬───────────────────┘   │
+│         │                 │                      │                       │
+│  ┌──────▼─────────────────▼──────────────────────▼───────────────────┐   │
+│  │                    Internal Service Mesh (mTLS)                      │   │
+│  └──────────────────────────────────────────────────────────────────────┘   │
+│         │                 │                 │                 │             │
+│  ┌──────▼───────┐  ┌──────▼───────┐  ┌──────▼───────┐  ┌──────▼───────┐     │
+│  │    MCAS      │  │   OpenRAG    │  │   LiteLLM    │  │  SearXNG     │     │
+│  │  :8443 HTTPS │  │  :9200 HTTP  │  │  :4000 HTTP  │  │  :8080 HTTP  │     │
+│  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘     │
 │                                                                           │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐   │
-│  │ MemoryPalace │  │  OpenShell   │  │     n8n      │  │  LawGlance   │   │
-│  │  :7700 MCP   │  │  :5000 GW    │  │  :5678 HTTP  │  │  :8081 HTTP  │   │
-│  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘   │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
+│  │ MemoryPalace │  │  OpenShell   │  │  Multica DB  │  │  LawGlance   │     │
+│  │  :7700 MCP   │  │  :5000 GW    │  │  :5432 PG17  │  │  :8081 HTTP  │     │
+│  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘     │
 │                                                                           │
 │  ┌──────────────┐  ┌──────────────┐                                       │
 │  │  Open Web UI │  │    Vane      │                                       │
-│  │  :3000 HTTP  │  │  :3001 HTTP  │                                       │
+│  │  :3002 HTTP  │  │  :3001 HTTP  │                                       │
 │  └──────────────┘  └──────────────┘                                       │
 └───────────────────────────────────────────────────────────────────────────┘
 ```
+
+**Notes:**
+- crewAI (embedded) and Paperclip (:9000) are **deprecated** — functionality migrated to Multica
+- n8n (:5678) workflows **deprecated** — replaced by Multica inbox API and scheduler
 
 
 ### Docker Compose (Development/Staging)
@@ -1360,14 +1559,16 @@ Production manifests in `infra/k8s/` follow namespace isolation:
 
 ```
 namespace: misjustice-platform
-  Deployments: hermes, openclaw, crewai-runner, paperclip,
+  Deployments: hermes, openclaw, multica-api, multica-web, multica-db,
                mcas, openrag, litellm, searxng, memorypalace,
-               openshell-gateway, n8n, lawglance, open-webui, vane
+               openshell-gateway, lawglance, open-webui, vane
   Services: ClusterIP for all internal services
-  Ingress: nginx-ingress for Open Web UI, n8n UI, Vane (internal network only)
+  Ingress: nginx-ingress for Open Web UI, Multica Web UI, Vane (internal network only)
   Secrets: sealed-secrets for all API keys and tokens
-  PersistentVolumeClaims: mcas-data, openrag-data, memorypalace-data, n8n-data
+  PersistentVolumeClaims: mcas-data, openrag-data, memorypalace-data, multica-data
 ```
+
+**Deprecated services removed:** crewai-runner, paperclip, n8n (functionality consolidated into Multica)
 
 
 ### Resource Requirements (Estimated)
@@ -1380,22 +1581,26 @@ namespace: misjustice-platform
 | SearXNG | 200m / 1000m | 256Mi / 1Gi | — |
 | MemoryPalace | 200m / 500m | 256Mi / 1Gi | 10Gi PVC |
 | OpenShell GW | 500m / 2000m | 1Gi / 4Gi | — |
-| n8n | 200m / 1000m | 256Mi / 1Gi | 5Gi PVC |
+| Multica API | 300m / 1000m | 512Mi / 2Gi | — |
+| Multica Web | 100m / 500m | 256Mi / 1Gi | — |
+| Multica DB | 500m / 2000m | 1Gi / 4Gi | 50Gi PVC |
 | LawGlance | 500m / 2000m | 2Gi / 8Gi | 20Gi PVC |
 | Ollama | 1000m / 8000m | 8Gi / 32Gi | 50Gi PVC (models) |
+
+**Deprecated:** n8n resource entries removed (replaced by Multica)
 
 
 ---
 
-## 20. Inter-Service Communication
+## 21. Inter-Service Communication
 
 ### Protocol Map
 
 | From | To | Protocol | Auth |
 | :-- | :-- | :-- | :-- |
 | Hermes | OpenClaw | HTTP/REST | API key + mTLS |
-| OpenClaw | crewAI runner | Python in-process / gRPC | N/A (same process or mTLS) |
-| OpenClaw | Paperclip | HTTP/REST | mTLS + service account |
+| Hermes | Multica API | HTTP/REST | API key + mTLS |
+| OpenClaw | Multica | HTTP/REST | mTLS + service account |
 | OpenClaw | NemoClaw | In-process | N/A |
 | NemoClaw | OpenShell GW | HTTP/REST | API key + mTLS |
 | LangChain agents | MCAS | HTTPS/REST | OAuth2 scoped bearer |
@@ -1403,20 +1608,26 @@ namespace: misjustice-platform
 | LangChain agents | MemoryPalace | MCP (HTTP+SSE) | API key |
 | LangChain agents | OpenRAG | HTTPS/REST | API key (per-agent) |
 | LangChain agents | LawGlance | HTTP/REST | Internal only (no auth) |
-| LangChain agents | n8n | HTTP POST webhook | HMAC-signed payload |
+| LangChain agents | Multica | HTTP/REST | API key |
 | LiteLLM | SearXNG | HTTP/REST | Private token (per-tier) |
 | LiteLLM | LLM providers | HTTPS | Provider API keys |
 | LiteLLM | Ollama | HTTP/REST | Local only |
-| n8n | MCAS | HTTPS/REST | OAuth2 service account |
-| n8n | Telegram | HTTPS | Bot token |
-| n8n | Discord | HTTPS | Webhook URL |
+| Multica | MCAS | HTTPS/REST | OAuth2 service account |
+| Multica | Telegram | HTTPS | Bot token |
+| Multica | Discord | HTTPS | Webhook URL |
 | Veritas | OpenClaw audit log | Read-only file mount | Filesystem (read-only) |
 | Vane | SearXNG | HTTP/REST | T4-admin token |
+
+**Deprecated protocols:**
+- ~~OpenClaw → crewAI runner~~ (replaced by Multica)
+- ~~OpenClaw → Paperclip~~ (replaced by Multica)
+- ~~LangChain agents → n8n~~ (replaced by Multica inbox API)
+- ~~n8n → MCAS/Telegram/Discord~~ (replaced by Multica)
 
 
 ---
 
-## 21. Configuration Reference
+## 22. Configuration Reference
 
 ### Environment Variables (`.env.example`)
 
@@ -1433,9 +1644,17 @@ LANGCHAIN_API_KEY=
 LANGCHAIN_PROJECT=misjustice-alliance-firm
 LANGCHAIN_ENDPOINT=https://api.smith.langchain.com
 
-# ── Paperclip Control Plane ────────────────────────────────────
-PAPERCLIP_API_URL=http://paperclip.internal:9000
-PAPERCLIP_API_KEY=
+# ── Multica HITL Platform ──────────────────────────────────────
+MULTICA_API_URL=http://multica-api:8080
+MULTICA_WEB_URL=http://multica-web:3000
+MULTICA_API_KEY=<generated>
+MULTICA_DB_HOST=multica-db
+MULTICA_DB_PORT=5432
+MULTICA_DB_NAME=multica
+MULTICA_DB_USER=multica
+MULTICA_DB_PASSWORD=<generated>
+MULTICA_JWT_SECRET=<generated>
+MULTICA_OPENCLAW_ENDPOINT=http://openclaw:8000
 
 # ── OpenClaw / NemoClaw ────────────────────────────────────────
 OPENCLAW_API_URL=http://openclaw.internal:8000
@@ -1491,15 +1710,10 @@ NEO4J_BOLT_URL=bolt://neo4j.internal:7687
 NEO4J_USERNAME=neo4j
 NEO4J_PASSWORD=<password>
 
-# ── n8n ────────────────────────────────────────────────────────
-N8N_BASE_URL=http://n8n.internal:5678
-N8N_WEBHOOK_SECRET=
-N8N_BASIC_AUTH_USER=
-N8N_BASIC_AUTH_PASSWORD=
-
 # ── Hermes ─────────────────────────────────────────────────────
 HERMES_API_KEY=
 HERMES_OPENCLAW_ENDPOINT=${OPENCLAW_API_URL}
+HERMES_MULTICA_ENDPOINT=${MULTICA_API_URL}
 
 # ── Messaging ──────────────────────────────────────────────────
 TELEGRAM_BOT_TOKEN=
@@ -1517,7 +1731,7 @@ SEARXNG_API_URL=${SEARXNG_BASE_URL}  # Vane uses T4-admin token directly
 
 ---
 
-## 22. Design Decisions and Rationale
+## 23. Design Decisions and Rationale
 
 | Decision | Rationale |
 | :-- | :-- |

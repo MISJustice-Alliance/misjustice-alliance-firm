@@ -1,0 +1,96 @@
+{
+  "name": "MISJustice Weekly Case Summary",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtInterval": 1
+            }
+          ]
+        }
+      },
+      "id": "schedule",
+      "name": "Weekly Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://mcas:8000/api/v1/matters",
+        "options": {}
+      },
+      "id": "fetch-matters",
+      "name": "Fetch All Matters",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const matters = $input.first().json;\nconst byStatus = {};\nmatters.forEach(m => {\n  byStatus[m.status] = (byStatus[m.status] || 0) + 1;\n});\nconst total = matters.length;\nconst summary = Object.entries(byStatus).map(([status, count]) => `- ${status}: ${count}`).join('\\n');\nreturn {\n  json: {\n    total,\n    summary: summary || 'No matters found.',\n    timestamp: new Date().toISOString()\n  }\n};"
+      },
+      "id": "aggregate",
+      "name": "Aggregate Stats",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ process.env.MISJUSTICE_APPROVAL_EMAIL || 'legal-director@misjusticealliance.org' }}",
+        "subject": "MISJustice Weekly Case Summary — {{ $json.total }} matters",
+        "text": "=Weekly Case Summary ({{ $json.timestamp }})\n\nTotal matters: {{ $json.total }}\n\nBy status:\n{{ $json.summary }}",
+        "options": {}
+      },
+      "id": "email",
+      "name": "Send Weekly Summary",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [850, 300]
+    }
+  ],
+  "connections": {
+    "Weekly Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch All Matters",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch All Matters": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Stats",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Stats": {
+      "main": [
+        [
+          {
+            "node": "Send Weekly Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": ["misjustice", "weekly", "report"]
+}

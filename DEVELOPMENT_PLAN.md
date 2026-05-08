@@ -4,6 +4,8 @@
 > **Version:** 1.0
 > **Date:** 2026-04-27
 > **Status:** Draft — Ready for Review
+>
+> **⚠️ MIGRATION NOTICE (2026-05-08):** This plan references crewAI, Paperclip, and n8n as primary orchestration components. These have been **deprecated** and superseded by the **Multica HITL Platform**. See SPEC.md §5 for the new architecture. crewAI (§6) and Paperclip (§7) sections in SPEC.md are preserved for historical reference with strikethrough formatting.
 
 ---
 
@@ -13,8 +15,8 @@ This document defines the phased development plan for transforming the MISJustic
 
 1. **System Architecture** — Seven-layer platform design with Docker Compose service topology, network segmentation, and data-flow orchestration.
 2. **Ansible Deployment Framework** — Infrastructure-as-code extension of `openclaw-ansible` with hardened roles for core services, agents, platform, and security.
-3. **CrewAI Agent Development** — Conversion of 13 existing agent scaffolds into production CrewAI crews with tool bindings, memory backends, and testing strategy.
-4. **Paperclip Control Plane Integration** — Registration of all agents as Paperclip employees, heartbeat adapter design, Hermes human-in-the-loop interface, and audit-trail security.
+3. **CrewAI Agent Development** — Conversion of 13 existing agent scaffolds into production CrewAI crews with tool bindings, memory backends, and testing strategy. ~~*Deprecated — superseded by Multica HITL Platform (SPEC.md §5)*~~
+4. **~~Paperclip Control Plane Integration~~** — ~~Registration of all agents as Paperclip employees, heartbeat adapter design, Hermes human-in-the-loop interface, and audit-trail security.~~ **DEPRECATED — replaced by Multica agent registration and HITL approval gates**
 
 All components are modular, run in Docker containers, and are deployable via Ansible playbooks to Tailscale-secured infrastructure at `100.106.20.102:3100`.
 
@@ -27,7 +29,7 @@ All components are modular, run in Docker containers, and are deployable via Ans
 | **P0** — Foundation | 2 weeks | Docker Compose stack running locally; MCAS + PostgreSQL + Redis | DevOps | — |
 | **P1** — Agent Framework | 3 weeks | CrewAI orchestrator with 5 crews; all 13 agent definitions; tool wrappers | Backend | P0 |
 | **P1.5** — DeepAgents Transition | 6 weeks | LangChain DeepAgents runtime; tool contract normalization; Research workflow migration; HITL interrupts | Backend | P1 |
-| **P2** — Platform Layer | 2 weeks | Paperclip company configured; heartbeat adapters; Hermes integration | Integration | P1.5 |
+| **P2** — Platform Layer | 2 weeks | ~~Paperclip~~ Multica company configured; ~~heartbeat adapters~~ HITL approval gates; Hermes integration | Integration | P1.5 |
 | **P3** — Hardening | 2 weeks | Ansible playbooks; Tailscale ACLs; secret rotation; audit trails | DevOps | P2 |
 | **P4** — E2E Validation | 2 weeks | Integration test suite; staging deployment; operator runbooks | QA / All | P3 |
 | **P5** — Production | 1 week | Production cutover; monitoring; backup verification | DevOps | P4 |
@@ -61,7 +63,7 @@ All components are modular, run in Docker containers, and are deployable via Ans
 | **LiteLLM Proxy** | ✅ Configured | L3 — Defined | Config in `infra/litellm/`; not yet wired into compose |
 | **SearXNG** | ✅ Configured | L3 — Defined | Config in `infra/searxng/`; not yet wired into compose |
 | **nginx** | ✅ Configured | L3 — Defined | Config in `infra/nginx/`; ready for TLS termination |
-| **n8n Workflows** | ⚠️ Stubs | L1 — Initial | Workflow directory exists in `src/n8n/workflows/` but no executable definitions |
+|| **n8n Workflows** | ⚠️ Stubs | L1 — Initial | Workflow directory exists in `src/n8n/workflows/` but no executable definitions | ~~**DEPRECATED — replaced by Multica HITL workflows (SPEC.md §13)**~~ |
 | **LawGlance** | ⚠️ Partial | L2 — Managed | Dockerfile present; tests exist; needs integration testing |
 | **Legal Source Gateway** | ⚠️ Partial | L2 — Managed | Dockerfile + connectors; needs upstream data provider credentials |
 | **Vane** | ⚠️ Partial | L2 — Managed | Dockerfile present; needs search-tier token integration |
@@ -73,7 +75,7 @@ All components are modular, run in Docker containers, and are deployable via Ans
 2. **LangSmith Cloud Tracing (CRITICAL)** — Agent execution traces may leak case data. Need self-hosted LangSmith or trace scrubbing.
 3. **React Portal Backend Integration (CRITICAL)** — Portal is entirely mocked; no real MCAS API consumption.
 4. **NemoClaw Sandbox Integration (HIGH)** — Sandbox exists as submodule but is not wired into the compose stack or OpenClaw gateway.
-5. **n8n HITL Workflow Definitions (HIGH)** — Approval gates documented but no executable n8n workflow JSONs.
+5. **~~n8n HITL Workflow Definitions (HIGH)~~** — ~~Approval gates documented but no executable n8n workflow JSONs.~~ **DEPRECATED — Multica HITL approval gates implemented (SPEC.md §13)**
 6. **MemoryPalace Classification Enforcement (HIGH)** — SPEC.md lists as unimplemented; agents could write Tier-1 to cross-session memory.
 7. **CI Pipeline (MEDIUM)** — Smoke test assertion failing; blocks automated validation.
 8. **Network Isolation (MEDIUM)** — `agent-net` is internal-only but `frontend` and `backend` bridge isolation needs verification.
@@ -101,7 +103,7 @@ All components are modular, run in Docker containers, and are deployable via Ans
 **Short-term (Weeks 2–3):**
 5. Wire NemoClaw sandbox into compose stack with OpenClaw gateway
 6. Implement tier-based LLM routing in LiteLLM proxy config
-7. Build executable n8n workflow JSONs for HITL approval gates
+7. ~~Build executable n8n workflow JSONs for HITL approval gates~~ **→ Migrate to Multica HITL workflows per SPEC.md §13**
 8. Add MemoryPalace classification middleware
 
 **Medium-term (Weeks 4–6):**
@@ -191,8 +193,8 @@ All components are modular, run in Docker containers, and are deployable via Ans
 
 - [Section 1 — System Architecture](docs/plan-sections/01-architecture.md)
 - [Section 2 — Ansible Deployment Framework](docs/plan-sections/02-deployment.md)
-- [Section 3 — CrewAI Agent Development](docs/plan-sections/03-agents.md)
-- [Section 4 — Paperclip Control Plane Integration](docs/plan-sections/04-integration.md)
+- [Section 3 — CrewAI Agent Development](docs/plan-sections/03-agents.md) *(Deprecated — see SPEC.md §5 for Multica)*
+- [~~Section 4 — Paperclip Control Plane Integration~~](docs/plan-sections/04-integration.md) *(Deprecated — replaced by Multica)*
 - [Section 5 — LangChain DeepAgents Transition](docs/plan-sections/05-deepagents.md)
 
 ---

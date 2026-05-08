@@ -1,32 +1,22 @@
 {
-  "name": "HITL Referral Gate",
+  "name": "MISJustice Referral Gate",
   "nodes": [
-    {
-      "parameters": {},
-      "name": "Webhook Trigger",
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 1,
-      "position": [250, 300],
-      "webhookId": "referral-gate"
-    },
-    {
-      "parameters": {
-        "respondWith": "json",
-        "options": {}
-      },
-      "name": "Return Decision",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1,
-      "position": [650, 300]
-    }
+    {"parameters":{"httpMethod":"POST","path":"referral-gate","responseMode":"responseNode","options":{}},"id":"webhook","name":"Referral Webhook","type":"n8n-nodes-base.webhook","typeVersion":1,"position":[250,300],"webhookId":"referral-gate"},
+    {"parameters":{"jsCode":"const b=$input.first().json.body;return{json:{matter_id:b.matter_id,matter_display_id:b.matter_display_id||'',referral_org:b.referral_org||'',reason:b.reason||'',requested_by:b.requested_by||'Unknown',review_url:`${process.env.MISJUSTICE_PORTAL_URL||'http://localhost:5173'}/matters/${b.matter_id}`,timestamp:new Date().toISOString()}};"},"id":"fmt","name":"Format","type":"n8n-nodes-base.code","typeVersion":2,"position":[450,300]},
+    {"parameters":{"operation":"sendAndWait","message":"=**MISJustice — Referral Gate**\n\n**Matter:** {{ $json.matter_display_id }}\n**Organization:** {{ $json.referral_org }}\n**Reason:** {{ $json.reason }}\n**By:** {{ $json.requested_by }}\n\nReview: {{ $json.review_url }}","subject":"Referral: {{ $json.matter_display_id }} → {{ $json.referral_org }}","toList":["{{ process.env.MISJUSTICE_APPROVAL_EMAIL||'legal-director@misjusticealliance.org' }}"],"approvalOptions":{"values":[{"label":"✅ Authorize Referral","value":"approved","style":"primary"},{"label":"❌ Deny Referral","value":"rejected","style":"danger"}]},"options":{}},"id":"req","name":"Request Approval","type":"n8n-nodes-base.email","typeVersion":2.1,"position":[650,300]},
+    {"parameters":{"conditions":{"options":{"caseSensitive":true,"leftValue":"","typeValidation":"strict"},"conditions":[{"id":"a","leftValue":"={{ $json.approved }}","rightValue":"true","operator":{"type":"boolean","operation":"equals"}}]}},"id":"if","name":"Approved?","type":"n8n-nodes-base.if","typeVersion":2,"position":[850,300]},
+    {"parameters":{"method":"POST","url":"=http://mcas:8000/api/v1/matters/{{ $json.matter_id }}/events","body":"={\"event_type\":\"REFERRAL\",\"description\":\"Referral to {{ $json.referral_org }} authorized\",\"metadata\":{\"referral_org\":\"{{ $json.referral_org }}\",\"decision\":\"approved\"}}","options":{}},"id":"ok","name":"Log Approved","type":"n8n-nodes-base.httpRequest","typeVersion":4.1,"position":[1050,200]},
+    {"parameters":{"method":"POST","url":"=http://mcas:8000/api/v1/matters/{{ $json.matter_id }}/events","body":"={\"event_type\":\"REFERRAL\",\"description\":\"Referral to {{ $json.referral_org }} denied\",\"metadata\":{\"referral_org\":\"{{ $json.referral_org }}\",\"decision\":\"rejected\"}}","options":{}},"id":"no","name":"Log Rejected","type":"n8n-nodes-base.httpRequest","typeVersion":4.1,"position":[1050,400]},
+    {"parameters":{"respondWith":"json","responseBody":"={\"status\":\"processed\",\"decision\":\"{{ $json.approved?'approved':'rejected' }}\",\"timestamp\":\"{{ new Date().toISOString() }}\"}","options":{}},"id":"rsp","name":"Respond","type":"n8n-nodes-base.respondToWebhook","typeVersion":1,"position":[1250,300]}
   ],
-  "connections": {
-    "Webhook Trigger": {
-      "main": [[{"node": "Return Decision", "type": "main", "index": 0}]]
-    }
+  "connections":{
+    "Referral Webhook":{"main":[[{"node":"Format","type":"main","index":0}]]},
+    "Format":{"main":[[{"node":"Request Approval","type":"main","index":0}]]},
+    "Request Approval":{"main":[[{"node":"Approved?","type":"main","index":0}]]},
+    "Approved?":{"main":[[{"node":"Log Approved","type":"main","index":0}],[{"node":"Log Rejected","type":"main","index":0}]]},
+    "Log Approved":{"main":[[{"node":"Respond","type":"main","index":0}]]},
+    "Log Rejected":{"main":[[{"node":"Respond","type":"main","index":0}]]}
   },
-  "settings": {
-    "executionOrder": "v1"
-  },
-  "tags": ["hitl", "referral"]
+  "settings":{"executionOrder":"v1"},
+  "tags":["misjustice","referral","gate"]
 }

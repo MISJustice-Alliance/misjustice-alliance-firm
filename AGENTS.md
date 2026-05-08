@@ -1,5 +1,7 @@
 # AGENTS.md — MISJustice Alliance AI Firm
 
+> **Migration Notice (2026-05-08):** Agent registration has migrated from Paperclip to **Multica HITL Platform**. See SPEC.md §5 for the new orchestration architecture.
+
 ## Mission
 Autonomous AI legal research and advocacy firm. Agents collaborate to investigate, document, and advocate for justice cases from intake through public action.
 
