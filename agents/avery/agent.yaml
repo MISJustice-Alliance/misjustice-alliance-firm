@@ -217,42 +217,20 @@ memory:
     tier_floor: T1   # Nothing below Tier 1 stored in cross-session memory
 
 # ---------------------------------------------------------------------------
-# OpenClaw orchestration registration
+# Orchestration registration
 # ---------------------------------------------------------------------------
-orchestration:
-  framework: openclaw
-  registration:
-    agent_id: avery
-    role: intake_evidence
-    dispatch_priority: high   # Avery is dispatched first for all new-matter events
-    queue: intake
-  # Triggers: conditions under which OpenClaw dispatches Avery
-  triggers:
-    - event: new_matter_intake
-      description: A human operator initiates a new matter intake session
-    - event: document_upload
-      description: A human operator uploads a document for ingestion
-    - event: telephony_intake_summary
-      description: Mira produces a telephony intake summary requiring MCAS record creation
-  # Handoffs: agents Avery hands off to after completing intake tasks
-  handoffs:
-    - agent: rae
-      condition: matter_record_finalized_by_human
-      payload: [matter_id, document_record_ids, intake_summary_ref]
-    - agent: chronology
-      condition: event_records_created
-      payload: [matter_id, event_record_ids]
-    - agent: iris
-      condition: actor_records_created
-      payload: [matter_id, person_record_ids, organization_record_ids]
-  # Human approval gates enforced by OpenClaw before Avery proceeds
-  hitl_gates:
-    - gate: intake_acceptance
-      description: Human operator must accept, defer, or reject the new matter before Avery finalizes the Matter record
-      blocks: [matter_record_finalize, downstream_handoff]
-    - gate: tier_classification
-      description: Human operator must confirm the proposed Tier for each Document and Matter record
-      blocks: [document_record_finalize, matter_record_finalize]
+# DEPRECATED: OpenClaw/Paperclip registration (replaced by Multica HITL Platform)
+# See: agents/avery/multica-manifest.yaml for the new Multica manifest format
+# See: docs/multica-agent-manifest.md for schema documentation
+#
+# orchestration:
+#   framework: openclaw
+#   ...
+#
+# NEW: Multica HITL Platform registration
+# Avery is registered with Multica via the manifest at multica-manifest.yaml
+# This provides declarative HITL gates, task queue subscriptions, and handoffs.
+#
 
 # ---------------------------------------------------------------------------
 # NemoClaw enforcement

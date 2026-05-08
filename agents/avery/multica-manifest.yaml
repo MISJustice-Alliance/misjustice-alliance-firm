@@ -1,0 +1,171 @@
+# Avery — Intake & Evidence Agent
+# Multica Agent Manifest
+# agents/avery/multica-manifest.yaml
+# MISJustice Alliance Firm
+#
+# This manifest registers Avery with the Multica HITL Platform.
+# It replaces the deprecated Paperclip registration system.
+#
+# See: docs/multica-agent-manifest.md for schema documentation
+
+apiVersion: multica.misjustice.io/v1
+kind: AgentManifest
+
+metadata:
+  id: avery
+  name: Avery
+  version: "1.0.0"
+  description: >
+    Intake & Evidence agent. First point of contact for all new matters,
+    complainant intake, and evidence ingestion. Creates foundational MCAS
+    records (Person, Organization, Matter, Event, Document) that all
+    downstream agents and human operators work from.
+  labels:
+    domain: intake
+    tier: T1
+    facing: internal
+
+spec:
+  llm:
+    provider: litellm
+    model: openai/gpt-4o
+    fallback_model: anthropic/claude-3-5-sonnet-20241022
+    temperature: 0.1
+    max_tokens: 4096
+    timeout_seconds: 120
+
+  tools:
+    mcas:
+      enabled: true
+      base_url_env: MCAS_API_URL
+      auth_token_env: MCAS_API_TOKEN_AVERY
+      scope:
+        person:
+          read: true
+          write: true
+          delete: false
+        organization:
+          read: true
+          write: true
+          delete: false
+        matter:
+          read: true
+          write: true
+          delete: false
+        event:
+          read: true
+          write: true
+          delete: false
+        document:
+          read: true
+          write: true
+          delete: false
+    
+    chandra_ocr:
+      enabled: true
+      base_url_env: CHANDRA_OCR_URL
+      auth_token_env: CHANDRA_OCR_TOKEN
+
+    openrag:
+      enabled: true
+      base_url_env: OPENRAG_URL
+      auth_token_env: OPENRAG_TOKEN_AVERY
+      scope:
+        query: true
+        ingest: false
+        delete: false
+
+    open_notebook:
+      enabled: true
+      base_url_env: OPEN_NOTEBOOK_URL
+      auth_token_env: OPEN_NOTEBOOK_TOKEN_AVERY
+      scope:
+        read: true
+        write: true
+        delete: false
+
+  hitl_gates:
+    - id: intake_acceptance
+      name: Intake Acceptance Review
+      description: Human operator must accept, defer, or reject the new matter before Avery finalizes the Matter record
+      triggers:
+        - event: record_create
+          resource: matter
+      timeout:
+        duration: "4h"
+        action: defer
+      approvers:
+        roles: [intake_coordinator, legal_aid]
+        min_approvers: 1
+
+    - id: tier_classification
+      name: Data Classification Review
+      description: Human operator must confirm the proposed Tier for each Document and Matter record
+      triggers:
+        - event: record_create
+          resource: document
+      timeout:
+        duration: "24h"
+        action: escalate
+      approvers:
+        roles: [data_steward, legal_aid]
+        min_approvers: 1
+
+  task_queue:
+    subscriptions:
+      - queue: intake
+        priority: high
+    concurrency:
+      max_tasks: 5
+      max_tasks_per_matter: 1
+
+  handoffs:
+    targets:
+      - agent: rae
+        condition: matter_record_finalized
+        payload: [matter_id, document_ids, intake_summary]
+      - agent: chronology
+        condition: events_recorded
+        payload: [matter_id, event_ids]
+      - agent: iris
+        condition: actor_records_created
+        payload: [matter_id, person_ids, organization_ids]
+
+  schedules: []
+
+  memory:
+    session:
+      enabled: true
+      max_tokens: 32000
+    cross_session:
+      enabled: true
+      scope: matter_created_by_avery
+      backend: openrag
+
+  audit:
+    enabled: true
+    log_level: full
+    include:
+      - tool_calls
+      - mcas_writes
+      - hitl_gate_events
+      - handoffs
+
+runtime:
+  required_env:
+    - MCAS_API_URL
+    - MCAS_API_TOKEN_AVERY
+    - CHANDRA_OCR_URL
+    - CHANDRA_OCR_TOKEN
+    - OPENRAG_URL
+    - OPENRAG_TOKEN_AVERY
+    - OPEN_NOTEBOOK_URL
+    - OPEN_NOTEBOOK_TOKEN_AVERY
+    - SEARXNG_API_URL
+    - SEARXNG_TOKEN_INTERNAL
+    - AUDIT_LOG_ENDPOINT
+    - LITELLM_PROXY_URL
+    - LITELLM_API_KEY
+  resources:
+    cpu: "500m"
+    memory: "1Gi"
