@@ -15,7 +15,7 @@ tools:
     type: mcp
     allowed: true
     scope: T1
-    description: Retrieve case metadata from primary sources.
+    description: Retrieve case metadata from primary sources, including Midpage-backed opinion search and passage retrieval.
 
   - name: MCP citations_resolve
     type: mcp

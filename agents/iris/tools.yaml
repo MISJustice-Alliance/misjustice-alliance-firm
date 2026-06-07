@@ -90,6 +90,11 @@ custom_tools:
     type: internal
     trigger: batch_start
 
+  - name: SherlockUsernameEnumerationTool
+    description: Enumerates public usernames across social networks for authorized institutional actors and surfaces candidate handles for manual corroboration.
+    type: external
+    trigger: osint_username_enumeration
+
 ---
 
 *MISJustice Alliance — Legal Research. Civil Rights. Public Record.*

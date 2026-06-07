@@ -8,7 +8,8 @@ team: "internal"
 
 description: >
   Citation Verification Agent. Fact-checks every legal citation before external use.
-  Cross-references statutes, regulations, and case holdings against primary sources.
+  Cross-references statutes, regulations, and case holdings against primary sources,
+  including Midpage for opinion-level verification and quotable passage retrieval.
   All outputs require human resolution for flagged citations.
 
 goals:

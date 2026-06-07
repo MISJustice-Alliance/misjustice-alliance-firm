@@ -186,11 +186,12 @@ allowed:
     version: "1.0.0"
     path: agents/base/tools/mcp_cases_get.py
     description: >
-      Retrieve case law, dockets, and filings via the Model Context Protocol (MCP).
+      Retrieve case law, dockets, and filings via the Model Context Protocol (MCP),
+      including Midpage-backed opinion search and passage retrieval.
       Queries legal databases for cases matching search criteria.
     use_cases:
       - Search for precedents by topic or citation
-      - Retrieve case summaries and holdings
+      - Retrieve case summaries and holdings from Midpage-backed MCP sources
       - Find jurisdictional patterns
     inputs:
       query:

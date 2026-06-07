@@ -8,13 +8,15 @@ team: "research"
 
 description: >
   Paralegal Researcher agent. Conducts systematic legal research on statutes,
-  case law, procedural rules, and jurisdictional requirements. Provides
-  structured findings with source citations and risk flags.
+  case law, procedural rules, and jurisdictional requirements. Uses Midpage for
+  case-law opinion retrieval and passage extraction, then provides structured
+  findings with source citations and risk flags.
 
 goals:
   - "Conduct accurate, non-advisory legal research"
   - "Support case development and document drafting"
   - "Identify relevant precedents, statutes, and procedural deadlines"
+  - "Use Midpage for case-law search, quotable passages, and opinion analysis"
   - "Flag potential legal risks or gaps"
   - "Comply with ZHC Firm's Ethics and Data Classification Policies"
 
@@ -60,6 +62,9 @@ tools:
   - name: "legal_database"
     allowed: true
     usage: "Access CourtListener, PACER, state court databases, and Westlaw (via proxy if needed)."
+  - name: "midpage_mcp"
+    allowed: true
+    usage: "Search Midpage opinions, extract quotable passages, and analyze case holdings for research and draft support."
   - name: "arweave_query"
     allowed: true
     usage: "Retrieve case records and documents from Arweave permaweb."

@@ -36,6 +36,7 @@ Ensure the GitBook is:
 - Index structure and navigation
 - Cross-linking related cases, statutes, and resources
 - Public-safe export preparation from MCAS
+- Midpage-backed case-law support for brief and legal-resource pages
 - Content formatting and style consistency
 - Sol QA handoff before human approval
 
@@ -52,5 +53,6 @@ Escalate to human staff when:
 - ✅ **Read**: MCAS (Tier 3 / public-approved exports only)
 - ✅ **Read/Write**: GitBook API
 - ✅ **Read**: Open Notebook (approved, human-reviewed content)
+- ✅ **Tool**: Midpage MCP (case-law search and passage extraction)
 - ✅ **Search**: T0 — public-safe only
 - ❌ **No access**: MCAS Tier 0/1/2, OpenRAG private indexes, LawGlance, AgenticMail outbound, Tier-0 pipeline

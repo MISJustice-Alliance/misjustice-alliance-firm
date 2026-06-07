@@ -214,7 +214,7 @@ agents/rae/
 | **Search tier** | T2 — `SEARXNG_TOKEN_RESTRICTED` |
 | **HITL gates** | Research scope authorization; referral packet review |
 
-**Role:** Rae is the platform's primary legal researcher. She conducts multi-stage research loops using AutoResearchClaw, retrieves public legal information via LawGlance, assembles case chronologies, and builds the factual and legal foundation for Lex's analysis.
+**Role:** Rae is the platform's primary legal researcher. She conducts multi-stage research loops using AutoResearchClaw, retrieves case law and quotable passages via Midpage, uses LawGlance for abstract statutory questions, assembles case chronologies, and builds the factual and legal foundation for Lex's analysis.
 
 **Scope:**
 - Statute and case law retrieval across US federal, Montana, and Washington State jurisdictions.
@@ -230,6 +230,7 @@ agents/rae/
 - Read: MCAS (Matter, Event, Document — Tier 2 de-identified scope)
 - Read/write: OpenRAG (ingest research outputs; query prior research)
 - Tool: AutoResearchClaw (multi-stage research loops)
+- Tool: Midpage MCP (case-law search, opinion passage extraction, opinion analysis)
 - Tool: LawGlance (public legal info RAG — abstract legal questions only; no case facts or PII)
 - Search: T2 — restricted internal + public legal engines (CourtListener, Free Law, CAP)
 - Write: Open Notebook (research memos, chronologies, element matrices)
@@ -241,6 +242,7 @@ agents/rae/
 | MCAS API | Read | Retrieve de-identified Matter, Event, Document records for research |
 | OpenRAG | Read / Write | Query prior research; ingest new research outputs |
 | AutoResearchClaw | Tool (invoke) | Multi-stage autonomous legal research loops |
+| Midpage MCP / API | Search / Analyze | Court opinions, quotable passages, and case-law support for briefs |
 | LawGlance | Tool (query) | Public statutory and case law retrieval (abstract questions only) |
 | SearXNG (T2 — restricted) | Search | Restricted internal + public legal source search |
 | CourtListener / Free Law API | Search (via SearXNG) | Federal docket and case law retrieval |
@@ -278,14 +280,14 @@ agents/lex/
 | **Search tier** | T2 — `SEARXNG_TOKEN_RESTRICTED` |
 | **HITL gates** | Pattern-of-practice publication; external referral packet approval |
 
-**Role:** Lex is the platform's senior analytical layer — the QA and legal theory engine. Lex reviews Rae's research, maps legal issues, develops § 1983 and malpractice theories, identifies patterns of practice across matters, and verifies analytical outputs before they advance to external use.
+**Role:** Lex is the platform's senior analytical layer — the QA and legal theory engine. Lex reviews Rae's research, maps legal issues, develops § 1983 and malpractice theories, identifies patterns of practice across matters, and verifies analytical outputs before they advance to external use. Lex uses Midpage for direct case-law retrieval and quote support when building briefs and analytical memos.
 
 **Scope:**
 - Legal issue mapping and theory development (§ 1983, Monell, qualified immunity, ADA, VAWA).
 - Quality assurance and fact-check of Rae's research memos and chronologies.
 - Risk analysis: SOL assessments, evidentiary gap analysis, claim viability.
 - Pattern-of-practice identification across matters and actors.
-- Comparative statutory analysis using LawGlance.
+- Comparative case-law analysis using Midpage and comparative statutory analysis using LawGlance.
 - Draft verification before any output advances to Casey, Webmaster, or external recipients.
 
 **Specialty:** Civil rights legal theory, § 1983 / Monell doctrine, qualified immunity, malpractice analysis, pattern-of-practice, multi-matter synthesis, QA.
@@ -294,6 +296,7 @@ agents/lex/
 - Read: MCAS (Matter, Event, Document, Pattern flags — Tier 2 scope; Tier 1 with explicit operator grant)
 - Read/write: OpenRAG
 - Tool: AutoResearchClaw
+- Tool: Midpage MCP (case-law search, find-in-opinion, analyze-opinion)
 - Tool: LawGlance (comparative statutory and doctrinal analysis — abstract questions only)
 - Search: T2 — restricted internal + selected court/attorney registries + public legal
 - Read/write: Open Notebook
@@ -305,6 +308,7 @@ agents/lex/
 | MCAS API | Read | Matter, Event, Document, and pattern flag records |
 | OpenRAG | Read / Write | Legal research retrieval and analysis output ingestion |
 | AutoResearchClaw | Tool (invoke) | Deep legal analysis and verification research loops |
+| Midpage MCP / API | Search / Analyze | Direct opinion research, passage extraction, and brief support |
 | LawGlance | Tool (query) | Comparative statutory and doctrinal analysis |
 | SearXNG (T2 — restricted) | Search | Restricted internal indexes + public legal engines |
 | CourtListener / Free Law API | Search (via SearXNG) | Case law and docket research |
@@ -460,11 +464,11 @@ agents/citation_authority/
 | **Search tier** | T2 — `SEARXNG_TOKEN_RESTRICTED` (`public_legal` engine group) |
 | **HITL gates** | None autonomous — supports Rae, Lex, and publication pipeline; flagged citations require human resolution |
 
-**Role:** The Citation / Authority Agent is the platform's fact-checker for legal sources. Every citation, statutory reference, and case holding produced by any other agent must pass through the Citation Agent before inclusion in any external-facing output.
+**Role:** The Citation / Authority Agent is the platform's fact-checker for legal sources. Every citation, statutory reference, and case holding produced by any other agent must pass through the Citation Agent before inclusion in any external-facing output. Midpage is the preferred case-opinion source for quote verification.
 
 **Scope:**
 - Fetch-and-verify of cited statutes, regulations, and case holdings against primary sources.
-- Cross-referencing citations against CourtListener, Free Law Project, CAP, and LawGlance.
+- Cross-referencing citations against CourtListener, Free Law Project, CAP, Midpage, and LawGlance.
 - Flagging unverified, ambiguous, or hallucinated citations.
 - Updating Open Notebook research outputs with verified citation status.
 - Maintaining a session-scoped citation verification log.
@@ -473,6 +477,7 @@ agents/citation_authority/
 
 **Permissions:**
 - Read: OpenRAG (outputs from Rae, Lex for citation extraction)
+- Tool: Midpage MCP (opinion search, find-in-opinion, analyze-opinion)
 - Tool: LawGlance (public legal info fetch — abstract questions only)
 - Search: T2 — `public_legal` engine group (CourtListener, Free Law, CAP, DOJ open data)
 - Read/write: Open Notebook (citation verification annotations)
@@ -482,6 +487,7 @@ agents/citation_authority/
 | System | Access type | Purpose |
 |---|---|---|
 | OpenRAG | Read | Extract citations from Rae/Lex research outputs |
+| Midpage MCP / API | Search / Analyze | Opinion verification and quotable passage retrieval |
 | LawGlance | Tool (query) | Statutory text and case holding verification |
 | SearXNG (T2 — public_legal) | Search | Primary source fetch and verification |
 | CourtListener / Free Law API | Search (via SearXNG) | Case law and docket verification |
@@ -940,12 +946,13 @@ agents/quill/
 | **Search tier** | T1 — `SEARXNG_TOKEN_PUBLIC` |
 | **HITL gates** | All new GitBook pages or structural changes require human approval |
 
-**Role:** Quill maintains the YWCA of Missoula GitBook — the public case file and advocacy resource library. Quill organizes documents, maintains the index structure, creates cross-links, and prepares public-safe exports from approved MCAS outputs.
+**Role:** Quill maintains the YWCA of Missoula GitBook — the public case file and advocacy resource library. Quill organizes documents, maintains the index structure, creates cross-links, prepares public-safe exports from approved MCAS outputs, and uses Midpage-backed case-law references when drafting briefs or citation-backed pages.
 
 **Scope:**
 - GitBook page organization, hierarchy, and index maintenance.
 - Cross-linking related case files, statutes, and advocacy resources.
 - Public-safe export preparation from approved MCAS document records.
+- Case-law support for citation-backed drafts using Midpage when the page is a brief or legal-resource page.
 - Content formatting and style consistency for the GitBook library.
 - Handoff to Sol for QA before any new page is submitted for human approval.
 
@@ -955,6 +962,7 @@ agents/quill/
 - Read: MCAS (Tier 3 / public-approved exports only)
 - Read/write: GitBook API
 - Read: Open Notebook (approved, human-reviewed content)
+- Tool: Midpage MCP (case-law search and passage extraction for brief support)
 - Search: T1 — public-safe only
 - No access to: MCAS Tier 0/1/2, OpenRAG private indexes, LawGlance, AgenticMail outbound, Tier-0 pipeline
 
@@ -964,6 +972,7 @@ agents/quill/
 | MCAS API | Read (Tier 3 exports) | Approved document exports for GitBook content |
 | GitBook API | Read / Write | GitBook page structure, index, and content management |
 | Open Notebook | Read | Human-approved content for GitBook publication |
+| Midpage MCP / API | Search / Analyze | Case-law references for legal-resource pages and brief drafts |
 | SearXNG (T1 — public-safe) | Search | Public-safe reference and cross-link lookups |
 
 ---

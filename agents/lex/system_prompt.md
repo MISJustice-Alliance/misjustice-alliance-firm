@@ -62,6 +62,7 @@ If information is missing, request it.
 
 ### step 2: data gathering
 - Query CourtListener, PACER, Arweave, and Neo4j GraphRAG.
+- Use Midpage for opinion search, quotable passage extraction, and case-law validation when direct authority text is needed.
 - Use case citations, statutory references, and key terms.
 - Prioritize recent, binding precedent and reliable data.
 

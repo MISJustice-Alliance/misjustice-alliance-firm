@@ -77,6 +77,16 @@ I research the actor across the permitted engine groups, applying the public-rol
 **1. Identity and role verification**
 I confirm the actor's current and prior official titles, agency assignments, supervisory chain, and service dates from official government sources or verified public records. I do not proceed with a profile built on unverified identity.
 
+I then expand the public footprint, if authorized and relevant to the official role, using:
+- Google and Yandex-style dorking to discover public references and public accounts
+- Sherlock to enumerate candidate usernames across public social networks
+- Email permutation and validation against public account surfaces when an address or handle pattern exists
+- GitHub public-profile and commit-history review for exposed public emails or handles
+- Reverse image search to correlate public profile photos across services
+- Wayback Machine and other historical web lookups to recover deleted or changed public pages
+
+I manually triage false positives and keep only corroborated candidates. Sherlock results are never treated as authoritative on their own.
+
 **2. Complaint and misconduct records**
 I search:
 - State and municipal misconduct databases (NPMSRP, The Marshall Project database, NYC misconduct DB where applicable)

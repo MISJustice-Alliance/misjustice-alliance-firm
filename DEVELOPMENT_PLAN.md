@@ -14,6 +14,8 @@
 > - **Morphic** — Generative search middleware with SearXNG → Tavily → Brave → Exa fallback chain
 > - **Scrapling** — Distributed scraping for court dockets and JavaScript-heavy sources
 > See SPEC.md §12 and docs/ARCHITECTURE.md for full details.
+>
+> **🆕 MIDPAGE INTEGRATION UPDATE (2026-06-06):** Midpage is now part of the legal research stack as the primary case-law database for opinion search, quotable passages, and answer-with-support workflows via MCP v2, REST API, and SQL read replica access. Rae, Lex, Citation, and Quill should use Midpage for case-law work that benefits from direct opinion retrieval and passage extraction.
 
 ---
 
@@ -25,6 +27,7 @@ This document defines the phased development plan for transforming the MISJustic
 2. **Ansible Deployment Framework** — Infrastructure-as-code extension of `openclaw-ansible` with hardened roles for core services, agents, platform, and security.
 3. **CrewAI Agent Development** — Conversion of 13 existing agent scaffolds into production CrewAI crews with tool bindings, memory backends, and testing strategy. ~~*Deprecated — superseded by Multica HITL Platform (SPEC.md §5)*~~
 4. **~~Paperclip Control Plane Integration~~** — ~~Registration of all agents as Paperclip employees, heartbeat adapter design, Hermes human-in-the-loop interface, and audit-trail security.~~ **DEPRECATED — replaced by Multica agent registration and HITL approval gates**
+5. **Midpage legal research integration** — Direct MCP/API support for case-law search, citation verification, and brief drafting support across Rae, Lex, Citation, and Quill.
 
 All components are modular, run in Docker containers, and are deployable via Ansible playbooks to Tailscale-secured infrastructure at `100.106.20.102:3100`.
 
@@ -65,6 +68,7 @@ All components are modular, run in Docker containers, and are deployable via Ans
 | **Paperclip Org Structure** | ✅ Created | L3 — Defined | `federation-config.yaml`, `agent-registry.yaml`, `deploy.sh`, `README.md` in `paperclip/` |
 | **CrewAI MCP Docs** | ✅ Referenced | L3 — Defined | `docs/crewai-mcp-integration.md` links to https://docs.crewai.com/mcp and https://skills.sh/crewaiinc/skills |
 | **Neo4j GraphRAG** | ✅ Partial | L2 — Managed | 537 LOC ingestion pipeline; needs integration with MCAS and OpenRAG |
+| **Midpage Legal Research** | ⚠️ Planned | L1 — Initial | External case-law database with MCP v2, REST API, and SQL read replica; required for direct opinion search and quotable passage extraction |
 | **OpenClaw Ansible** | ✅ Partial | L2 — Managed | Hardened Debian/Ubuntu install playbook; firewall + Tailscale roles; needs service-specific roles |
 | **React Portal** | ⚠️ Mock-only | L1 — Initial | Frontend exists in `apps/portal/` but has no real backend integration per QA report |
 | **NemoClaw Sandbox** | ❌ Missing | L0 — Vapor | Submodule present but not integrated into compose stack |
@@ -74,6 +78,7 @@ All components are modular, run in Docker containers, and are deployable via Ans
 || **n8n Workflows** | ⚠️ Stubs | L1 — Initial | Workflow directory exists in `src/n8n/workflows/` but no executable definitions | ~~**DEPRECATED — replaced by Multica HITL workflows (SPEC.md §13)**~~ |
 || **LawGlance** | ⚠️ Partial | L2 — Managed | Dockerfile present; tests exist; needs integration testing | ~~**DEPRECATED — superseded by Morphic + SearXNG (SPEC.md §12.4)**~~ |
 || **Legal Source Gateway** | ⚠️ Partial | L2 — Managed | Dockerfile + connectors; needs upstream data provider credentials | ~~**DEPRECATED — superseded by gptr-mcp (SPEC.md §12.2)**~~ |
+|| **Midpage Legal Research** | ❌ Missing | L0 — Vapor | New component: external case-law database, MCP v2 tools, opinion analysis, and brief-support source | **Required for legal research and drafting** |
 || **Vane** | ⚠️ Partial | L2 — Managed | Dockerfile present; needs search-tier token integration | **Superseded by Morphic generative search UI (SPEC.md §12.4)** |
 || **CI/CD** | ⚠️ Broken | L1 — Initial | `.github/workflows/ci.yml` has failing smoke-test assertion per QA report |
 
@@ -188,12 +193,14 @@ All components are modular, run in Docker containers, and are deployable via Ans
 6. Complete `paperclip/deploy.sh` with actual API calls
 7. Add NemoClaw to compose stack
 8. Add E2E tests with Playwright
+9. Integrate Midpage MCP/API into Rae, Lex, Citation, and Quill for direct case-law research and brief drafting
 
 **Medium-term (Weeks 4–6):**
 9. Generate OpenAPI spec from backend and publish to docs/
 10. Add secrets scanner (`gitleaks`/`trufflehog`) to CI
 11. Implement tier-based LLM routing in LiteLLM proxy
 12. Add MemoryPalace classification enforcement
+13. Add Midpage key management, rate limiting, and opinion-analysis adapters
 
 **Long-term (Weeks 7–12):**
 13. Ansible playbook for production deployment
@@ -487,10 +494,10 @@ flowchart LR
 
 - **Role:** Model Context Protocol server exposing legal research tools to agents.
 - **Stack:** Python FastMCP or TypeScript MCP SDK.
-- **Tools:** Statute retrieval, case law search, citation formatting, source verification.
+- **Tools:** Statute retrieval, case law search, citation formatting, source verification, Midpage opinion search and analysis.
 - **Integration Points:**
-  - Consumed by Sol, Mira, Citation, and Lex via MCP client connections.
-  - Upstream calls routed to `legal-source-gateway` and SearXNG.
+  - Consumed by Sol, Mira, Citation, Lex, Rae, and Quill via MCP client connections.
+  - Upstream calls routed to `legal-source-gateway`, Midpage, and SearXNG.
   - LLM synthesis routed through `litellm-proxy` for token accounting and tier blocking.
 
 ### 1.4.3 legal-source-gateway
@@ -502,7 +509,16 @@ flowchart LR
   - Serves normalized citations to `legal-research-mcp`.
   - No direct agent access; all traffic flows through MCP.
 
-### 1.4.4 LawGlance
+### 1.4.4 Midpage
+
+- **Role:** External case-law database and MCP/API provider for opinion search and quote extraction.
+- **Stack:** Midpage MCP v2 + REST API + SQL read replica.
+- **Integration Points:**
+  - Consumed directly by Rae, Lex, Citation, and Quill for case-law search, find-in-opinion, and analyze-opinion workflows.
+  - API keys created in the Midpage developer portal; keys are only injected into the agents that need case-law access.
+  - Case-law support is opinion-first; statutes and regulations continue to flow through LawGlance and the Legal Source Gateway.
+
+### 1.4.5 LawGlance
 
 - **Role:** Public legal information RAG microservice.
 - **Stack:** LangChain + ChromaDB + Redis cache; optional Ollama backend.
@@ -511,7 +527,7 @@ flowchart LR
   - Queried by Mira, Lex, and Citation for abstract statutory questions.
   - Redis cache namespaced per agent tier to prevent cross-agent pollution.
 
-### 1.4.5 Vane
+### 1.4.6 Vane
 
 - **Role:** Human-facing conversational research interface (Perplexity-style).
 - **Stack:** Node.js / Python frontend + backend.
@@ -4079,4 +4095,3 @@ Preserve conservative autonomy boundaries:
 - [LangChain DeepAgents subagents](https://docs.langchain.com/oss/python/deepagents/subagents)
 - [LangChain DeepAgents backends](https://docs.langchain.com/oss/python/deepagents/backends)
 - [LangChain DeepAgents permissions](https://docs.langchain.com/oss/python/deepagents/permissions)
-

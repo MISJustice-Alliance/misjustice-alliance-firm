@@ -33,6 +33,7 @@
 15. [Search and Retrieval Architecture](#15-search-and-retrieval-architecture)
 16. [RAG Backend](#16-rag-backend)
     - [16.3 Legal Source Gateway — Open Legal Data Access Layer](#163-legal-source-gateway--open-legal-data-access-layer)
+    - [Midpage — Case Law Research Platform](#midpage--case-law-research-platform)
 17. [Case Management Backend — MCAS](#17-case-management-backend--mcas)
 18. [Agent Roster and Role Contracts](#18-agent-roster-and-role-contracts)
 19. [Data Classification Model](#19-data-classification-model)
@@ -88,6 +89,7 @@ This SPEC does **not** cover:
 | **HITL Automation** | Multica Inbox (self-hosted) | Approval routing, escalation, task review queues |
 | **Search Gateway** | SearXNG + LiteLLM Proxy | Private tiered search with role-scoped tokens |
 | **Legal RAG** | LawGlance (LangChain + ChromaDB) | Public legal information retrieval |
+| **Midpage Legal Database** | Midpage | External case-law database with MCP v2, REST API, and SQL read replica access for opinion search, quotable passages, and answer-with-support workflows |
 | **Open Legal Data Gateway** | Legal Source Gateway (internal microservice) | Normalized agent-callable API abstracting CourtListener, CAP, GovInfo, eCFR, Federal Register, Open States, and LegiScan behind a single task-oriented interface; Elasticsearch full-text index, Qdrant vector store (Inception embeddings), Neo4j citation knowledge graph |
 | **Private RAG** | OpenRAG / OpenSearch | Internal case research vector store |
 | **Case Management** | MCAS (MISJustice Case & Advocacy Server) | Authoritative case system of record |
@@ -123,7 +125,7 @@ The platform is organized into seven distinct layers. Data and control flow stri
 ├─────────────────────────────────────────────────────────────────┤
 │  LAYER 5 — Research & Retrieval                                 │
 │  AutoResearchClaw / researchclaw-skill · LiteLLM · SearXNG      │
-│  OpenRAG · LawGlance · MCAS Document Search                     │
+│  OpenRAG · LawGlance · Midpage · MCAS Document Search           │
 │  Elasticsearch (legal index) · Qdrant (Inception vectors)       │
 │  Neo4j (citation graph)                                         │
 ├─────────────────────────────────────────────────────────────────┤
@@ -150,10 +152,10 @@ All platform agents are built using **[LangChain](https://python.langchain.com/)
 
 LangChain provides:
 - **Agent construction:** Tool-calling agents built with `langchain.agents.create_tool_calling_agent` or `create_react_agent` depending on role complexity.
-- **Tool binding:** All agent tools (MCAS API client, SearXNG search tools, OpenRAG retriever, MemoryPalace MCP client, LawGlance retriever, Multica inbox triggers) are defined as LangChain `BaseTool` subclasses and bound to agents at initialization.
+- **Tool binding:** All agent tools (MCAS API client, SearXNG search tools, OpenRAG retriever, MemoryPalace MCP client, LawGlance retriever, Midpage MCP client, Multica inbox triggers) are defined as LangChain `BaseTool` subclasses and bound to agents at initialization.
 - **Chain composition:** Complex multi-step workflows (intake → OCR → classification → MCAS write) are composed as LangChain `RunnableSequence` pipelines.
 - **LLM abstraction:** All agents use LangChain's `ChatLiteLLM` wrapper to route LLM calls through the LiteLLM proxy — enabling model swapping, local/remote routing, and unified observability without changing agent code.
-- **Retrieval chains:** LangChain `RetrievalQA` and `ConversationalRetrievalChain` patterns are used for RAG-backed agents (Rae, Lex, Citation Agent) querying OpenRAG and LawGlance.
+- **Retrieval chains:** LangChain `RetrievalQA` and `ConversationalRetrievalChain` patterns are used for RAG-backed agents (Rae, Lex, Citation Agent) querying OpenRAG, LawGlance, and Midpage.
 - **Structured output:** LangChain output parsers (`PydanticOutputParser`, `JsonOutputParser`) enforce typed outputs for all agent tool calls and cross-agent messages.
 
 **LangSmith Agent Builder** provides:
@@ -1231,6 +1233,7 @@ LangChain + ChromaDB legal information RAG microservice for public statutory and
 - **Primary corpus:** Montana Code Annotated, RCW (Washington State), 42 U.S.C. § 1983 and related federal civil rights statutes, selected 9th Circuit opinions
 - **Retriever:** LangChain `Chroma` retriever with Redis-cached embeddings
 - **Access:** Agents query via LangChain tool `lawglance_retriever`; LawGlance never receives matter IDs or PII
+- **Positioning:** LawGlance is the fast, public-safe abstract-questions layer; Midpage is the primary opinion research layer for case-law support and quote extraction.
 
 ```python
 class LawGlanceRetrieverTool(BaseTool):
@@ -1247,6 +1250,16 @@ class LawGlanceRetrieverTool(BaseTool):
         # Returns [{passage, source, citation, confidence}]
         ...
 ```
+
+### Midpage — Case Law Research Platform
+
+Midpage is the platform's external case-law database and MCP/API provider. It is used for opinion search, quotable passage extraction, and answer-with-support workflows in legal research and brief drafting.
+
+- **Interfaces:** MCP v2, REST API, and SQL read replica
+- **Available tools:** `search`, `findInOpinion`, `analyzeOpinion`
+- **Access model:** Agents use the Midpage MCP server directly or via a configured adapter. API keys are created in the Midpage developer portal and are only available to the research and drafting agents that need case-law access.
+- **Consumers:** Rae, Lex, Citation Agent, and Quill
+- **Boundary:** Midpage currently supports court-opinion research only. Statutes and regulations remain on LawGlance and the Legal Source Gateway.
 
 ---
 
@@ -1881,4 +1894,3 @@ SEARXNG_API_URL=${SEARXNG_BASE_URL}  # Vane uses T4-admin token directly
 - **Inception embedding index**: CourtListener bulk embedding vectors (Inception / ModernBERT) require monthly S3 download and re-index. Initial Qdrant population is a one-time multi-hour job — schedule before enabling `cases.search` in semantic mode.
 - **LegiScan Push API**: Standard (free) tier is weekly bulk download. For real-time bill-tracking alerts required by Atlas and the Social Media Manager, LegiScan premium Push API (4-hour cadence) is needed. Evaluate cost vs. Open States real-time polling as alternative.
 - **LII link-only enforcement**: Gateway source-policy rule for LII is implemented at the connector layer. A separate middleware guard should be added to reject any agent request that attempts to pass LII document IDs as ingest targets.
-

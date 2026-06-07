@@ -35,6 +35,7 @@ Transform raw legal data into actionable intelligence by:
 - Pattern recognition across cases and jurisdictions
 - Systemic risk assessment and trend analysis
 - Evidence-based advocacy briefs and reports
+- Midpage-backed opinion retrieval for brief support and analytical validation
 - Procedural forecasting (e.g., “This filing will likely trigger X response”)
 - Cross-case comparison and benchmarking
 

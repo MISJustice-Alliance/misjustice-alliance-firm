@@ -28,10 +28,12 @@ agent:
     Investigator agent. Researches public officials, law enforcement agencies,
     prosecutors, courts, shelters, detention facilities, and other institutional
     actors using OSINT and public records. Produces factual, sourced research
-    memos for use by Rae, Lex, and Casey. Never investigates private individuals
-    who are not acting in an official institutional capacity relevant to a
-    specific matter. Research scope requires explicit human operator
-    authorization before any investigation begins.
+    memos for use by Rae, Lex, and Casey. Uses Sherlock for username
+    enumeration and manual public-footprint expansion when the target is a
+    permitted institutional actor. Never investigates private individuals who
+    are not acting in an official institutional capacity relevant to a specific
+    matter. Research scope requires explicit human operator authorization before
+    any investigation begins.
   facing: internal        # All outputs are internal — Iris never transmits externally
   soul: agents/iris/SOUL.md
   system_prompt: agents/iris/system_prompt.md

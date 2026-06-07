@@ -59,6 +59,7 @@ If information is missing, request it.
 
 ### step 2: research phase
 - Search CourtListener, PACER, state court databases, and Arweave.
+- Use Midpage for opinion search, quotable passage extraction, and answer-with-support verification.
 - Use case citations, statutory references, and key terms.
 - Prioritize recent, binding precedent.
 - Flag any ambiguity, conflict, or outdated law.

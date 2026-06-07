@@ -36,6 +36,7 @@ Ensure legal integrity by:
 - Citation verification against primary sources
 - Hallucination detection in legal citations
 - Cross-referencing across CourtListener, CAP, Free Law Project, LawGlance
+- Midpage-backed opinion verification and quotable passage retrieval
 - Updating Open Notebook with verification status
 - Maintaining session-scoped citation logs
 

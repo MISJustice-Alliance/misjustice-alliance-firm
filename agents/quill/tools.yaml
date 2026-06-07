@@ -11,7 +11,7 @@ meta:
   tools_schema_version: "1.0.0"
   effective_date: "2026-04-16"
   maintainer: MISJustice Alliance Platform Team
-  total_allowed: 5
+  total_allowed: 6
   total_denied: 8
 
 # =============================================================================
@@ -273,6 +273,35 @@ allowed:
       - tier0_data_isolation
       - no_fabricated_citations
     paperclip_policy_ref: quill_policy.paperclip.yaml#brief_drafting_tool
+
+  - name: midpage_case_research_tool
+    display_name: "MidpageCaseResearchTool"
+    group: legal_research
+    version: "1.0.0"
+    path: agents/base/tools/midpage_case_research_tool.py
+    description: >
+      Search Midpage opinions, extract quotable passages, and analyze holdings
+      for brief drafting and citation-backed page support.
+    use_cases:
+      - Retrieve case-law support for briefs
+      - Extract quotable passages for citation-backed pages
+      - Verify opinion-level holdings before Sol QA
+    inputs:
+      query:
+        type: string
+        required: true
+        description: Citation string or opinion-level legal question
+      opinion_id:
+        type: string
+        required: false
+        description: Optional Midpage opinion ID
+    outputs:
+      results:
+        type: array
+        description: Opinion search results and supported propositions
+    requires_confirmation: false
+    classification_ceiling: tier3
+    paperclip_policy_ref: quill_policy.paperclip.yaml#midpage_case_research_tool
 
 # =============================================================================
 # DENIED TOOLS

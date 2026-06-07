@@ -111,6 +111,17 @@ Authorization for OSINT research on institutional actors — law enforcement off
 2. T3 session confirmation: NemoClaw and OpenClaw confirm T3 token is active and Gate 1 is cleared
 3. Audit logging: full query logging must be confirmed active before search begins
 
+**Core PI OSINT toolchain (permitted only for authorized institutional actors):**
+- Search-engine triangulation with Google and Yandex-style dorking
+- Sherlock username enumeration to discover candidate public handles on social networks and adjacent services
+- Email permutation and validation against public accounts and public password-recovery surfaces
+- GitHub public-profile and commit-history review for exposed public emails or handles
+- Reverse image search to correlate public profile photos across public services
+- Wayback Machine and other historical web lookups to recover deleted or changed public pages
+- Manual triage of false positives and corroboration across at least two independent public sources
+
+Sherlock is treated as a username enumeration aid, not as a source of truth. It may only be used on permitted `osint_pi` targets and only to support manual corroboration. It must never be used on complainants, survivors, witnesses, minors, or private individuals outside an official institutional role.
+
 ---
 
 ## Absolute Prohibitions
