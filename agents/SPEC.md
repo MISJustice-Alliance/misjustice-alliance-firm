@@ -1,121 +1,107 @@
-# Human Oversight Dashboard SPEC
+# MISJustice Alliance Agent MCP Access SPEC
 
-> **Version**: 0.1.0  
-> **Owner**: ZHC Firm Oversight Board  
-> **Purpose**: Monitor, audit, and manage all ZHC Firm operations in real time. Ensure compliance, data safety, and ethical integrity.
-
----
-
-## 1. Overview
-
-The Human Oversight Dashboard is the **central command center** for the ZHC Firm’s zero-human company. It provides real-time visibility into:
-
-- Case lifecycle status
-- Agent behavior and outputs
-- Data classification compliance
-- Public content QA
-- Internal integrity monitoring
-- Human review queues
-
-All data is **non-editable** — it is for **monitoring and escalation only**.
+> **Version**: 1.0.0
+> **Scope**: Define which MISJustice Alliance agents require access to MCPJungle tool groups and the upstream tools they use.
+> **Source of truth**: `docs/ARCHITECTURE.md` and `README.md`
 
 ---
 
-## 2. Architecture & Integration
+## 1. Purpose
 
-| System | Access | Purpose |
-|--------|--------|--------|
-| **Atlas (Case Lifecycle)** | Read | Case status, deadlines, actions |
-| **Sol (Public Content QA)** | Read | QA reports, redaction status, citations |
-| **Veritas (Internal Integrity)** | Read | Audit logs, policy violations, data flow |
-| **n8n (Workflow Engine)** | Read | Human review queues, task status |
-| **AgenticMail** | Read | Draft queues, sent logs |
-| **Open Notebook** | Read | Research outputs, reports |
-| **MCAS** | Read | Case records, event logs |
+This spec defines the agent access model for the centralized MCP control plane.
 
-> ✅ All integrations are **read-only** for the dashboard.
+The platform uses MCPJungle as the single registry and policy layer for agent-facing tools. Agents do not receive arbitrary direct access to upstream services. Instead, they are granted RBAC-scoped tool groups such as `legal-corpus`, `research`, `technical`, `all-ops`, or `dashboard-readonly`.
+
+The legal-research stack and the technical/DevOps support stack are separate multi-agent domains:
+
+- the legal-research stack uses the legal corpus, research, and publication tools to produce case work, advocacy materials, and verified citations
+- the technical/DevOps stack maintains the gateway, memory layer, deployment artifacts, observability, and support tooling that keep the platform operational
 
 ---
 
-## 3. Dashboard Sections
+## 2. Legal-corpus providers
 
-### 3.1 Case Lifecycle Overview
-- **Card**: `Total Cases: 147`
-- **Card**: `Active: 42` (Critical: 3, High: 8, Medium: 21, Low: 10)
-- **Card**: `Pending Human Review: 12`
-- **Card**: `Completed: 105`
-- **Chart**: `Case Status Distribution` (Donut chart, color-coded by severity)
-- **Table**: `Top 10 Cases by Severity` (Case ID, Title, Status, Deadline)
+The `legal-corpus` group bundles the platform’s U.S. legal research sources:
 
-### 3.2 Human Review Queues
-| Queue | Items | Last Updated | Action |
-|-------|-------|--------------|--------|
-| Sol QA Reports | 4 | 12:34 PM | Review |
-| Referral Packet Approval | 3 | 11:58 AM | Approve/Revise |
-| Public Content Approval | 2 | 10:22 AM | Approve/Reject |
-| Outreach Drafts | 5 | 9:45 AM | Approve/Reject |
+- Midpage MCP — primary U.S. state/federal case law, court dockets, citation retrieval, PACER access on demand, opinion lookup, and passage extraction
+- legal-mcp — supplemental U.S. caselaw MCP for opinion search and metadata support
+- American Default MCP — U.S. law reference layer for statutes and doctrinal orientation
+- Congress MCP — live U.S. Congressional data for bills, votes, members, committees, hearings, and legislative history
 
-> 🔔 **Color-coded**: Red = overdue, Yellow = high urgency, Green = on track
-
-### 3.3 Internal Integrity Monitor (Veritas)
-- **Card**: `Policy Violations: 0` (Green)
-- **Card**: `Data Leaks Detected: 0` (Green)
-- **Card**: `Tier-0/1 Access Attempts: 0` (Green)
-- **Table**: `Recent Audit Logs` (Timestamp, Agent, Action, Risk Level, Status)
-
-> 🔴 **Red if any violation detected** — triggers immediate alert.
-
-### 3.4 Public Content Pipeline
-- **Card**: `Pending Sol QA: 4`
-- **Card**: `Published: 87` (Last 7 days: 12)
-- **Card**: `Social Posts: 24` (Last 7 days: 5)
-- **Table**: `Top 5 Published Cases` (Title, Publication Date, Views, Shares)
-
-### 3.5 Agent Health & Performance
-| Agent | Status | Last Activity | Response Time | Errors |
-|-------|--------|---------------|---------------|--------|
-| Rae | ✅ Healthy | 12:34 PM | 2.1s | 0 |
-| Lex | ✅ Healthy | 12:33 PM | 3.4s | 0 |
-| Casey | ✅ Healthy | 12:32 PM | 2.8s | 0 |
-| Ollie | ⚠️ Warning | 12:29 PM | 4.5s | 3 |
-| Quill | ✅ Healthy | 12:31 PM | 1.9s | 0 |
-| Sol | ✅ Healthy | 12:34 PM | 2.3s | 0 |
-
-> ⚠️ **Warning**: Ollie has 3 errors — investigate.
+These providers are used to keep legal research source-backed rather than relying on opaque summaries.
 
 ---
 
-## 4. Alert System
+## 3. Required access by agent class
 
-| Alert Type | Severity | Trigger | Action |
-|------------|----------|---------|--------|
-| **Missed Deadline** | Critical | Case deadline < 24h | Escalate to Human Oversight Board |
-| **Tier-0/1 Access Attempt** | Critical | Veritas detects access | Immediate lockdown |
-| **Sol QA Failure** | High | QA report fails | Human review required |
-| **Agent Error Rate > 5%** | Medium | Agent health drops | Investigate |
-| **High-Priority Case** | High | Case severity = Critical | Human review required |
-
-> ✅ All alerts are **pushed to Slack and email**.
-
----
-
-## 5. Access & Security
-
-- **Role-based access**:
-  - **Oversight Board**: Full access
-  - **Staff**: Read-only
-  - **Admin**: Full access + configuration
-- **Two-factor authentication (2FA)** required
-- **Audit trail**: All actions logged
-- **No data export** — only read
+| Agent / stack | MCPJungle groups | Upstream tools | Notes |
+|---|---|---|---|
+| `hermes-supervisor` | `legal-corpus`, `research`, `technical`, `all-ops` | All registered tools | Full orchestration and governance access |
+| `rae` | `legal-corpus`, `research`, `technical` | Midpage, legal-mcp, American Default MCP, Congress MCP | Primary legal research |
+| `lex` | `legal-corpus`, `research`, `technical` | Midpage, legal-mcp, American Default MCP, Congress MCP | Legal analysis and verification |
+| `citation_authority` | `legal-corpus`, `research` | Midpage, legal-mcp, American Default MCP, Congress MCP | Citation and authority verification |
+| `casey` | `legal-corpus`, `research` | Midpage, legal-mcp, American Default MCP, Congress MCP | Referral packet support and counsel research |
+| `quill` | `legal-corpus`, `research` | Midpage, legal-mcp, American Default MCP, Congress MCP | Public legal-resource pages and citation-backed drafts |
+| `iris` | `research`, `technical` | Conditional `legal-corpus` access via supervisor | Public-record work may require legal-source validation |
+| `chronology` | `research` | Legal-corpus outputs consumed indirectly | Timeline validation and source ordering |
+| technical / DevOps support stack | `technical`, `all-ops` | MCPJungle admin and ops tooling, Honcho, deployment and observability tools | Support stack for maintenance, upgrades, and infrastructure stewardship |
+| `human-operator` | `dashboard-readonly` | Dashboard and metrics read-only surfaces | No write access |
 
 ---
 
-## 6. Deployment & Maintenance
+## 4. Access rules
 
-- **Hosted**: `https://dashboard.zhc-firm.internal`
-- **Authentication**: SSO via Okta
-- **Refresh rate**: 30 seconds
-- **Backup**: Daily encrypted backup
-- **Incident Response**: 24/7 on-call team
+1. Legal-corpus access is need-to-know. It is granted to legal-research and publication roles that require primary authority.
+2. The technical/DevOps support stack does not receive legal-corpus by default.
+3. `all-ops` is supervisor-only.
+4. `human-operator` is dashboard-only and read-only.
+5. All tool access must remain Tailscale-only at the network boundary.
+6. No plaintext credentials are stored in this spec.
 
+---
+
+## 5. Role-specific expectations
+
+### 5.1 Hermes supervisor
+
+Hermes is the only agent class with full access across all groups. It orchestrates legal, research, technical, and support workflows.
+
+### 5.2 Legal-research roles
+
+Rae, Lex, Citation / Authority, Casey, and Quill all need `legal-corpus` access because their outputs depend on primary legal authority, citation verification, or public-facing legal publication.
+
+### 5.3 Conditional legal access
+
+Iris and Chronology do not need constant direct legal-corpus access, but they may consume legal-source outputs when a matter requires legal authority checks or chronology validation.
+
+### 5.4 Support roles
+
+The technical and DevOps support stack exists to maintain the platform, not to perform legal analysis. It should be constrained to technical and operations tooling unless a specific incident requires supervised access to legal-source verification.
+
+---
+
+## 6. Verification targets
+
+Before treating this spec as satisfied, verify:
+
+- all legal-research agent README files reference the MCPJungle legal-corpus group
+- the architecture doc documents Midpage, legal-mcp, American Default MCP, and Congress MCP
+- support-stack descriptions remain separate from legal-research descriptions
+- the access matrix matches the current MCPJungle group manifests
+- the dashboard-only human operator role remains read-only
+
+---
+
+## 7. Canonical references
+
+- `docs/ARCHITECTURE.md`
+- `agents/README.md`
+- `README.md`
+- `infra/tool-groups/`
+- `infra/mcp-servers/`
+
+---
+
+## 8. Final note
+
+If agent responsibilities or upstream legal sources change, update this spec and the architecture doc together.

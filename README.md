@@ -1,21 +1,20 @@
 # MISJustice Alliance Firm
 
-> **The MISJustice Alliance AI-agent legal advocacy, research, publishing, and public-engagement platform.**
+> **Centralized legal research and advocacy platform with an MCPJungle control plane, Honcho shared memory, and Tailscale-only operator surfaces.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Status: Early Architecture](https://img.shields.io/badge/status-early--architecture-yellow)](https://github.com/MISJustice-Alliance/misjustice-alliance-firm)
-[![Orchestration: OpenClaw / NemoClaw](https://img.shields.io/badge/orchestration-OpenClaw%20%2F%20NemoClaw-blueviolet)](https://github.com/NemoGuard/openclaw)
-[![Research: GPT Researcher + LangGraph](https://img.shields.io/badge/research-GPT%20Researcher%20%2B%20LangGraph-success)](https://github.com/assafelovic/gpt-researcher)
-[![Memory: MemoryPalace + Tovana](https://img.shields.io/badge/memory-MemoryPalace%20%2B%20Tovana-green)](https://www.mempalace.tech)
-[![Search: Morphic + SearXNG](https://img.shields.io/badge/search-Morphic%20%2B%20SearXNG-blue)](https://github.com/miurla/morphic)
-[![Scraping: Scrapling](https://img.shields.io/badge/scraping-Scrapling-orange)](https://github.com/D4Vinci/Scrapling)
+[![Status: Centralized MCP Architecture](https://img.shields.io/badge/status-centralized%20MCP%20architecture-blue)](https://github.com/MISJustice-Alliance/misjustice-alliance-firm)
+[![Control Plane: MCPJungle + Honcho](https://img.shields.io/badge/control%20plane-MCPJungle%20%2B%20Honcho-purple)](https://github.com/mcpjungle/MCPJungle)
+[![Legal Research: Midpage + MCP Tools](https://img.shields.io/badge/legal%20research-Midpage%20%2B%20MCP%20tools-success)](https://www.midpage.ai/blog/release-midpage-mcp-integration-for)
+[![Memory: Honcho](https://img.shields.io/badge/memory-Honcho-green)](https://github.com/plastic-labs/honcho)
 [![Interface: Hermes](https://img.shields.io/badge/interface-Hermes%20Agent-orange)](https://github.com/NousResearch/hermes-agent)
-[![Sandbox: OpenShell](https://img.shields.io/badge/sandbox-OpenShell-blue)](https://github.com/NVIDIA/OpenShell)
-[![Workflows: Multica HITL](https://img.shields.io/badge/workflows-Multica%20HITL-red)](https://github.com/MulticaAI/multica)
+[![Observability: Prometheus + Grafana](https://img.shields.io/badge/observability-Prometheus%20%2B%20Grafana-blue)](https://prometheus.io/)
 
 ---
 
-MISJustice Alliance Firm is an advanced, AI-native legal research and advocacy engine that combines large-scale, machine-driven analysis with human-in-the-loop safeguards at every critical stage of advice, drafting, and escalation. It is designed as a protective, anonymizing layer for MISJustice Alliance's network of professional volunteer attorneys and advocates from institutional retaliation, as well as allowing people to seek help and explore their options without exposing unnecessary identity or case details. All workflows are governed by codified review policies and ethical guardrails so that any output touching real-world disputes, rights, or remedies is validated for accuracy, jurisdictional fit, and adherence to the highest professional and ethical legal standards before it ever reaches a human client, public scrutiny, or court-facing channel.
+MISJustice Alliance Firm is an AI-native legal research and advocacy platform built around a centralized MCP control plane. Agents no longer connect to individual tool servers ad hoc; instead, MCPJungle registers and governs all agent-facing MCP servers, enforces RBAC through tool groups, and exposes a Tailscale-only dashboard and API surface. Honcho provides the shared memory substrate for cross-session state, while Prometheus and Grafana monitor gateway health, tool usage, and memory queue depth.
+
+The platform is designed as a protective, anonymizing layer for MISJustice Alliance's network of volunteer attorneys and advocates. It prioritizes operational security, provenance, least privilege, and auditable workflow routing for any activity that touches legal research, public publication, or external communication.
 
 ## Table of Contents
 
@@ -24,15 +23,10 @@ MISJustice Alliance Firm is an advanced, AI-native legal research and advocacy e
 3. [Agent Roles and Capabilities](#3-agent-roles-and-capabilities)
 4. [Human-in-the-Loop Governance](#4-human-in-the-loop-governance)
 5. [Control Interface Layer](#5-control-interface-layer)
-6. [Search and Retrieval Architecture](#6-search-and-retrieval-architecture)
+6. [MCP Control Plane & Retrieval Architecture](#6-mcp-control-plane--retrieval-architecture)
    - [6.1 Legal Data Source & Agent Access Layer](#61-legal-data-source--agent-access-layer)
-7. [Research Intelligence Stack (v2)](#7-research-intelligence-stack-v2)
-   - [7.1 GPT Researcher + LangGraph Multi-Agent](#71-gpt-researcher--langgraph-multi-agent)
-   - [7.2 gptr-mcp — Research MCP Bridge](#72-gptr-mcp--research-mcp-bridge)
-   - [7.3 Tovana — Ephemeral Memory](#73-tovana--ephemeral-memory)
-   - [7.4 Morphic — Generative Search](#74-morphic--generative-search)
-   - [7.5 Scrapling — Distributed Scraping](#75-scrapling--distributed-scraping)
-8. [Agent Memory Architecture](#8-agent-memory-architecture)
+7. [MCP Tool Groups & Shared Services](#7-mcp-tool-groups--shared-services)
+8. [Honcho Shared Memory Substrate](#8-honcho-shared-memory-substrate)
 9. [Case Management Backend](#9-case-management-backend)
 10. [Example Workflow Diagram](#10-example-workflow-diagram)
 11. [System Architecture Diagram](#11-system-architecture-diagram)
@@ -76,7 +70,7 @@ The MISJustice Alliance Firm platform is the operational backbone of MISJustice 
 
 ## 3. Agent Roles and Capabilities
 
-The MISJustice Alliance Firm operates a modular multi-agent staff. Each agent is a defined role with a bounded scope, allowed tool set, and search permission tier. All agents operate under the OpenClaw / NemoClaw orchestration layer, interact with humans through the **Hermes** interface, carry persistent cross-session memory via **MemoryPalace**, and execute tool calls inside **OpenShell** sandboxes governed by declarative YAML policies.
+The MISJustice Alliance Firm operates a modular multi-agent staff. Each agent is a defined role with a bounded scope, allowed tool set, and access tier. In the current architecture, all agent-facing tools are mediated through MCPJungle tool groups, humans interact through **Hermes** and the Tailscale-only control surfaces, cross-session memory is handled by **Honcho**, and execution still occurs inside sandboxed runtime boundaries governed by declarative policy.
 
 ### Agent Role Table
 
@@ -101,21 +95,23 @@ The MISJustice Alliance Firm operates a modular multi-agent staff. Each agent is
 | **Quill — GitBook Curator** | Bridge → External | Structure and maintain the YWCA of Missoula GitBook case file library | Document organization, index maintenance, cross-linking, public-safe export | GitBook API, MCAS exports, SearXNG (public-safe), Open Notebook |
 | **Vane — Operator Search Interface** | Internal (Human-facing) | Conversational AI answering UI for human operator ad-hoc research over the private SearXNG instance | Cited web Q&A, multi-mode research (Speed / Balanced / Quality), document upload & Q&A, image/video search, domain-scoped queries, search history | Vane UI, SearXNG (T4-admin token via `SEARXNG_API_URL`), Ollama / local LLM, Open Notebook (output) |
 
-> **Note on Hermes:** Hermes is the **primary human-facing interface** for the entire platform. Operators interact with the agent stack through Hermes' CLI/TUI, which translates natural-language commands into OpenClaw task dispatches. Hermes also supports **self-evolution**: its built-in Skill Factory allows the platform to create, test, and load new agent skills as capabilities and workflows expand — without requiring a full redeployment. OpenClaw and NemoClaw may also use Hermes to **spawn transient subagents** for parallelized tasks that don't require a persistent named agent role. See [Section 5](#5-control-interface-layer) for the full interface model.
+> **Note on Hermes:** Hermes is the **primary human-facing interface** for the platform. Operators interact with the agent stack through Hermes' CLI/TUI, which translates natural-language commands into MCPJungle tool-group requests. Hermes also supports **self-evolution**: its built-in Skill Factory allows the platform to create, test, and load new agent skills as capabilities and workflows expand — without requiring a full redeployment. Hermes may also spawn transient subagents for parallelized tasks that don't require a persistent named agent role. See [Section 5](#5-control-interface-layer) for the full interface model.
 
-> **Note on MemoryPalace:** Every agent with a persistent role (Avery, Mira, Rae, Lex, Iris, Atlas, Casey, and others) uses **MemoryPalace** as its cross-session memory substrate. MemoryPalace provides verbatim-accurate memory storage with MCP integration, ensuring agents retain context across sessions — matter history, operator preferences, research findings, and workflow state — without hallucinating recall. See [Section 8](#8-agent-memory-architecture) for the full memory model.
+> **Note on Honcho:** Every agent with a persistent role (Avery, Mira, Rae, Lex, Iris, Atlas, Casey, and others) uses **Honcho** as its cross-session memory substrate. Honcho provides peer-centric memory storage with MCP integration, ensuring agents retain context across sessions — matter history, operator preferences, research findings, and workflow state — without hallucinating recall. See [Section 8](#8-honcho-shared-memory-substrate) for the full memory model.
 
-> **Note on OpenShell:** All agent tool execution runs inside **OpenShell** sandboxes, which provide filesystem, network, process, and inference isolation via declarative YAML policies. NemoClaw provisions and governs these sandboxes. The OpenShell community sandbox catalog includes a native OpenClaw sandbox (`openshell sandbox create --from openclaw`). See [Section 5](#5-control-interface-layer) for the sandbox governance model.
+> **Note on sandboxing:** All agent tool execution still runs inside sandboxed runtime boundaries that provide filesystem, network, process, and inference isolation via declarative policy. The sandbox layer is distinct from the MCP control plane: MCPJungle governs tool access, while the execution sandbox enforces process and filesystem limits. See [Section 5](#5-control-interface-layer) for the sandbox governance model.
 
 > **Note on n8n:** **n8n** is the human-facing **workflow automation and approval-routing layer** that bridges agents to human operators for all HITL gates, escalation events, and scheduled workflows. Atlas and Veritas trigger n8n webhooks for escalation and approval-required events. Human operators manage, approve, and monitor these workflows through the n8n UI. See [Section 4](#4-human-in-the-loop-governance) and [Section 5](#5-control-interface-layer).
 
-> **Note on Vane:** Vane is a **human operator interface**, not an autonomous agent. It provides operators with a Perplexity-style conversational research workspace that queries the same private SearXNG instance used by the agent stack — using the T4-admin search token via the `slim` image deployment. Vane does **not** replace SearXNG; it sits atop it. Do not use Vane's file upload feature with Tier-0 or Tier-1 material until authentication and role-based access control are implemented upstream. See [Section 6](#6-search-and-retrieval-architecture) for the search tier model.
+> **Note on Vane:** Vane is a **human operator interface**, not an autonomous agent. It remains available for ad hoc operator research, but it is no longer the authority for agent access policy. Tool-group access is controlled centrally through MCPJungle, while Vane and other search surfaces are treated as operator conveniences. Do not use Vane's file upload feature with Tier-0 or Tier-1 material until authentication and role-based access control are implemented upstream. See [Section 6](#6-mcp-control-plane--retrieval-architecture) for the retrieval model.
 
-> **Note on LawGlance:** LawGlance is a **jurisdiction-specific legal information RAG microservice** — not a private case-file repository. It provides LangChain + ChromaDB retrieval over indexed public legal materials (currently optimized for Indian statutory law; expandable to US federal and Montana/Washington State law via corpus extension). Agents query LawGlance for **public legal information only** — never for privileged case analysis or Tier-0/Tier-1 content. See [Section 6](#6-search-and-retrieval-architecture) for the full RAG backend model.
+> **Note on LawGlance:** LawGlance is retained only as a legacy compatibility surface. The active legal access layer now runs through the centralized MCPJungle `legal-corpus` Tool Group and the MCP-backed legal providers listed in Section 6.1. Agents should treat LawGlance as historical context rather than the primary retrieval path. See [Section 6](#6-mcp-control-plane--retrieval-architecture) for the current model.
 
-> **Note on the Legal Source Gateway:** The **Legal Source Gateway** is a normalized API layer that abstracts all open legal data sources (CourtListener, CAP, GovInfo, eCFR, Federal Register, Open States, LegiScan) behind a single agent-callable interface. Research agents (Rae, Lex, Citation/Authority Agent) call the gateway rather than upstream APIs directly. See [Section 6.1](#61-legal-data-source--agent-access-layer) for the full architecture.
+> **Note on the Legal Source Gateway:** The **Legal Source Gateway** remains a normalized API layer for open legal data sources, but it now sits alongside MCPJungle rather than above it. Research agents call the centralized legal-corpus tool group for Midpage, legal-mcp, American Default, and Congress MCP first, then fall back to direct source connectors where appropriate. See [Section 6.1](#61-legal-data-source--agent-access-layer) for the full architecture.
 
-> **Note on All Researcher-role agents:** Rae, Lex, Iris, Chronology Agent, and Citation/Authority Agent all use **AutoResearchClaw** as their core autonomous research engine for multi-stage research loops, literature review, evidence gathering, and structured output generation.
+> **Note on all researcher-role agents:** Rae, Lex, Iris, Chronology Agent, and Citation/Authority Agent use the MCPJungle `legal-corpus`, `research`, and `technical` groups together with Honcho-backed shared memory for multi-stage research loops, literature review, evidence gathering, and structured output generation.
+
+> **Note on supporting technical and DevOps staff:** The platform also includes a separate technical-development and DevOps support stack. These agents maintain the MCPJungle gateway, Honcho services, deployment artifacts, observability, and infrastructure improvements that keep the legal-research and advocacy stack operational. They are essential to the system, but they are not the same role set as the legal research agents.
 
 ---
 
@@ -138,19 +134,19 @@ All HITL gates are implemented as **n8n workflows** — agents trigger webhooks,
 | **Uncoordinated agent action** | Agent action outside expected workflow sequence | Atlas | Human reviews and clears before workflow resumes |
 | **Policy violation detected** | Any agent breaches defined constraints | Veritas | Human Oversight Board reviews violation report and determines response |
 | **Tier 0/1 unauthorized access** | Unauthorized access detected | Veritas | Immediate escalation to Human Oversight Board |
-| **Subagent spawn authorization** | Hermes / OpenClaw requests new transient subagent | Hermes | Human authorizes spawn for high-privilege or external-facing subagents |
+| **Subagent spawn authorization** | Hermes requests a new transient subagent | Hermes | Human authorizes spawn for high-privilege or external-facing subagents |
 
 ---
 
 ## 5. Control Interface Layer
 
-The platform supports multiple human interaction surfaces. **Hermes** is the primary entry point for all operator interaction with the agent stack. All surfaces are brokered through **OpenClaw / NemoClaw**, with automated workflow routing handled by **n8n**.
+The platform supports multiple human interaction surfaces. **Hermes** is the primary entry point for all operator interaction with the agent stack. All surfaces are brokered through **Hermes** and the MCPJungle control plane, with automated workflow routing handled by **n8n**.
 
 ### Human Interface Surfaces
 
 | Interface | Purpose | Access level |
 |---|---|---|
-| **Hermes Agent** | Primary CLI/TUI interface for the entire platform; natural-language task delegation to OpenClaw; subagent spawning; self-evolution via Skill Factory; approval surfaces | Operator / Admin |
+| **Hermes Agent** | Primary CLI/TUI interface for the entire platform; natural-language task delegation through MCPJungle; subagent spawning; self-evolution via Skill Factory; approval surfaces | Operator / Admin |
 | **n8n Workflow UI** | Visual workflow automation and HITL approval routing; manages all agent-triggered escalation events, approval queues, and scheduled workflows | Operator / Admin |
 | **Telegram** | Real-time task delegation, agent status, quick approvals routed through Hermes / n8n | Operator |
 | **Discord** | Multi-channel team coordination, alert streams, bot interactions | Operator / Collaborator |
@@ -196,9 +192,9 @@ n8n workflow definitions are stored in `workflows/n8n/` and version-controlled i
 
 ---
 
-## 6. Search and Retrieval Architecture
+## 6. MCP Control Plane & Retrieval Architecture
 
-All agent search traffic is routed through a **single privately hosted SearXNG instance**, fronted by a **LiteLLM proxy** that normalizes search results to a consistent JSON schema before agent consumption. Human operators additionally have access to **Vane**, a self-hosted AI answering interface that queries the same SearXNG instance directly using the T4-admin token, providing a conversational research surface for ad-hoc queries, document uploads, and cited Q&A without going through the LiteLLM agent pipeline.
+The current retrieval model is centered on the MCPJungle control plane. MCPJungle registers every agent-facing MCP server, binds them into least-privilege tool groups, and exposes the gateway only over Tailscale-secured surfaces. The legacy SearXNG/LiteLLM search stack remains available for compatibility and operator convenience, but it is no longer the authoritative access path for agents. The authoritative path is: client -> MCPJungle -> tool group -> upstream MCP server or direct connector.
 
 ### Search tiers (Private Token model)
 
@@ -225,7 +221,16 @@ LiteLLM exposes named search tools (`search_publicsafe`, `search_internal`, `sea
 
 ## 6.1 Legal Data Source & Agent Access Layer
 
-The **Legal Source Gateway** (`services/legal-source-gateway/`) is a normalized internal API and ingestion service that provides research agents with structured, policy-controlled access to all major open US legal data sources. Agents never call upstream legal APIs directly; all legal data access flows through this gateway, which enforces rate limits, data classification, provenance logging, and source-policy rules.
+The **Legal Source Gateway** (`services/legal-source-gateway/`) remains the normalized internal API and ingestion service for open US legal data. In the centralized architecture, it now operates alongside the MCPJungle control plane: legal tools are registered once, exposed through the `legal-corpus` Tool Group, and consumed by agents through RBAC-scoped MCP clients. Agents never call upstream legal APIs directly; all legal data access flows through controlled gateways that enforce rate limits, data classification, provenance logging, and source-policy rules.
+
+The legal corpus now includes both direct-source connectors and MCP-backed providers for higher-level caselaw and legislative access, including Midpage, `legal-mcp`, American Default, and Congress MCP. This keeps the legal stack federated at the source layer but centralized at the access/policy layer.
+
+### MCP-Backed Legal Sources
+
+- Midpage MCP server: https://www.midpage.ai/blog/release-midpage-mcp-integration-for
+- `legal-mcp`: https://github.com/Mahender22/legal-mcp
+- American Default MCP: https://mcpservers.org/servers/vibecode1/american-default-mcp
+- Congress MCP: https://github.com/amurshak/congressMCP
 
 ### Design Principles
 
@@ -239,6 +244,10 @@ The **Legal Source Gateway** (`services/legal-source-gateway/`) is a normalized 
 
 | Source | Role | Scope | Agent Access Pattern | Policy |
 |---|---|---|---|---|
+| **Midpage MCP** | Primary live caselaw + PACER-style research gateway | US state/federal law, court dockets, case law precedent, citation retrieval | `cases.search`, `cases.citation_lookup`, `dockets.watch`, `graph.expand` | MCP-backed, enterprise-scoped |
+| **legal-mcp** | Supplemental US caselaw MCP | US caselaw MCP surfaced through the `legal-corpus` group | `cases.search`, `cases.get` | MCP-backed, ingest as needed |
+| **American Default MCP** | Supplemental US law reference | US law reference / citation support | `cases.search`, `citations.resolve` | MCP-backed, reference-first |
+| **Congress MCP** | Live federal legislative intelligence | Bills, votes, members, committees, hearings, and related congressional data | `bills.search`, `bills.track`, `legislators.lookup` | MCP-backed, ingest + index |
 | **CourtListener** | Primary live case law & dockets | 9M+ opinions, RECAP dockets, semantic search, judge DB, oral arguments | `cases.search`, `cases.citation_lookup`, `dockets.watch`, `graph.expand` | Ingest + index |
 | **Caselaw Access Project (CAP)** | Historical case law backbone | 6.7M cases, 1658–2020, 40M pages | `cases.search` (historical), bulk corpus load | Ingest + index |
 | **GovInfo (GPO)** | Authoritative federal statutes & regulations | US Code (USLM XML), CFR, Federal Register, SCOTUS, congressional bills | `statutes.lookup`, `regulations.lookup`, `graph.expand` | Ingest + index |
@@ -402,136 +411,86 @@ The gateway ships an internal operator web UI (`apps/legal-research-console/`) w
 
 ---
 
-## 7. Research Intelligence Stack (v2)
+## 7. MCP Tool Groups & Shared Services
 
-### Stack Overview
+MCPJungle is the authoritative registry and policy layer for all agent-facing MCP servers. Tool access is grouped and routed through RBAC-scoped bundles rather than exposed server-by-server to agents.
 
-| Component | Technology | Purpose | Port |
-|---|---|---|---|
-| **Deep Research Engine** | GPT Researcher + LangGraph Multi-Agent | Autonomous research with editor-reviewer-gatekeeper workflow | 8005 |
-| **Research MCP Bridge** | gptr-mcp | MCP-native tool bindings for GPT Researcher | 4000 |
-| **Ephemeral Memory** | Tovana | Session-scoped memory with implicit extraction | 8006 |
-| **Generative Search** | Morphic | AI-powered search with generative UI | 3002 |
-| **Distributed Scraping** | Scrapling | High-performance distributed web scraping | 5000 |
+### Current Tool Groups
 
-### 7.1 GPT Researcher + LangGraph Multi-Agent
-
-**GPT Researcher** provides autonomous, multi-step research capabilities with a LangGraph-based multi-agent architecture. The system maps research roles to MISJustice agents:
-
-| GPT Researcher Role | MISJustice Agent | Responsibility |
+| Tool Group | Intended Consumers | Scope |
 |---|---|---|
-| Chief Editor | Lex | Research planning, strategy, final approval |
-| Reviewer | Mira | Quality assurance, factual verification |
-| Citation Verifier | Citation Agent | Source validation, citation formatting |
-| OSINT Specialist | Iris | Public records, actor investigation |
-| Draft Writer | Quill | Document drafting, memo generation |
-| Outreach Coordinator | Ollie | External communication drafting |
-| Web Publisher | Webmaster | Public content publication |
-| Human Gate | Multica HITL | Approval workflows, escalation handling |
+| `legal-corpus` | `hermes-supervisor`, `openclaw-worker` | Legal research, caselaw, statutes, dockets, citations |
+| `research` | `hermes-supervisor`, `openclaw-worker` | Web research, semantic search, scraping, documentation lookup |
+| `technical` | `hermes-supervisor`, `openclaw-worker` | Diagrams, sandboxed execution, repo docs, library references, security scanning |
+| `all-ops` | `hermes-supervisor` only | Shared memory, DevOps automation, operational dashboards, privileged maintenance |
+| `dashboard-readonly` | `human-operator` | Dashboard visibility without write access |
 
-**Key Capabilities:**
-- Multi-step research with iterative refinement
-- Parallel sub-task execution via LangGraph
-- Human-in-the-loop interrupts for high-stakes decisions
-- Automatic citation generation and source verification
-- Integration with Legal Source Gateway for normalized legal data
+### Registered Legal Corpus Providers
 
-### 7.2 gptr-mcp — Research MCP Bridge
+- Midpage MCP — primary US state/federal law, docket, case law, and citation access.
+- `legal-mcp` — supplemental caselaw MCP.
+- American Default MCP — reference and citation support.
+- Congress MCP — live federal legislative intelligence.
 
-**gptr-mcp** provides MCP-native tool bindings for GPT Researcher, enabling seamless integration with the broader MISJustice agent ecosystem.
+### Registered Technical and Research Providers
 
-**Exposed Tools:**
-- `research_task` — Submit research tasks with scope and constraints
-- `get_report` — Retrieve completed research reports
-- `verify_citation` — Validate citations against source documents
-- `search_legal_sources` — Query Legal Source Gateway via MCP
-- `extract_entities` — Named entity extraction from research outputs
+- `uml-diagram`
+- `e2b-sandbox`
+- `deepwiki`
+- `context7`
+- `notebooklm`
+- `repofortify`
+- `adp-document`
+- `open-websearch`
+- `exa-search`
+- `firecrawl`
 
-### 7.3 Tovana — Ephemeral Memory
+### Registered Operational Providers
 
-**Tovana** provides session-scoped memory with implicit fact extraction, complementing MemoryPalace's persistent storage.
+- `caura-memclaw`
+- `devops-mcp`
+- `honcho-memory`
 
-**Architecture:**
-- **Persistent Memory Tier**: Long-term facts, preferences, entity relationships
-- **Ephemeral Memory Tier**: Session-scoped working memory with TTL
-- **Implicit Extraction**: Automatic fact extraction without explicit tool calls
+### RBAC Client Plan
 
-**Use Cases:**
-- Multi-turn research sessions
-- Temporary working hypotheses
-- Draft iteration history
-- Cross-reference tracking during research
+| Client | Allowed Tool Groups |
+|---|---|
+| `hermes-supervisor` | `legal-corpus`, `research`, `technical`, `all-ops` |
+| `openclaw-worker` | `legal-corpus`, `research`, `technical` |
+| `human-operator` | `dashboard-readonly` |
 
-### 7.4 Morphic — Generative Search
+### Deployment Notes
 
-**Morphic** replaces Vane as the primary operator search interface, providing generative AI-powered search with a modern React-based UI.
+- MCPJungle runs in `enterprise` mode with PostgreSQL backing and OpenTelemetry enabled.
+- The dashboard and all agent-facing endpoints are Tailscale-only; nothing binds to a public interface.
+- Metrics are scraped from `/metrics` into Prometheus and visualized in Grafana.
+- Tool-server definitions live under `infra/mcp-servers/` and tool-group manifests under `infra/tool-groups/`.
 
-**Features:**
-- Generative search results with source citations
-- Multi-provider search fallback (SearXNG → Tavily → Brave → Exa)
-- Document upload and Q&A
-- Search history and session management
-- Tier-aware access control (T4-admin for operators)
+## 8. Honcho Shared Memory Substrate
 
-**Search Chain:**
-```
-User Query → Morphic → SearXNG (primary)
-                    ↓
-              Tavily (fallback)
-                    ↓
-              Brave Search (fallback)
-                    ↓
-              Exa (fallback)
-```
+Honcho is the self-hosted shared memory layer for the multi-agent stack. It provides peer-centric memory for the supervisor, workers, and human operator representation without delegating state to a managed cloud memory service.
 
-### 7.5 Scrapling — Distributed Scraping
+### Peer Model
 
-**Scrapling** provides high-performance, distributed web scraping for research data acquisition.
+| Honcho Peer ID | Role | Access |
+|---|---|---|
+| `hermes-supervisor` | Supervisor agent | Full read/write across sessions |
+| `openclaw-worker` | Worker agents | Session-scoped read/write |
+| `human-legal-operator` | Human operator | Read-only representation access |
 
-**Capabilities:**
-- Distributed scraping across multiple nodes
-- Automatic retry and rate limiting
-- Content extraction and normalization
-- Integration with gptr-mcp for research pipelines
+### Operational Notes
 
+- Honcho is deployed from `infra/honcho/` and registered with MCPJungle as `honcho-memory`.
+- The workspace is local-first and self-hosted; no shared memory leaves the stack.
+- `honcho_queue_exporter.py` feeds the memory queue depth metric into observability.
+- Hermes memory integration points at the local Honcho endpoint.
 
+### Memory Usage Policy
 
-All persistent platform agents carry cross-session memory through **[MemoryPalace](https://www.mempalace.tech)** (mempalace.tech) — an open-source, locally-run AI memory substrate designed for verbatim-accurate recall with MCP (Model Context Protocol) integration.
-
-### Why MemoryPalace
-
-Standard LLM context windows are ephemeral: when a session ends, everything is lost. For a platform handling ongoing legal matters — where agents need to remember prior research, operator preferences, matter history, and workflow state across days and weeks — reliable persistent memory is a hard requirement. MemoryPalace solves this by:
-
-- **Verbatim storage:** Memory entries are stored and recalled as-written, without compression or paraphrase — eliminating the hallucinated-recall problem common to vector-embedding-only memory systems.
-- **MCP integration:** MemoryPalace exposes a standard MCP server interface, allowing any MCP-compatible agent (including Hermes, OpenClaw-dispatched agents, and GPT Researcher) to read and write memories using standard tool calls.
-- **Local-first:** MemoryPalace runs fully on-premises. No memory data leaves the platform. This is non-negotiable for a platform handling potentially sensitive legal research and case context.
-- **Selective recall:** Agents retrieve memories by relevance, recency, or explicit key — not just cosine similarity. This supports structured recall patterns (e.g., "what did Rae find on Defendant X in Matter 42?") without needing a full embedding search.
-
-### MemoryPalace + Tovana Two-Tier Architecture (v2)
-
-> **Version 2.0 Update:** MemoryPalace is now complemented by **Tovana** for ephemeral, session-scoped memory. Together they provide a complete memory solution:
-
-| Tier | Technology | Scope | Persistence |
-|---|---|---|---|
-| **Persistent** | MemoryPalace | Long-term facts, preferences, entity relationships | Permanent |
-| **Ephemeral** | Tovana | Session working memory, draft iterations, hypotheses | TTL-based |
-| **Implicit** | Tovana | Automatically extracted facts without tool calls | Session |
-
-### Memory Scope per Agent
-
-| Agent | Memory scope | What is persisted |
-| :-- | :-- | :-- |
-| **Hermes** | Session + cross-session | Operator preferences, delegation history, approved workflow patterns, Skill Factory additions |
-| **Avery** | Per-matter | Prior intake decisions, Tier classification precedents, known duplicate matters |
-| **Mira** | Per-contact | Communication history per caller/contact, triage routing patterns |
-| **Rae** | Per-matter + cross-matter | Prior research memos, jurisdiction-specific findings, known statute citations |
-| **Lex** | Per-matter + cross-matter | Analysis memos, issue maps, pattern flags, QA precedents |
-| **Iris** | Per-actor + per-matter | Actor/agency profiles, prior OSINT findings, public-record retrieval history |
-| **Atlas** | Per-matter | Deadline tracking state, workflow sequencing history, escalation log |
-| **Casey** | Per-matter + cross-matter | Attorney/org profiles, prior referral outcomes, conflict-of-interest history |
-| **Citation Agent** | Cross-session | Verified citation cache, known-bad citation registry, gateway response cache |
-
-Memory entries are never written for Tier-0 or Tier-1 content. All memory writes are subject to the same data classification rules as all other platform data — see [`policies/DATA_CLASSIFICATION.md`](policies/DATA_CLASSIFICATION.md).
+- Supervisor memory can span sessions and matters.
+- Worker memory is constrained to the active task/session scope unless promoted by policy.
+- Human-operator access is read-only and representation-bound.
+- Sensitive data remains classification-bound and is not written to memory when policy disallows it.
 
 ---
 
@@ -552,9 +511,9 @@ MCAS exposes a REST/JSON API with OAuth2/PAT tokens, scoped per agent role. Webh
 
 ---
 
-## 10. Example Workflow Diagram
+## 10. Example Workflow Diagram (historical reference)
 
-The following Mermaid diagram illustrates a representative MISJustice workflow from human-initiated intake through to public publication. Hermes is shown as the primary human interface layer. n8n handles all HITL approval routing. MemoryPalace provides persistent memory to agents throughout the pipeline.
+The following Mermaid diagram illustrates a representative MISJustice workflow from human-initiated intake through to public publication. Hermes remains the primary human interface layer, MCPJungle governs tool access, and Honcho provides cross-session memory throughout the pipeline. HITL approval routing still flows through the human-approval layer before any external transmission or publication.
 
 ```mermaid
 flowchart TD
@@ -628,7 +587,7 @@ flowchart TD
 
 ---
 
-## 11. System Architecture Diagram
+## 11. System Architecture Diagram (historical reference)
 
 ```mermaid
 graph TB
@@ -778,7 +737,7 @@ graph TB
 
 ## 12. Repository Structure
 
-The following is the proposed scaffold for this repository. Some directories are stubbed for future implementation and are marked accordingly.
+The following is the current repository scaffold. It reflects the centralized MCP control plane, Honcho memory layer, and the current infrastructure directories under `infra/`.
 
 ```
 misjustice-alliance-firm/
