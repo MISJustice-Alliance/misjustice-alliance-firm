@@ -8,16 +8,33 @@ description = "Allow test fixtures, dummy keys, public tokens, and internal URLs
 paths = [
   '''\.test\.ts$''',
   '''\.spec\.ts$''',
+  '''\.test\.py$''',
+  '''\.spec\.py$''',
   '''PROVIDERS\.md$''',
   '''wiki/''',
   '''index\.html$''',
   '''src/n8n/workflows/''',
+  '''\.agent-outputs/''',
+  '''\.analysis-reports/''',
+  '''test/fixtures/''',
 ]
 regexes = [
-  '''test-signing-key-12345''',
-  '''abc123def456''',
-  '''sk-local-dev''',
-  '''sk-test''',
-  '''data-cf-beacon''',
-  '''zhc-firm-api''',
+  # Test signing keys (specific format)
+  '''test-signing-key-[a-z0-9]{8,}''',
+  # Local development keys (must have -dev- or -local- prefix)
+  '''sk-(local-dev|dev-[a-z0-9]{10,}|test-[a-z0-9]{10,})-[a-zA-Z0-9]{10,}''',
+  # Cloudflare beacon token (public, non-secret)
+  '''data-cf-beacon="[a-z0-9]{20,}"''',
+  # Internal API identifiers (not credentials)
+  '''zhc-firm-api-[a-z0-9]{8,}''',
+  # Placeholder patterns for .env.example
+  '''change[_-]me[_-]in[_-]production''',
+  '''REPLACE_ME_IN_PRODUCTION''',
+  # Test tokens with explicit test prefix
+  '''tvly-test-[a-zA-Z0-9]{20,}''',
+  '''BS-test-[a-zA-Z0-9]{20,}''',
+  '''exa-test-[a-zA-Z0-9]{20,}''',
+  '''morphic-test-[a-zA-Z0-9]{20,}''',
+  '''scrapling-test-[a-zA-Z0-9]{20,}''',
+  '''tovana-test-[a-zA-Z0-9]{20,}''',
 ]

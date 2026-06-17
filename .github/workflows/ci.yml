@@ -206,12 +206,12 @@ jobs:
 
       - name: Smoke test — docker compose up
         run: |
-          cp .env.example .env
+          cp .env.ci .env
           # Pull pre-built images for dependencies; build mcas from cache
-          docker compose up -d --wait mcas postgres redis minio
+          docker compose -f docker-compose.dokploy.yml up -d --wait mcas postgres redis ollama
           # Give healthchecks time to stabilise
           sleep 15
           # Assert mcas health endpoint
           curl -fsS http://localhost:8001/health | grep -q ok
-          docker compose logs mcas
-          docker compose down -v
+          docker compose -f docker-compose.dokploy.yml logs mcas
+          docker compose -f docker-compose.dokploy.yml down -v

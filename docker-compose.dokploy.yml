@@ -1,6 +1,6 @@
 # Dokploy deployment compose for MISJustice Alliance Firm
 # Deploys the three priority services: MCAS, SearXNG + LiteLLM, n8n
-# Plus shared backing services: PostgreSQL, Redis
+# Plus shared backing services: PostgreSQL, Redis, Ollama (local LLM)
 # -----------------------------------------------------------------------------
 
 x-logging: &default-logging
@@ -35,24 +35,58 @@ services:
       start_period: 30s
 
   # ---------------------------------------------------------------------------
-  # Redis 7 — Cache, sessions, task queue
+  # Redis 7 — Cache, sessions, task queue (AUTHENTICATED)
   # ---------------------------------------------------------------------------
   redis:
     image: redis:7-alpine
     container_name: misjustice-redis
     restart: unless-stopped
     logging: *default-logging
-    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --requirepass ${REDIS_PASSWORD:?Set Redis password}
     volumes:
       - redis_data:/data
     networks:
       - misjustice-net
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 3
       start_period: 5s
+
+  # ---------------------------------------------------------------------------
+  # Ollama — Local LLM for T0/T1 privacy-first inference
+  # ---------------------------------------------------------------------------
+  ollama:
+    image: ollama/ollama:latest
+    container_name: misjustice-ollama
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      OLLAMA_HOST: "0.0.0.0:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - misjustice-net
+    # GPU support (optional - uncomment if GPU available)
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:11434/api/tags || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
   # ---------------------------------------------------------------------------
   # MCAS — Matter Case Administration API (FastAPI)
@@ -67,7 +101,14 @@ services:
     environment:
       MCAS_ENV: ${MCAS_ENV:-production}
       MCAS_DATABASE_URL: ${MCAS_DATABASE_URL:-postgresql+asyncpg://mcas:${POSTGRES_PASSWORD}@postgres:5432/mcas}
-      MCAS_REDIS_URL: ${MCAS_REDIS_URL:-redis://redis:6379/0}
+      MCAS_REDIS_URL: ${MCAS_REDIS_URL:-redis://:${REDIS_PASSWORD}@redis:6379/0}
+      MCAS_SECRET_KEY: ${MCAS_SECRET_KEY:?Set MCAS secret key}
+      MCAS_MINIO_ENDPOINT: ${MCAS_MINIO_ENDPOINT:-minio:9000}
+      MCAS_MINIO_ACCESS_KEY: ${MCAS_MINIO_ACCESS_KEY:?Set MinIO access key}
+      MCAS_MINIO_SECRET_KEY: ${MCAS_MINIO_SECRET_KEY:?Set MinIO secret key}
+      MCAS_MINIO_SECURE: ${MCAS_MINIO_SECURE:-true}
+      MCAS_LITELLM_URL: ${MCAS_LITELLM_URL:-http://litellm:4000}
+      MCAS_LITELLM_KEY: ${MCAS_LITELLM_KEY:?Set LiteLLM master key}
     networks:
       - misjustice-net
       - dokploy-network
@@ -134,16 +175,21 @@ services:
       LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:?Set LiteLLM master key}
       DATABASE_URL: ${LITELLM_DATABASE_URL:-postgresql://mcas:${POSTGRES_PASSWORD}@postgres:5432/litellm}
       STORE_MODEL_IN_DB: "True"
+      # Tier guard defaults
+      DEFAULT_MATTER_TIER: ${DEFAULT_MATTER_TIER:-T3}
     command: >
       --config /app/config.yaml
       --port 4000
     volumes:
       - ./infra/litellm/config.yaml:/app/config.yaml:ro
+      - ./infra/litellm/tier_guard.py:/app/tier_guard.py:ro
     networks:
       - misjustice-net
       - dokploy-network
     depends_on:
       postgres:
+        condition: service_healthy
+      ollama:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:4000/health/liveliness || exit 1"]
@@ -187,7 +233,6 @@ services:
       - n8n_data:/home/node/.n8n
     networks:
       - misjustice-net
-      - dokploy-network
     depends_on:
       postgres:
         condition: service_healthy
@@ -211,6 +256,7 @@ services:
 networks:
   misjustice-net:
     driver: bridge
+    internal: false
   dokploy-network:
     external: true
 
@@ -221,6 +267,8 @@ volumes:
   postgres_data:
     driver: local
   redis_data:
+    driver: local
+  ollama_data:
     driver: local
   n8n_data:
     driver: local
