@@ -450,75 +450,55 @@ MCAS exposes a REST/JSON API with OAuth2/PAT tokens, scoped per agent role. Webh
 
 ## 9. Example Workflow Diagram
 
-The following Mermaid diagram illustrates a representative MISJustice workflow from human-initiated intake through to public publication. Hermes is shown as the primary human interface layer. n8n handles all HITL approval routing. MemoryPalace provides persistent memory to agents throughout the pipeline.
+The following Mermaid diagram reflects the current workflow shape: Hermes routes human intent into MCPJungle, Honcho persists shared state, the legal-corpus group provides legal authority, and n8n still mediates human approval before external transmission or publication.
 
 ```mermaid
 flowchart TD
-    H([Human Operator]) -->|Natural-language command via Hermes CLI/TUI| HM[Hermes Agent]
-    HM -->|Structured task dispatch| OC[OpenClaw / NemoClaw Orchestration]
-    HM -->|Spawn transient subagent if needed| SUB[Transient Subagent via OpenShell]
-    H -->|Ad-hoc research via Vane UI| VANE[Vane AI Search Interface]
-    VANE -->|T4-admin token| SRXNG[SearXNG Private Instance]
-    VANE -->|Cited findings| NB[Open Notebook]
+    humanOp["Human Operator"] --> hermesCli["Hermes CLI/TUI"]
+    hermesCli --> mcpjungle["MCPJungle control plane"]
+    hermesCli --> honchoMemory["Honcho shared memory"]
 
-    OC -->|Routes intake task| AV[Avery Intake & Evidence]
-    AV <-->|Read/write session memory| MP[(MemoryPalace)]
-    AV -->|Creates Person/Matter/Events OCR & classifies docs| MCAS[(MCAS Case Server)]
-    AV -->|Triggers approval webhook| N8N[n8n Workflow Engine]
-    N8N -->|Routes approval to operator| HM
-    H -->|Approves intake Confirms Tier| MCAS
+    mcpjungle --> intakeAgent["Avery intake and evidence"]
+    intakeAgent --> mcasCase["MCAS case record"]
+    intakeAgent --> approvalFlow["n8n approval routing"]
+    approvalFlow --> hermesCli
+    approvalFlow --> humanOp
 
-    OC -->|Assigns research scope| RA[Rae Paralegal Researcher]
-    OC -->|Assigns analysis + QA| LX[Lex Senior Analyst]
-    OC -->|Assigns public-record PI| IR[Iris PI Researcher]
-    RA <-->|Read/write session memory| MP
-    LX <-->|Read/write session memory| MP
-    IR <-->|Read/write session memory| MP
+    mcpjungle --> researchTeam["Rae and Lex research"]
+    researchTeam --> legalCorpus["legal-corpus tool group"]
+    legalCorpus --> midpageMcp["Midpage MCP"]
+    legalCorpus --> legalMcp["legal-mcp"]
+    legalCorpus --> americanDefault["American Default MCP"]
+    legalCorpus --> congressMcp["Congress MCP"]
+    researchTeam --> chronologyCheck["Chronology and citation checks"]
+    chronologyCheck --> mcasCase
 
-    RA -->|AutoResearchClaw Legal research loop| ARC[AutoResearchClaw Research Engine]
-    LX -->|AutoResearchClaw Analysis & verification| ARC
-    IR -->|AutoResearchClaw OSINT & public records| ARC
+    mcpjungle --> publicRecords["Iris public-record research"]
+    publicRecords --> researchTeam
 
-    ARC -->|Queries via LiteLLM role-scoped token| SRXNG
-    SRXNG -->|Returns normalized results| ARC
-    ARC -->|Public legal info query| LG[LawGlance Legal Info RAG]
-    LG -->|Jurisdiction-scoped public legal retrieval| ARC
-    ARC -->|Legal data tasks: cases, statutes, regs, bills| LSG[Legal Source Gateway]
-    LSG -->|CourtListener / CAP / GovInfo / eCFR / FR / Open States / LegiScan| LSRC[(Open Legal Data Sources)]
-    LSG -->|Citation graph traversal| NEO4J[(Neo4j Citation Graph)]
-    LSG -->|Full-text & semantic index| ESVC[(Elasticsearch + Qdrant)]
-    ARC -->|Embeds into OpenRAG| ORAG[(OpenRAG Vector Store)]
-    ARC -->|Outputs: memos, issue maps, PI reports, timelines| NB
+    mcpjungle --> counselScout["Casey counsel scout"]
+    counselScout --> referralDraft["Referral packet draft"]
+    referralDraft --> approvalFlow
+    approvalFlow --> externalCounsel["External counsel or civil-rights org"]
 
-    NB -->|Human reviews drafts via Hermes| HM
-    H -->|Approves analysis Defines referral path| OC
+    mcpjungle --> publishTeam["Webmaster and Sol review"]
+    publishTeam --> solQa["Sol public content QA"]
+    solQa --> approvalFlow
+    approvalFlow --> publicSite["Public web properties"]
 
-    OC -->|Assembles referral packet| CA[Casey Counsel Scout]
-    CA <-->|Read/write session memory| MP
-    CA -->|Drafts packet from MCAS exports| N8N
-    N8N -->|Routes referral approval| HM
-    H -->|Approves & transmits| EXT([External Counsel / Civil Rights Org])
+    mcpjungle --> socialTeam["Social media manager"]
+    socialTeam --> approvalFlow
+    approvalFlow --> socialChannels["Public social channels"]
 
-    H -->|Selects content for public release| WM[Webmaster]
-    WM -->|Sol QA check| SL[Sol Content QA]
-    SL -->|QA report| N8N
-    N8N -->|Routes publication approval| HM
-    H -->|Approves publication| WM
-    WM -->|Publishes & indexes| WEB([Public Web Properties])
+    mcpjungle --> opsSupport["Technical and DevOps support stack"]
+    opsSupport --> observability["Prometheus and Grafana"]
 
-    WM -->|Notifies publication ready| SM[Social Media Manager]
-    SM -->|Drafts campaign| N8N
-    N8N -->|Routes post approval| HM
-    H -->|Approves posts| SM
-    SM -->|Publishes & monitors| SOC([Social Platforms])
-
-    VR[Veritas Integrity Monitor] -->|Continuous audit| AUDIT[Agent Logs / Data Flows]
-    AUDIT -->|Violation detected| N8N
-    N8N -->|Escalates to Human Oversight Board| H
-
-    AT[Atlas Case Lifecycle] -->|Deadline / status check| MCAS
-    AT <-->|Read/write lifecycle state| MP
-    AT -->|Milestone HITL trigger| N8N
+    honchoMemory -.-> intakeAgent
+    honchoMemory -.-> researchTeam
+    honchoMemory -.-> counselScout
+    honchoMemory -.-> publishTeam
+    honchoMemory -.-> socialTeam
+    honchoMemory -.-> opsSupport
 ```
 
 
@@ -526,149 +506,94 @@ flowchart TD
 
 ## 10. System Architecture Diagram
 
+The current architecture centers on MCPJungle as the control plane, Honcho as shared memory, Tailscale-only access for operator surfaces, and the legal-corpus / MCAS workflow split described in the main architecture document.
+
 ```mermaid
-graph TB
-    subgraph INTERFACES["Human Interface Layer"]
-        HM[Hermes Agent CLI/TUI]
-        N8N[n8n Workflow Automation & HITL Routing]
-        TG[Telegram]
-        DS[Discord]
-        IM[iMessage]
-        OWU[Open Web UI]
-        ONB[Open Notebook]
-        VN[Vane AI Search UI]
+flowchart TD
+    subgraph Access["Human and operator access"]
+        direction LR
+        hermesCli["Hermes CLI/TUI"]
+        mcpjungleDash["MCPJungle dashboard"]
+        grafanaUi["Grafana"]
+        honchoUi["Honcho UI"]
     end
 
-    subgraph ORCH["Orchestration Layer — OpenClaw / NemoClaw + OpenShell"]
-        OC[OpenClaw Core Agent Router & Dispatcher]
-        NC[NemoClaw Sandbox & Protection Layer]
-        OSH[OpenShell Sandbox Runtime — YAML Policy Enforcement]
-        AM[AgenticMail Approval Queue]
+    tailscaleBoundary["Tailscale-only access"] --> hermesCli
+    tailscaleBoundary --> mcpjungleDash
+    tailscaleBoundary --> grafanaUi
+    tailscaleBoundary --> honchoUi
+
+    subgraph Control["Control plane"]
+        direction LR
+        mcpjungle["MCPJungle enterprise mode"]
+        rbacGroups["RBAC tool groups"]
     end
 
-    subgraph MEMORY["Agent Memory Substrate"]
-        MP[(MemoryPalace — Verbatim Cross-Session Memory)]
+    subgraph Memory["Shared memory"]
+        direction LR
+        honchoMemory["Honcho"]
     end
 
-    subgraph AGENTS["Agent Staff"]
-        AV[Avery Intake & Evidence]
-        MI[Mira Telephony]
-        RA[Rae Paralegal Researcher]
-        LX[Lex Senior Analyst]
-        IR[Iris PI Researcher]
-        AT[Atlas Case Lifecycle]
-        VR[Veritas Integrity Monitor]
-        CH[Chronology Agent]
-        CT[Citation Agent]
-        CA[Casey Counsel Scout]
-        OL[Ollie Outreach]
-        WM[Webmaster]
-        SM[Social Media Manager]
-        SL[Sol Content QA]
-        QL[Quill GitBook Curator]
-        SUB[Transient Subagents spawned by Hermes/OpenClaw]
+    subgraph Agents["Agent stack"]
+        direction LR
+        hermesSupervisor["Hermes supervisor"]
+        legalAgents["Rae, Lex, Citation Authority, Casey, Quill"]
+        irisChrono["Iris and Chronology"]
+        supportStack["Technical and DevOps support stack"]
     end
 
-    subgraph RESEARCH["Research Engine"]
-        ARC[AutoResearchClaw]
+    subgraph Legal["legal-corpus tool group"]
+        direction LR
+        legalCorpusGroup["legal-corpus tool group"]
+        midpageMcp["Midpage MCP"]
+        legalMcp["legal-mcp"]
+        americanDefault["American Default MCP"]
+        congressMcp["Congress MCP"]
     end
 
-    subgraph LEGALGATEWAY["Legal Source Gateway"]
-        LSG[Legal Source Gateway API]
-        LSC_CL[CourtListener Connector]
-        LSC_CAP[CAP Connector]
-        LSC_GOV[GovInfo Connector]
-        LSC_ECFR[eCFR + Federal Register Connector]
-        LSC_STATE[Open States + LegiScan Connector]
-        LSG_ES[(Elasticsearch — Full-text Index)]
-        LSG_QD[(Qdrant — Vector Index / Inception Embeddings)]
-        LSG_NEO[(Neo4j — Citation Knowledge Graph)]
+    subgraph Workflow["Case workflow services"]
+        direction LR
+        mcasCase["MCAS case management"]
+        n8nRouting["n8n HITL approval routing"]
     end
 
-    subgraph INTERNAL["Internal Services"]
-        MCAS[(MCAS Case Server)]
-        ORAG[(OpenRAG Vector Store)]
-        LLLM[LiteLLM Proxy Search Gateway]
-        SRXNG[SearXNG Private Search Instance]
-        PROT[Proton E2EE Comms — Tier 0]
+    subgraph Observability["Observability"]
+        direction LR
+        prometheus["Prometheus"]
+        grafana["Grafana"]
     end
 
-    subgraph LEGALRAG["Legal Information RAG Layer"]
-        LG[LawGlance Legal Info RAG Service]
-        LGDB[(LawGlance ChromaDB + Redis Cache)]
-    end
+    hermesCli --> hermesSupervisor
+    hermesSupervisor --> mcpjungle
+    mcpjungle --> rbacGroups
+    rbacGroups --> hermesSupervisor
+    rbacGroups --> legalAgents
+    rbacGroups --> irisChrono
+    rbacGroups --> supportStack
 
-    subgraph EXTERNAL["External Services & APIs"]
-        FLP[Free Law Project / CourtListener APIs]
-        CAP[Caselaw Access Project — CAP]
-        GOVI[GovInfo / GPO]
-        ECFR_FR[eCFR + Federal Register APIs]
-        OPST[Open States API]
-        LEGSC[LegiScan API]
-        LLM[LLM Providers via LiteLLM]
-    end
+    mcpjungle --> legalCorpusGroup
+    legalAgents --> legalCorpusGroup
+    irisChrono --> legalCorpusGroup
+    legalCorpusGroup --> midpageMcp
+    legalCorpusGroup --> legalMcp
+    legalCorpusGroup --> americanDefault
+    legalCorpusGroup --> congressMcp
 
-    subgraph PUBLIC["Public Properties"]
-        MJW[misjusticealliance.org]
-        YWGB[YWCA GitBook]
-        XTW[X / Twitter]
-        BSK[Bluesky]
-        RDT[Reddit]
-        NOS[Nostr]
-    end
+    hermesSupervisor --> mcasCase
+    legalAgents --> mcasCase
+    irisChrono --> mcasCase
+    mcasCase --> n8nRouting
+    n8nRouting --> hermesCli
 
-    HM -->|Task dispatch| OC
-    HM -->|Spawn subagent| SUB
-    N8N -->|HITL approval routing| HM
-    N8N -->|Approval routing| TG
-    N8N -->|Approval routing| DS
-    INTERFACES --> ORCH
-    VN -->|T4-admin token direct SearXNG query| SRXNG
-    NC --> OSH
-    ORCH --> AGENTS
-    AGENTS <-->|Read/write memory| MP
-    AGENTS --> RESEARCH
-    RESEARCH --> LLLM
-    LLLM --> SRXNG
-    RESEARCH -->|Legal data tasks| LSG
-    LSG --> LSC_CL
-    LSG --> LSC_CAP
-    LSG --> LSC_GOV
-    LSG --> LSC_ECFR
-    LSG --> LSC_STATE
-    LSC_CL --> FLP
-    LSC_CAP --> CAP
-    LSC_GOV --> GOVI
-    LSC_ECFR --> ECFR_FR
-    LSC_STATE --> OPST
-    LSC_STATE --> LEGSC
-    LSG <--> LSG_ES
-    LSG <--> LSG_QD
-    LSG <--> LSG_NEO
-    AGENTS --> MCAS
-    AGENTS --> ORAG
-    AGENTS --> AM
-    AGENTS -->|HITL webhooks| N8N
-    AM --> PROT
-    RESEARCH --> ORAG
-    RESEARCH -->|Public legal info| LG
-    LG <-->|LangChain RAG ChromaDB retrieval| LGDB
-    WM --> MJW
-    WM --> YWGB
-    SM --> XTW
-    SM --> BSK
-    SM --> RDT
-    SM --> NOS
-    ORCH --> LLM
+    honchoMemory -.-> hermesSupervisor
+    honchoMemory -.-> legalAgents
+    honchoMemory -.-> irisChrono
+    honchoMemory -.-> supportStack
+
+    mcpjungle --> prometheus
+    honchoMemory --> prometheus
+    prometheus --> grafana
 ```
-
-> **Architecture notes:**
-> - **Legal Source Gateway** is a dedicated subgraph sitting between the Research Engine and all upstream open legal data sources. Agents interact exclusively with the gateway — never with CourtListener, CAP, GovInfo, eCFR, or state legislative APIs directly.
-> - **Hermes** sits at the top of the interface layer as the primary human control surface. It dispatches to OpenClaw and can spawn transient subagents via NemoClaw/OpenShell.
-> - **n8n** sits alongside Hermes in the interface layer as the HITL approval router, receiving webhooks from Atlas, Veritas, and other agents and routing them to operators across all surfaces.
-> - **MemoryPalace** is a dedicated memory subgraph shared by all persistent agents. Memory never leaves the platform. Tier-0/Tier-1 content is never written to memory.
-> - **OpenShell** is nested inside the Orchestration Layer under NemoClaw — it is the sandbox runtime that NemoClaw provisions for all agent tool execution.
-> - **LawGlance** remains isolated in its own subgraph — it receives only public legal information queries, never private case data.
 
 ---
 
