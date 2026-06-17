@@ -1,0 +1,10 @@
+{
+  "name": "legal-mcp",
+  "transport": "stdio",
+  "description": "US legal caselaw MCP (Mahender22/legal-mcp)",
+  "command": "uvx",
+  "args": [
+    "legal-mcp"
+  ],
+  "session_mode": "stateful"
+}

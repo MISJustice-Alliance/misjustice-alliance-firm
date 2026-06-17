@@ -1,0 +1,8 @@
+{
+  "name": "midpage",
+  "transport": "streamable_http",
+  "description": "Midpage legal corpus: US state/federal law, caselaw, PACER dockets",
+  "url": "${MIDPAGE_MCP_URL}",
+  "bearer_token": "${MIDPAGE_API_KEY}",
+  "session_mode": "stateful"
+}

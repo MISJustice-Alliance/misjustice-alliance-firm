@@ -1,0 +1,8 @@
+{
+  "name": "firecrawl",
+  "transport": "streamable_http",
+  "description": "Firecrawl — web scraping and crawl",
+  "url": "https://mcpservers.org/servers/github-com-firecrawl-firecrawl-mcp-server",
+  "bearer_token": "${FIRECRAWL_API_KEY}",
+  "session_mode": "stateful"
+}

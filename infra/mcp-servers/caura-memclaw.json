@@ -1,0 +1,8 @@
+{
+  "name": "caura-memclaw",
+  "transport": "streamable_http",
+  "description": "Dev/ops team shared memory service (MemClaw). Web UI on Tailscale only.",
+  "url": "https://mcpservers.org/servers/caura-ai/caura-memclaw",
+  "bearer_token": "${CAURA_MEMCLAW_TOKEN}",
+  "session_mode": "stateful"
+}

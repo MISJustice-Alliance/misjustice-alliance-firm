@@ -1,0 +1,10 @@
+{
+  "name": "legal-corpus",
+  "description": "Curated legal corpus tool surface for MISJustice Alliance",
+  "included_servers": [
+    "midpage",
+    "legal-mcp",
+    "american-default",
+    "congress-mcp"
+  ]
+}

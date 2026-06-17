@@ -1,0 +1,9 @@
+{
+  "name": "all-ops",
+  "description": "Shared dev/ops, memory, and internal operations tools",
+  "included_servers": [
+    "caura-memclaw",
+    "devops-mcp",
+    "honcho-memory"
+  ]
+}

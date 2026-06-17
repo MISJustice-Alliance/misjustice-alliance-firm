@@ -1,0 +1,7 @@
+{
+  "name": "uml-diagram",
+  "transport": "streamable_http",
+  "description": "UML/architecture diagram generation via Smithery",
+  "url": "https://smithery.ai/servers/antoinebou12/uml",
+  "session_mode": "stateless"
+}

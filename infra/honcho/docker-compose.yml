@@ -1,0 +1,77 @@
+services:
+  database:
+    image: pgvector/pgvector:pg15@sha256:5534525628a6d0eab43a1409f2cbdb6947b0fd544997a4ede9714e5364901666
+    container_name: misjustice-honcho-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in infra/honcho/.env}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:8.2@sha256:e5d06019f38fb8eff9b366d4ccfec85860fd94899209f7135fcdf54ef0242921
+    container_name: misjustice-honcho-redis
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    image: ghcr.io/plastic-labs/honcho:v3.0.6
+    container_name: misjustice-honcho-api
+    restart: unless-stopped
+    depends_on:
+      database:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      DB_CONNECTION_URI: ${DB_CONNECTION_URI:?set in infra/honcho/.env}
+      CACHE_URL: redis://redis:6379/0?suppress=true
+      CACHE_ENABLED: "true"
+      HONCHO_API_HOST: 0.0.0.0
+      HONCHO_API_PORT: 8000
+    ports:
+      - "${TAILSCALE_IP:-127.0.0.1}:8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=2).read()"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  deriver:
+    image: ghcr.io/plastic-labs/honcho:v3.0.6
+    container_name: misjustice-honcho-deriver
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      DB_CONNECTION_URI: ${DB_CONNECTION_URI:?set in infra/honcho/.env}
+      CACHE_URL: redis://redis:6379/0?suppress=true
+      CACHE_ENABLED: "true"
+      DERIVER_ENABLED: "true"
+    entrypoint: ["/app/.venv/bin/python", "-m", "src.deriver"]
+
+volumes:
+  pgdata:
+  redis_data:

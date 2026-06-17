@@ -1,0 +1,8 @@
+{
+  "name": "e2b-sandbox",
+  "transport": "streamable_http",
+  "description": "e2b secure code execution sandbox",
+  "url": "https://mcpservers.org/servers/e2b-dev/mcp-server",
+  "bearer_token": "${E2B_API_KEY}",
+  "session_mode": "stateful"
+}

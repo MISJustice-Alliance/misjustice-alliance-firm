@@ -1,0 +1,7 @@
+{
+  "name": "american-default",
+  "transport": "streamable_http",
+  "description": "American Default MCP — US law reference",
+  "url": "https://mcpservers.org/servers/vibecode1/american-default-mcp",
+  "session_mode": "stateless"
+}

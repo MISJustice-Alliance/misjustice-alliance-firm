@@ -1,0 +1,13 @@
+{
+  "name": "technical",
+  "description": "Technical documentation, code execution, and repo scanning tools",
+  "included_servers": [
+    "uml-diagram",
+    "e2b-sandbox",
+    "deepwiki",
+    "context7",
+    "notebooklm",
+    "repofortify",
+    "adp-document"
+  ]
+}

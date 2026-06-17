@@ -1,0 +1,8 @@
+{
+  "name": "honcho-memory",
+  "transport": "streamable_http",
+  "description": "Honcho shared memory substrate — peer-centric stateful memory",
+  "url": "${HONCHO_MCP_URL:-http://127.0.0.1:8000/mcp}",
+  "bearer_token": "${HONCHO_API_KEY}",
+  "session_mode": "stateful"
+}

@@ -1,0 +1,7 @@
+{
+  "name": "notebooklm",
+  "transport": "streamable_http",
+  "description": "NotebookLM MCP integration",
+  "url": "https://mcpservers.org/servers/pleaseprompto/notebooklm-mcp",
+  "session_mode": "stateless"
+}

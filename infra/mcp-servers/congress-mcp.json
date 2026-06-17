@@ -1,0 +1,14 @@
+{
+  "name": "congress-mcp",
+  "transport": "stdio",
+  "description": "Live US Congressional data — bills, votes, members, committees, hearings",
+  "command": "npx",
+  "args": [
+    "-y",
+    "congress-mcp"
+  ],
+  "env": {
+    "CONGRESS_API_KEY": "${CONGRESS_API_KEY}"
+  },
+  "session_mode": "stateful"
+}

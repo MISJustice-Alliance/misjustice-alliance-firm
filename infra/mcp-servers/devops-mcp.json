@@ -1,0 +1,7 @@
+{
+  "name": "devops-mcp",
+  "transport": "streamable_http",
+  "description": "DevOps MCP — infrastructure automation and operations",
+  "url": "https://mcpservers.org/servers/mhasnainjafri/devops-mcp",
+  "session_mode": "stateful"
+}

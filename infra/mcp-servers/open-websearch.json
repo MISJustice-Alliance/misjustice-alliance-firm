@@ -1,0 +1,10 @@
+{
+  "name": "open-websearch",
+  "transport": "stdio",
+  "description": "Open web search — privacy-respecting",
+  "command": "uvx",
+  "args": [
+    "open-websearch"
+  ],
+  "session_mode": "stateful"
+}

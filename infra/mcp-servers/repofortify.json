@@ -1,0 +1,7 @@
+{
+  "name": "repofortify",
+  "transport": "streamable_http",
+  "description": "RepoFortify security scanning",
+  "url": "https://mcpservers.org/servers/repofortify-com-mcp",
+  "session_mode": "stateless"
+}

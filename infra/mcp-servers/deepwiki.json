@@ -1,0 +1,7 @@
+{
+  "name": "deepwiki",
+  "transport": "streamable_http",
+  "description": "DeepWiki — GitHub repo documentation traversal",
+  "url": "https://mcpservers.org/servers/devin/deepwiki",
+  "session_mode": "stateless"
+}

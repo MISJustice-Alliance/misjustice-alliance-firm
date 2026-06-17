@@ -1,0 +1,8 @@
+{
+  "name": "exa-search",
+  "transport": "streamable_http",
+  "description": "Exa semantic search engine",
+  "url": "https://mcpservers.org/servers/exa-labs/exa-mcp-server",
+  "bearer_token": "${EXA_API_KEY}",
+  "session_mode": "stateful"
+}

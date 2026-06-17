@@ -1,0 +1,7 @@
+{
+  "name": "adp-document",
+  "transport": "streamable_http",
+  "description": "ADP document formatting and processing",
+  "url": "https://mcpservers.org/servers/laiye-adp/adp-mcp-nodejs",
+  "session_mode": "stateless"
+}

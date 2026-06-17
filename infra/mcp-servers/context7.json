@@ -1,0 +1,7 @@
+{
+  "name": "context7",
+  "transport": "streamable_http",
+  "description": "Context7 — up-to-date library and framework docs",
+  "url": "https://mcp.context7.com/mcp",
+  "session_mode": "stateless"
+}

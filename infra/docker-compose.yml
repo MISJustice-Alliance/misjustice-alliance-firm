@@ -1,0 +1,98 @@
+services:
+  postgres:
+    image: postgres:17@sha256:b8e8cec4bfdfda676f4334f4f2aab9d8758f51d76ac41fc35224f6ae79b79f54
+    container_name: misjustice-mcpjungle-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${MCPJUNGLE_POSTGRES_DB:-mcpjungle}
+      POSTGRES_USER: ${MCPJUNGLE_POSTGRES_USER:-mcpjungle}
+      POSTGRES_PASSWORD: ${MCPJUNGLE_POSTGRES_PASSWORD:?set in infra/secrets/.env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "PGPASSWORD=$$POSTGRES_PASSWORD pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mcpjungle:
+    image: ghcr.io/mcpjungle/mcpjungle@sha256:3219b253ebcf9917f306171fab695be87b0456f4ba249a3886de92bd41431189
+    container_name: misjustice-mcpjungle
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: ${MCPJUNGLE_DATABASE_URL:?set in infra/secrets/.env}
+      SERVER_MODE: enterprise
+      OTEL_ENABLED: "true"
+      MCP_SERVER_INIT_REQ_TIMEOUT_SEC: "10"
+    ports:
+      - "${TAILSCALE_IP:-127.0.0.1}:8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/health | grep -q ok"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  honcho-exporter:
+    image: python:3.12-slim@sha256:c2d8472b831337ab296a8ce652e1ba786e9e3034fc445dc58b50a7f5251f0003
+    container_name: misjustice-honcho-exporter
+    restart: unless-stopped
+    depends_on:
+      mcpjungle:
+        condition: service_healthy
+    command: ["python", "/opt/exporter/honcho_queue_exporter.py"]
+    environment:
+      HONCHO_BASE_URL: http://${TAILSCALE_IP:-127.0.0.1}:8000
+      HONCHO_WORKSPACE_ID: ${HONCHO_WORKSPACE_ID:?set in infra/secrets/.env}
+      HONCHO_API_KEY: ${HONCHO_API_KEY:?set in infra/secrets/.env}
+      EXPORTER_PORT: "9103"
+    ports:
+      - "127.0.0.1:9103:9103"
+    volumes:
+      - ./observability/honcho_queue_exporter.py:/opt/exporter/honcho_queue_exporter.py:ro
+
+  prometheus:
+    image: prom/prometheus:v2.53.0@sha256:0e91a106a4da991ecd9b2a511eb9a62cc106293a517deed33856ceda5ad429d7
+    container_name: misjustice-prometheus
+    restart: unless-stopped
+    depends_on:
+      mcpjungle:
+        condition: service_healthy
+      honcho-exporter:
+        condition: service_started
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=${PROMETHEUS_RETENTION:-15d}
+    ports:
+      - "${TAILSCALE_IP:-127.0.0.1}:9090:9090"
+    volumes:
+      - prometheus_data:/prometheus
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+
+  grafana:
+    image: grafana/grafana:11.4.0@sha256:8d938a1c52b018c60cb3583657e038054387aa18a74f09a865c99a522481f7ac
+    container_name: misjustice-grafana
+    restart: unless-stopped
+    depends_on:
+      prometheus:
+        condition: service_started
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set in infra/secrets/.env}
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-http://localhost:3000}
+    ports:
+      - "${TAILSCALE_IP:-127.0.0.1}:3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+
+volumes:
+  postgres_data:
+  prometheus_data:
+  grafana_data:

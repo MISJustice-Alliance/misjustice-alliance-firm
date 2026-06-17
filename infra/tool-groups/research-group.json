@@ -1,0 +1,9 @@
+{
+  "name": "research",
+  "description": "Research and web intelligence tools",
+  "included_servers": [
+    "open-websearch",
+    "exa-search",
+    "firecrawl"
+  ]
+}
