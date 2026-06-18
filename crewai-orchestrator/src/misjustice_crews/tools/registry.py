@@ -19,6 +19,7 @@ from misjustice_crews.tools.mcas_tools import (
     MatterCreateTool,
     MatterReadTool,
     MatterWriteTool,
+    StructuredThinkTool,
 )
 from misjustice_crews.tools.mcp_tools import (
     MCPCasesGetTool,
@@ -55,6 +56,8 @@ _TOOL_MAP: dict[str, type[BaseTool]] = {
     "timeline_build": TimelineBuilderTool,
     "citation_format": CitationFormatterTool,
     "deadline_tracker": DeadlineTrackerTool,
+    # MindKit
+    "structured_think": StructuredThinkTool,
 }
 
 

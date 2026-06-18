@@ -176,6 +176,58 @@ allowed:
     classification_ceiling: tier2
     paperclip_policy_ref: lex_policy.paperclip.yaml#audit_log_write
 
+  - name: structured_think
+    display_name: "MindKit Structured Think"
+    group: reasoning
+    version: "0.1.0"
+    path: agents/base/tools/structured_think.py
+    description: >
+      Structured sequential thinking for de-identified Tier-2 prompts only.
+      Produces auditable reasoning traces, confidence scores, assumptions,
+      counterpoints, and warnings for Open Notebook, MCAS, and Veritas.
+    use_cases:
+      - Decompose a research question before search fan-out
+      - Stress-test a legal theory before synthesis
+      - Validate citations, chronology, and authority coverage
+    inputs:
+      prompt:
+        type: string
+        required: true
+        description: De-identified analysis prompt
+      mode:
+        type: string
+        required: true
+        enum: [analytical, critical, synthesis, validation]
+      custom_lens:
+        type: string
+        required: true
+        description: Task-specific lens such as legal-theory or citation-accuracy
+      matter_id:
+        type: string
+        required: false
+        description: Associated MCAS matter ID
+    outputs:
+      trace_id:
+        type: string
+      confidence:
+        type: number
+      formatted_output:
+        type: string
+      assumptions:
+        type: list[string]
+      counterpoints:
+        type: list[string]
+      warnings:
+        type: list[string]
+      source_refs:
+        type: list[string]
+    requires_confirmation: false
+    classification_ceiling: tier2
+    paperclip_policy_ref: lex_policy.paperclip.yaml#structured_think
+    errors:
+      - code: CLASSIFICATION_EXCEEDS_CEILING
+        action: block_and_escalate
+
   # ---------------------------------------------------------------------------
   # GROUP 2 — MCP Legal Research Tools
   # ---------------------------------------------------------------------------

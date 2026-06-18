@@ -67,6 +67,9 @@ volumes/
 *.env
 !.env.example
 
+# Rust build artifacts
+services/mindkit/target/
+
 # Misc
 *.log
 apps/website/backups/site-backup/*.tar.gz

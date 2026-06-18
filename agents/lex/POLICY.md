@@ -82,6 +82,7 @@ Lex is authorized to perform the following actions **only**:
 | Retrieve case law via MCP | Via mcp_cases_get, within scope of assigned task |
 | Resolve citations via MCP | Via mcp_citations_resolve, for validation only |
 | Generate analysis outputs | Within assigned task scope, with mandatory disclaimer |
+| Run MindKit structured reasoning | Via structured_think, Tier-2 prompts only |
 | Escalate to human staff | When escalation triggers from SOUL.md are met |
 
 ---

@@ -1,3 +1,8 @@
+from __future__ import annotations
+
+import json
+import os
+from dataclasses import dataclass
 from typing import Any, Type
 
 import httpx
@@ -92,3 +97,33 @@ class DocumentAnalyzeTool(BaseMCASTool):
 
     def _run(self, document_id: str) -> str:
         return self._make_request("POST", f"/documents/{document_id}/analyze")
+
+
+class StructuredThinkInput(BaseModel):
+    prompt: str = Field(description="De-identified analysis prompt")
+    mode: str = Field(default="analytical", description="analytical, critical, synthesis, validation")
+    custom_lens: str = Field(default="legal-theory", description="Task-specific lens")
+    matter_id: str | None = Field(default=None, description="Associated MCAS matter ID")
+
+
+class StructuredThinkTool(BaseTool):
+    name: str = "structured_think"
+    description: str = (
+        "Run MindKit structured sequential thinking on de-identified Tier-2 prompts "
+        "and return a confidence-scored trace packet."
+    )
+    args_schema: Type[BaseModel] = StructuredThinkInput
+
+    def _run(self, prompt: str, mode: str = "analytical", custom_lens: str = "legal-theory", matter_id: str | None = None) -> str:
+        endpoint = os.getenv("MINDKIT_BASE_URL", "http://127.0.0.1:3100").rstrip("/")
+        payload = {
+            "prompt": prompt,
+            "mode": mode,
+            "custom_lens": custom_lens,
+            "matter_id": matter_id,
+            "data_tier": settings.data_tier_default,
+        }
+        with httpx.Client(timeout=30.0) as client:
+            response = client.post(f"{endpoint}/think", json=payload)
+            response.raise_for_status()
+            return response.text
